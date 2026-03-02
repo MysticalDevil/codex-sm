@@ -43,13 +43,22 @@ go build .
 Preferred (Go):
 
 ```bash
-go install github.com/MysticalDevil/codex-sm@v0.1.0
+go install github.com/MysticalDevil/codex-sm@v0.1.1
 ```
 
 With `mise`:
 
 ```bash
-mise install go:github.com/MysticalDevil/codex-sm@v0.1.0
+mise install go:github.com/MysticalDevil/codex-sm@v0.1.1
+```
+
+Note:
+
+- The installed binary name is `codex-sm` (module root package name).
+- If you prefer `csm`, add an alias, for example:
+
+```bash
+alias csm='codex-sm'
 ```
 
 ## Quick Start
