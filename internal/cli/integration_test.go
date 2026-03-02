@@ -49,6 +49,48 @@ func TestList_DefaultLimitShowsLatest10(t *testing.T) {
 	}
 }
 
+func TestList_FormatCSVAndTSV(t *testing.T) {
+	root := t.TempDir()
+	id := "99999999-9999-9999-9999-999999999999"
+	path := filepath.Join(root, "2026", "03", "02", "rollout-csv.jsonl")
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	meta := `{"type":"session_meta","payload":{"id":"` + id + `","timestamp":"2026-03-02T09:44:00.024Z"}}` + "\n"
+	if err := os.WriteFile(path, []byte(meta), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	for _, tc := range []struct {
+		name    string
+		format  string
+		header  string
+		contain string
+	}{
+		{name: "csv", format: "csv", header: "session_id,created_at,updated_at,size_bytes,health,path", contain: id + ","},
+		{name: "tsv", format: "tsv", header: "session_id\tcreated_at\tupdated_at\tsize_bytes\thealth\tpath", contain: id + "\t"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cmd := NewRootCmd()
+			stdout := &bytes.Buffer{}
+			stderr := &bytes.Buffer{}
+			cmd.SetOut(stdout)
+			cmd.SetErr(stderr)
+			cmd.SetArgs([]string{"list", "--sessions-root", root, "--format", tc.format, "--limit", "1"})
+			if err := cmd.Execute(); err != nil {
+				t.Fatalf("list execute: %v", err)
+			}
+			out := stdout.String()
+			if !strings.Contains(out, tc.header) {
+				t.Fatalf("missing header in output: %q", out)
+			}
+			if !strings.Contains(out, tc.contain) {
+				t.Fatalf("missing session row in output: %q", out)
+			}
+		})
+	}
+}
+
 func TestDelete_DryRunWritesAuditAndKeepsFile(t *testing.T) {
 	root := t.TempDir()
 	logFile := filepath.Join(t.TempDir(), "actions.log")
@@ -162,4 +204,142 @@ func TestDelete_RealDeleteInteractiveConfirmDisabledNeedsYes(t *testing.T) {
 	if _, statErr := os.Stat(p2); statErr != nil {
 		t.Fatalf("session file #2 should remain when validation fails: %v", statErr)
 	}
+}
+
+func TestDelete_RealSoftDeleteMovesToTrash(t *testing.T) {
+	root := t.TempDir()
+	trashRoot := filepath.Join(t.TempDir(), "trash")
+	logFile := filepath.Join(t.TempDir(), "actions.log")
+	id := "44444444-4444-4444-4444-444444444444"
+	filename := "rollout-2026-03-02T17-44-00-44444444-4444-4444-4444-444444444444.jsonl"
+	src := createSessionFile(t, root, "2026/03/02/"+filename, id)
+
+	cmd := NewRootCmd()
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	cmd.SetOut(stdout)
+	cmd.SetErr(stderr)
+	cmd.SetArgs([]string{
+		"delete",
+		"--sessions-root", root,
+		"--trash-root", trashRoot,
+		"--log-file", logFile,
+		"--id", id,
+		"--dry-run=false",
+		"--confirm",
+		"--interactive-confirm=false",
+		"--yes",
+	})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("delete execute: %v", err)
+	}
+	if _, err := os.Stat(src); !os.IsNotExist(err) {
+		t.Fatalf("source should be moved; stat err=%v", err)
+	}
+	dst := filepath.Join(trashRoot, "sessions", "2026", "03", "02", filename)
+	if _, err := os.Stat(dst); err != nil {
+		t.Fatalf("expected trashed file at %s: %v", dst, err)
+	}
+	out := stdout.String()
+	if !strings.Contains(out, "action=soft-delete") || !strings.Contains(out, "succeeded=1") {
+		t.Fatalf("unexpected output: %s", out)
+	}
+}
+
+func TestDelete_RealHardDeleteRemovesFile(t *testing.T) {
+	root := t.TempDir()
+	logFile := filepath.Join(t.TempDir(), "actions.log")
+	id := "55555555-5555-5555-5555-555555555555"
+	src := createSessionFile(t, root, "2026/03/02/rollout-2026-03-02T17-44-00-55555555-5555-5555-5555-555555555555.jsonl", id)
+
+	cmd := NewRootCmd()
+	cmd.SetOut(&bytes.Buffer{})
+	cmd.SetErr(&bytes.Buffer{})
+	cmd.SetArgs([]string{
+		"delete",
+		"--sessions-root", root,
+		"--id", id,
+		"--dry-run=false",
+		"--confirm",
+		"--hard",
+		"--interactive-confirm=false",
+		"--yes",
+		"--log-file", logFile,
+	})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("delete execute: %v", err)
+	}
+	if _, err := os.Stat(src); !os.IsNotExist(err) {
+		t.Fatalf("source should be deleted; stat err=%v", err)
+	}
+}
+
+func TestDelete_MaxBatchGuardBlocksRealDelete(t *testing.T) {
+	root := t.TempDir()
+	logFile := filepath.Join(t.TempDir(), "actions.log")
+	p1 := createSessionFile(t, root, "2026/03/02/rollout-1.jsonl", "66666666-6666-6666-6666-aaaaaaaaaaaa")
+	p2 := createSessionFile(t, root, "2026/03/02/rollout-2.jsonl", "66666666-6666-6666-6666-bbbbbbbbbbbb")
+	p3 := createSessionFile(t, root, "2026/03/02/rollout-3.jsonl", "66666666-6666-6666-6666-cccccccccccc")
+
+	cmd := NewRootCmd()
+	cmd.SetOut(&bytes.Buffer{})
+	cmd.SetErr(&bytes.Buffer{})
+	cmd.SetArgs([]string{
+		"delete",
+		"--sessions-root", root,
+		"--id-prefix", "66666666-6666-6666-6666",
+		"--dry-run=false",
+		"--confirm",
+		"--interactive-confirm=false",
+		"--yes",
+		"--max-batch", "2",
+		"--log-file", logFile,
+	})
+
+	err := cmd.Execute()
+	if err == nil {
+		t.Fatal("expected max-batch guard error")
+	}
+	if !strings.Contains(err.Error(), "max-batch") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	for _, p := range []string{p1, p2, p3} {
+		if _, statErr := os.Stat(p); statErr != nil {
+			t.Fatalf("file should remain after guard rejection: %v", statErr)
+		}
+	}
+}
+
+func TestDelete_RequiresSelector(t *testing.T) {
+	root := t.TempDir()
+	logFile := filepath.Join(t.TempDir(), "actions.log")
+	createSessionFile(t, root, "2026/03/02/rollout-1.jsonl", "77777777-7777-7777-7777-777777777777")
+
+	cmd := NewRootCmd()
+	cmd.SetOut(&bytes.Buffer{})
+	cmd.SetErr(&bytes.Buffer{})
+	cmd.SetArgs([]string{"delete", "--sessions-root", root, "--log-file", logFile})
+
+	err := cmd.Execute()
+	if err == nil {
+		t.Fatal("expected selector validation error")
+	}
+	if !strings.Contains(err.Error(), "at least one selector") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func createSessionFile(t *testing.T, root, relPath, id string) string {
+	t.Helper()
+	p := filepath.Join(root, filepath.FromSlash(relPath))
+	if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	meta := fmt.Sprintf(`{"type":"session_meta","payload":{"id":"%s","timestamp":"2026-03-02T09:44:00.024Z"}}`+"\n", id)
+	if err := os.WriteFile(p, []byte(meta), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return p
 }
