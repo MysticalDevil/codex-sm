@@ -20,6 +20,19 @@ import (
 	"github.com/spf13/cobra"
 )
 
+type listColumn struct {
+	Key    string
+	Header string
+}
+
+type listRenderOptions struct {
+	Detailed  bool
+	NoHeader  bool
+	ColorMode string
+	Out       io.Writer
+	Columns   []listColumn
+}
+
 func newListCmd() *cobra.Command {
 	var (
 		sessionsRoot string
@@ -33,6 +46,8 @@ func newListCmd() *cobra.Command {
 		pager        bool
 		pageSize     int
 		colorMode    string
+		noHeader     bool
+		column       string
 	)
 
 	cmd := &cobra.Command{
@@ -42,7 +57,7 @@ func newListCmd() *cobra.Command {
 			"  csm list --detailed\n" +
 			"  csm list --limit 0 --pager\n" +
 			"  csm list --id-prefix 019ca9 --format json\n" +
-			"  csm list --format csv",
+			"  csm list --format csv --column session_id,updated_at,size",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if strings.TrimSpace(sessionsRoot) == "" {
 				v, err := config.DefaultSessionsRoot()
@@ -78,13 +93,27 @@ func newListCmd() *cobra.Command {
 				filtered = filtered[:limit]
 			}
 
-			switch strings.ToLower(strings.TrimSpace(format)) {
-			case "", "table":
+			formatMode := strings.ToLower(strings.TrimSpace(format))
+			if formatMode == "" {
+				formatMode = "table"
+			}
+			if formatMode == "json" && (noHeader || strings.TrimSpace(column) != "") {
+				return fmt.Errorf("--no-header and --column are only supported with table/csv/tsv")
+			}
+
+			columns, err := parseListColumns(column, detailed, formatMode)
+			if err != nil {
+				return err
+			}
+
+			switch formatMode {
+			case "table":
 				table, err := renderTable(filtered, total, listRenderOptions{
-					Detailed:     detailed,
-					SessionsRoot: sessionsRoot,
-					ColorMode:    colorMode,
-					Out:          cmd.OutOrStdout(),
+					Detailed:  detailed,
+					NoHeader:  noHeader,
+					ColorMode: colorMode,
+					Out:       cmd.OutOrStdout(),
+					Columns:   columns,
 				})
 				if err != nil {
 					return err
@@ -95,9 +124,9 @@ func newListCmd() *cobra.Command {
 				enc.SetIndent("", "  ")
 				return enc.Encode(filtered)
 			case "csv":
-				return writeListDelimited(cmd.OutOrStdout(), filtered, ',')
+				return writeListDelimited(cmd.OutOrStdout(), filtered, ',', noHeader, columns)
 			case "tsv":
-				return writeListDelimited(cmd.OutOrStdout(), filtered, '\t')
+				return writeListDelimited(cmd.OutOrStdout(), filtered, '\t', noHeader, columns)
 			default:
 				return fmt.Errorf("unsupported format %q", format)
 			}
@@ -115,15 +144,59 @@ func newListCmd() *cobra.Command {
 	cmd.Flags().BoolVar(&pager, "pager", false, "enable interactive pager")
 	cmd.Flags().IntVar(&pageSize, "page-size", 10, "rows per page when --pager is enabled")
 	cmd.Flags().StringVar(&colorMode, "color", "always", "color mode: auto|always|never")
+	cmd.Flags().BoolVar(&noHeader, "no-header", false, "hide header row for table/csv/tsv")
+	cmd.Flags().StringVar(&column, "column", "", "comma-separated columns (e.g. session_id,updated_at,size)")
 
 	return cmd
 }
 
-type listRenderOptions struct {
-	Detailed     bool
-	SessionsRoot string
-	ColorMode    string
-	Out          io.Writer
+func parseListColumns(input string, detailed bool, format string) ([]listColumn, error) {
+	defaults := []string{"id", "updated_at", "size", "health", "name"}
+	if detailed {
+		defaults = []string{"session_id", "created_at", "updated_at", "size", "health", "path"}
+	}
+	if format == "csv" || format == "tsv" {
+		defaults = []string{"session_id", "created_at", "updated_at", "size_bytes", "health", "path"}
+	}
+
+	raw := strings.TrimSpace(input)
+	names := defaults
+	if raw != "" {
+		parts := strings.Split(raw, ",")
+		names = make([]string, 0, len(parts))
+		for _, p := range parts {
+			name := strings.ToLower(strings.TrimSpace(p))
+			if name == "" {
+				continue
+			}
+			names = append(names, name)
+		}
+	}
+	if len(names) == 0 {
+		return nil, fmt.Errorf("no columns selected")
+	}
+
+	defs := map[string]listColumn{
+		"id":         {Key: "id", Header: "ID"},
+		"session_id": {Key: "session_id", Header: "SESSION_ID"},
+		"created_at": {Key: "created_at", Header: "CREATED_AT"},
+		"updated_at": {Key: "updated_at", Header: "UPDATED_AT"},
+		"size":       {Key: "size", Header: "SIZE"},
+		"size_bytes": {Key: "size_bytes", Header: "SIZE_BYTES"},
+		"health":     {Key: "health", Header: "HEALTH"},
+		"path":       {Key: "path", Header: "PATH"},
+		"name":       {Key: "name", Header: "NAME"},
+	}
+
+	cols := make([]listColumn, 0, len(names))
+	for _, n := range names {
+		c, ok := defs[n]
+		if !ok {
+			return nil, fmt.Errorf("invalid --column value %q", n)
+		}
+		cols = append(cols, c)
+	}
+	return cols, nil
 }
 
 func renderTable(sessions []session.Session, total int, opts listRenderOptions) (string, error) {
@@ -132,36 +205,20 @@ func renderTable(sessions []session.Session, total int, opts listRenderOptions) 
 
 	var buf bytes.Buffer
 	w := tabwriter.NewWriter(&buf, 2, 4, 2, ' ', 0)
-	if opts.Detailed {
-		_, _ = fmt.Fprintln(w, "ID\tCREATED\tUPDATED\tSIZE\tHEALTH\tPATH")
-	} else {
-		_, _ = fmt.Fprintln(w, "ID\tUPDATED\tSIZE\tHEALTH\tNAME")
+	if !opts.NoHeader {
+		headers := make([]string, 0, len(opts.Columns))
+		for _, c := range opts.Columns {
+			headers = append(headers, c.Header)
+		}
+		_, _ = fmt.Fprintln(w, strings.Join(headers, "\t"))
 	}
 
 	for _, s := range sessions {
-		if opts.Detailed {
-			_, _ = fmt.Fprintf(
-				w,
-				"%s\t%s\t%s\t%s\t%s\t%s\n",
-				s.SessionID,
-				formatDisplayTime(s.CreatedAt),
-				formatDisplayTime(s.UpdatedAt),
-				formatBytesIEC(s.SizeBytes),
-				s.Health,
-				compactHomePath(s.Path, home),
-			)
-			continue
+		values := make([]string, 0, len(opts.Columns))
+		for _, c := range opts.Columns {
+			values = append(values, listColumnValue(c.Key, s, home))
 		}
-
-		_, _ = fmt.Fprintf(
-			w,
-			"%s\t%s\t%s\t%s\t%s\n",
-			shortID(s.SessionID),
-			formatDisplayTime(s.UpdatedAt),
-			formatBytesIEC(s.SizeBytes),
-			s.Health,
-			filepath.Base(s.Path),
-		)
+		_, _ = fmt.Fprintln(w, strings.Join(values, "\t"))
 	}
 
 	if err := w.Flush(); err != nil {
@@ -176,7 +233,7 @@ func renderTable(sessions []session.Session, total int, opts listRenderOptions) 
 	_, _ = fmt.Fprintf(&buf, "%s\n", footer)
 	rendered := buf.String()
 	if useColor {
-		rendered = colorizeRenderedTable(rendered, opts.Detailed)
+		rendered = colorizeRenderedTable(rendered, sessions, opts.NoHeader, hasHealthColumn(opts.Columns))
 	}
 	return rendered, nil
 }
@@ -271,38 +328,39 @@ func colorize(v, color string, enabled bool) string {
 	return color + v + ansiReset
 }
 
-func colorizeRenderedTable(text string, detailed bool) string {
+func colorizeRenderedTable(text string, sessions []session.Session, noHeader, hasHealth bool) string {
 	if text == "" {
 		return text
 	}
 
 	hasTrailingNewline := strings.HasSuffix(text, "\n")
 	lines := strings.Split(strings.TrimSuffix(text, "\n"), "\n")
+	dataStart := 0
 	for i, line := range lines {
 		if strings.TrimSpace(line) == "" {
 			continue
 		}
-		if i == 0 {
+		if !noHeader && i == 0 {
 			lines[i] = colorize(line, ansiCyanBold, true)
+			dataStart = 1
 			continue
 		}
 		if strings.HasPrefix(line, "showing ") {
 			lines[i] = colorize(line, ansiDim, true)
 			continue
 		}
-
-		fields := strings.Fields(line)
-		if len(fields) < 2 {
-			continue
-		}
-		healthToken := fields[len(fields)-2]
-		switch healthToken {
-		case string(session.HealthOK):
-			lines[i] = colorize(line, ansiGreen, true)
-		case string(session.HealthMissingMeta):
-			lines[i] = colorize(line, ansiYellow, true)
-		case string(session.HealthCorrupted):
-			lines[i] = colorize(line, ansiRed, true)
+		if hasHealth {
+			idx := i - dataStart
+			if idx >= 0 && idx < len(sessions) {
+				switch sessions[idx].Health {
+				case session.HealthOK:
+					lines[i] = colorize(line, ansiGreen, true)
+				case session.HealthMissingMeta:
+					lines[i] = colorize(line, ansiYellow, true)
+				case session.HealthCorrupted:
+					lines[i] = colorize(line, ansiRed, true)
+				}
+			}
 		}
 	}
 
@@ -319,6 +377,40 @@ func shortID(id string) string {
 		return id
 	}
 	return id[:max]
+}
+
+func listColumnValue(key string, s session.Session, home string) string {
+	switch key {
+	case "id":
+		return shortID(s.SessionID)
+	case "session_id":
+		return s.SessionID
+	case "created_at":
+		return formatDisplayTime(s.CreatedAt)
+	case "updated_at":
+		return formatDisplayTime(s.UpdatedAt)
+	case "size":
+		return formatBytesIEC(s.SizeBytes)
+	case "size_bytes":
+		return fmt.Sprintf("%d", s.SizeBytes)
+	case "health":
+		return string(s.Health)
+	case "path":
+		return compactHomePath(s.Path, home)
+	case "name":
+		return filepath.Base(s.Path)
+	default:
+		return ""
+	}
+}
+
+func hasHealthColumn(cols []listColumn) bool {
+	for _, c := range cols {
+		if c.Key == "health" {
+			return true
+		}
+	}
+	return false
 }
 
 func formatDisplayTime(t time.Time) string {
@@ -356,21 +448,32 @@ func compactHomePath(path, home string) string {
 	return path
 }
 
-func writeListDelimited(out io.Writer, sessions []session.Session, sep rune) error {
+func writeListDelimited(out io.Writer, sessions []session.Session, sep rune, noHeader bool, columns []listColumn) error {
 	home, _ := os.UserHomeDir()
 	w := csv.NewWriter(out)
 	w.Comma = sep
-	if err := w.Write([]string{"session_id", "created_at", "updated_at", "size_bytes", "health", "path"}); err != nil {
-		return err
+	if !noHeader {
+		h := make([]string, 0, len(columns))
+		for _, c := range columns {
+			h = append(h, strings.ToLower(c.Header))
+		}
+		if err := w.Write(h); err != nil {
+			return err
+		}
 	}
 	for _, s := range sessions {
-		record := []string{
-			s.SessionID,
-			formatCSVTime(s.CreatedAt),
-			formatCSVTime(s.UpdatedAt),
-			fmt.Sprintf("%d", s.SizeBytes),
-			string(s.Health),
-			compactHomePath(s.Path, home),
+		record := make([]string, 0, len(columns))
+		for _, c := range columns {
+			switch c.Key {
+			case "created_at":
+				record = append(record, formatCSVTime(s.CreatedAt))
+			case "updated_at":
+				record = append(record, formatCSVTime(s.UpdatedAt))
+			case "path":
+				record = append(record, compactHomePath(s.Path, home))
+			default:
+				record = append(record, listColumnValue(c.Key, s, home))
+			}
 		}
 		if err := w.Write(record); err != nil {
 			return err
