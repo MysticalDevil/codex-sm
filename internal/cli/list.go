@@ -3,6 +3,7 @@ package cli
 import (
 	"bufio"
 	"bytes"
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -40,7 +41,8 @@ func newListCmd() *cobra.Command {
 		Example: "  csm list\n" +
 			"  csm list --detailed\n" +
 			"  csm list --limit 0 --pager\n" +
-			"  csm list --id-prefix 019ca9 --format json",
+			"  csm list --id-prefix 019ca9 --format json\n" +
+			"  csm list --format csv",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if strings.TrimSpace(sessionsRoot) == "" {
 				v, err := config.DefaultSessionsRoot()
@@ -92,6 +94,10 @@ func newListCmd() *cobra.Command {
 				enc := json.NewEncoder(cmd.OutOrStdout())
 				enc.SetIndent("", "  ")
 				return enc.Encode(filtered)
+			case "csv":
+				return writeListDelimited(cmd.OutOrStdout(), filtered, ',')
+			case "tsv":
+				return writeListDelimited(cmd.OutOrStdout(), filtered, '\t')
 			default:
 				return fmt.Errorf("unsupported format %q", format)
 			}
@@ -103,7 +109,7 @@ func newListCmd() *cobra.Command {
 	cmd.Flags().StringVar(&idPrefix, "id-prefix", "", "session id prefix")
 	cmd.Flags().StringVar(&olderThan, "older-than", "", "select sessions older than duration (e.g. 30d, 12h)")
 	cmd.Flags().StringVar(&health, "health", "", "health filter: ok|corrupted|missing-meta")
-	cmd.Flags().StringVar(&format, "format", "table", "output format: table|json")
+	cmd.Flags().StringVar(&format, "format", "table", "output format: table|json|csv|tsv")
 	cmd.Flags().IntVar(&limit, "limit", 10, "max rows to print (0 means unlimited)")
 	cmd.Flags().BoolVar(&detailed, "detailed", false, "show detailed columns")
 	cmd.Flags().BoolVar(&pager, "pager", false, "enable interactive pager")
@@ -348,6 +354,37 @@ func compactHomePath(path, home string) string {
 		return "~" + string(os.PathSeparator) + strings.TrimPrefix(path, prefix)
 	}
 	return path
+}
+
+func writeListDelimited(out io.Writer, sessions []session.Session, sep rune) error {
+	home, _ := os.UserHomeDir()
+	w := csv.NewWriter(out)
+	w.Comma = sep
+	if err := w.Write([]string{"session_id", "created_at", "updated_at", "size_bytes", "health", "path"}); err != nil {
+		return err
+	}
+	for _, s := range sessions {
+		record := []string{
+			s.SessionID,
+			formatCSVTime(s.CreatedAt),
+			formatCSVTime(s.UpdatedAt),
+			fmt.Sprintf("%d", s.SizeBytes),
+			string(s.Health),
+			compactHomePath(s.Path, home),
+		}
+		if err := w.Write(record); err != nil {
+			return err
+		}
+	}
+	w.Flush()
+	return w.Error()
+}
+
+func formatCSVTime(t time.Time) string {
+	if t.IsZero() {
+		return ""
+	}
+	return t.Format(time.RFC3339)
 }
 
 func buildSelector(id, idPrefix, olderThan, health string) (session.Selector, error) {
