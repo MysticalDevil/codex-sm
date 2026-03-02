@@ -40,6 +40,9 @@ func newGroupCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "group",
 		Short: "Group sessions by day or health",
+		Example: "  csm group --by day\n" +
+			"  csm group --by health\n" +
+			"  csm group --by day --older-than 30d",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var err error
 			sessionsRoot, err = resolveOrDefault(sessionsRoot, config.DefaultSessionsRoot)

@@ -36,6 +36,13 @@ func newDeleteCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "delete",
 		Short: "Delete sessions safely (dry-run by default)",
+		Long: "Delete sessions matched by selectors.\n\n" +
+			"By default this command runs in dry-run mode and does not modify files.\n" +
+			"Use `--dry-run=false --confirm` for real deletion.",
+		Example: "  csm delete --id <session_id>\n" +
+			"  csm delete --id-prefix 019ca9 --dry-run=false --confirm\n" +
+			"  csm delete --older-than 90d --dry-run=false --confirm --yes\n" +
+			"  csm delete --id <session_id> --dry-run=false --confirm --hard",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var err error
 			sessionsRoot, err = resolveOrDefault(sessionsRoot, config.DefaultSessionsRoot)

@@ -37,6 +37,10 @@ func newListCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "List Codex sessions",
+		Example: "  csm list\n" +
+			"  csm list --detailed\n" +
+			"  csm list --limit 0 --pager\n" +
+			"  csm list --id-prefix 019ca9 --format json",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if strings.TrimSpace(sessionsRoot) == "" {
 				v, err := config.DefaultSessionsRoot()
