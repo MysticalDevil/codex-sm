@@ -290,13 +290,17 @@ func writeWithPager(out io.Writer, text string, pager bool, pageSize int, hasHea
 	pages := (len(body) + pageSize - 1) / pageSize
 	page := 0
 	in := bufio.NewReader(os.Stdin)
-	for {
+
+	renderPage := func(page int) error {
+		// Redraw one terminal-sized page instead of appending pages.
+		if _, err := fmt.Fprint(out, "\x1b[H\x1b[2J"); err != nil {
+			return err
+		}
 		start := page * pageSize
 		end := start + pageSize
 		if end > len(body) {
 			end = len(body)
 		}
-
 		if header != "" {
 			if _, err := fmt.Fprintln(out, header); err != nil {
 				return err
@@ -312,11 +316,18 @@ func writeWithPager(out io.Writer, text string, pager bool, pageSize int, hasHea
 				return err
 			}
 		}
+		return nil
+	}
+
+	for {
+		if err := renderPage(page); err != nil {
+			return err
+		}
 		if page >= pages-1 {
 			break
 		}
 
-		if _, err := fmt.Fprintf(out, "-- Page %d/%d -- [Enter/n next, b back, a all, q quit]: ", page+1, pages); err != nil {
+		if _, err := fmt.Fprintf(out, "-- Page %d/%d -- [j next, k back, g first, G last, a all, q quit]: ", page+1, pages); err != nil {
 			return err
 		}
 		choice, err := in.ReadString('\n')
@@ -330,16 +341,27 @@ func writeWithPager(out io.Writer, text string, pager bool, pageSize int, hasHea
 		switch c {
 		case "q", "quit":
 			break
+		case "g", "first", "home":
+			page = 0
 		case "a", "all":
 		case "b", "back", "p", "prev":
 			if page > 0 {
 				page--
 			}
-		case "", "n", "next", " ":
+		case "", "j", "n", "next", " ":
 			if page < pages-1 {
 				page++
 			}
+		case "k":
+			if page > 0 {
+				page--
+			}
 		default:
+			// Keep compatibility for single-char uppercase G input.
+			if strings.TrimSpace(choice) == "G" {
+				page = pages - 1
+				break
+			}
 			if page < pages-1 {
 				page++
 			}
@@ -348,32 +370,33 @@ func writeWithPager(out io.Writer, text string, pager bool, pageSize int, hasHea
 			break
 		}
 		if c == "a" || c == "all" {
-			for p := page + 1; p < pages; p++ {
-				start = p * pageSize
-				end = start + pageSize
+			// Stream remaining rows continuously from the current position.
+			if _, err := fmt.Fprint(out, "\x1b[H\x1b[2J"); err != nil {
+				return err
+			}
+			if header != "" {
+				if _, err := fmt.Fprintln(out, header); err != nil {
+					return err
+				}
+			}
+			for p := page; p < pages; p++ {
+				start := p * pageSize
+				end := start + pageSize
 				if end > len(body) {
 					end = len(body)
-				}
-				if header != "" {
-					if _, err := fmt.Fprintln(out, header); err != nil {
-						return err
-					}
 				}
 				for _, line := range body[start:end] {
 					if _, err := fmt.Fprintln(out, line); err != nil {
 						return err
 					}
 				}
-				if footer != "" {
-					if _, err := fmt.Fprintln(out, footer); err != nil {
-						return err
-					}
+			}
+			if footer != "" {
+				if _, err := fmt.Fprintln(out, footer); err != nil {
+					return err
 				}
 			}
 			break
-		}
-		if _, err := fmt.Fprintln(out); err != nil {
-			return err
 		}
 	}
 	return nil
