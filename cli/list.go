@@ -156,15 +156,15 @@ func newListCmd() *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&sessionsRoot, "sessions-root", "", "sessions root directory")
-	cmd.Flags().StringVar(&id, "id", "", "exact session id")
-	cmd.Flags().StringVar(&idPrefix, "id-prefix", "", "session id prefix")
+	cmd.Flags().StringVarP(&id, "id", "i", "", "exact session id")
+	cmd.Flags().StringVarP(&idPrefix, "id-prefix", "p", "", "session id prefix")
 	cmd.Flags().StringVar(&hostContains, "host-contains", "", "case-insensitive substring match against host path")
 	cmd.Flags().StringVar(&pathContains, "path-contains", "", "case-insensitive substring match against session file path")
 	cmd.Flags().StringVar(&headContains, "head-contains", "", "case-insensitive substring match against preview head text")
-	cmd.Flags().StringVar(&olderThan, "older-than", "", "select sessions older than duration (e.g. 30d, 12h)")
-	cmd.Flags().StringVar(&health, "health", "", "health filter: ok|corrupted|missing-meta")
-	cmd.Flags().StringVar(&format, "format", "table", "output format: table|json|csv|tsv")
-	cmd.Flags().IntVar(&limit, "limit", 10, "max rows to print (0 means unlimited)")
+	cmd.Flags().StringVarP(&olderThan, "older-than", "o", "", "select sessions older than duration (e.g. 30d, 12h)")
+	cmd.Flags().StringVarP(&health, "health", "H", "", "health filter: ok|corrupted|missing-meta")
+	cmd.Flags().StringVarP(&format, "format", "f", "table", "output format: table|json|csv|tsv")
+	cmd.Flags().IntVarP(&limit, "limit", "l", 10, "max rows to print (0 means unlimited)")
 	cmd.Flags().BoolVar(&detailed, "detailed", false, "show detailed columns")
 	cmd.Flags().BoolVar(&pager, "pager", false, "enable interactive pager")
 	cmd.Flags().IntVar(&pageSize, "page-size", 10, "rows per page when --pager is enabled")
@@ -172,7 +172,7 @@ func newListCmd() *cobra.Command {
 	cmd.Flags().BoolVar(&noHeader, "no-header", false, "hide header row for table/csv/tsv")
 	cmd.Flags().StringVar(&column, "column", "", "comma-separated columns (e.g. session_id,updated_at,size)")
 	cmd.Flags().IntVar(&headWidth, "head-width", 36, "max HEAD width in table format (0 means no truncation)")
-	cmd.Flags().StringVar(&sortBy, "sort", "updated_at", "sort field: updated_at|created_at|size|health|id|session_id")
+	cmd.Flags().StringVarP(&sortBy, "sort", "s", "updated_at", "sort field: updated_at|created_at|size|health|id|session_id")
 	cmd.Flags().StringVar(&order, "order", "desc", "sort order: asc|desc")
 
 	return cmd
