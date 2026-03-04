@@ -7,44 +7,58 @@ gofumpt := if env_var_or_default("GOFUMPT", "") != "" {
   "gofumpt"
 }
 goexperiment := "GOEXPERIMENT=jsonv2"
+go_with_experiment := goexperiment + " " + go
 version := env_var_or_default("VERSION", "dev")
+bin := env_var_or_default("BIN", "codexsm")
+integration_pkg := env_var_or_default("INTEGRATION_PKG", "./cli")
 unit_cov_min := env_var_or_default("UNIT_COV_MIN", "50")
 integration_cov_min := env_var_or_default("INTEGRATION_COV_MIN", "65")
 
+# Show available targets
 default:
   @just --list
 
+# Install required dev tools
 tools:
-  {{goexperiment}} {{go}} install mvdan.cc/gofumpt@latest
+  {{go_with_experiment}} install mvdan.cc/gofumpt@latest
 
+# Format Go sources
 fmt:
   {{gofumpt}} -w .
 
+# Run static checks
 lint:
-  {{goexperiment}} {{go}} vet ./...
+  {{go_with_experiment}} vet ./...
 
+# Run unit test suite
 test:
-  {{goexperiment}} {{go}} test ./...
+  {{go_with_experiment}} test ./...
 
+# Run integration tests
 test-integration:
-  {{goexperiment}} {{go}} test -tags=integration ./cli
+  {{go_with_experiment}} test -tags=integration {{integration_pkg}}
 
+# Run all tests
 test-all: test test-integration
 
+# Report unit test coverage
 cover-unit:
-  {{goexperiment}} {{go}} test -count=1 ./... -coverprofile=coverage_unit.out
+  {{go_with_experiment}} test -count=1 ./... -coverprofile=coverage_unit.out
   {{go}} tool cover -func=coverage_unit.out
 
+# Report integration test coverage
 cover-integration:
-  {{goexperiment}} {{go}} test -count=1 -tags=integration ./cli -coverprofile=coverage_integration.out
+  {{go_with_experiment}} test -count=1 -tags=integration {{integration_pkg}} -coverprofile=coverage_integration.out
   {{go}} tool cover -func=coverage_integration.out
 
+# Report both coverage sets
 cover: cover-unit cover-integration
 
+# Enforce unit + integration coverage thresholds
 cover-gate:
-  {{goexperiment}} {{go}} test -count=1 ./... -coverprofile=coverage_unit.out
+  {{go_with_experiment}} test -count=1 ./... -coverprofile=coverage_unit.out
   awk -v got="$({{go}} tool cover -func=coverage_unit.out | awk '/^total:/ {gsub("%","",$3); print $3}')" -v min="{{unit_cov_min}}" 'BEGIN { if (got+0 < min+0) { printf("unit coverage %.1f%% < %.1f%%\n", got, min); exit 1 } else { printf("unit coverage %.1f%% >= %.1f%%\n", got, min) } }'
-  {{goexperiment}} {{go}} test -count=1 -tags=integration ./cli -coverprofile=coverage_integration.out
+  {{go_with_experiment}} test -count=1 -tags=integration {{integration_pkg}} -coverprofile=coverage_integration.out
   awk -v got="$({{go}} tool cover -func=coverage_integration.out | awk '/^total:/ {gsub("%","",$3); print $3}')" -v min="{{integration_cov_min}}" 'BEGIN { if (got+0 < min+0) { printf("integration coverage %.1f%% < %.1f%%\n", got, min); exit 1 } else { printf("integration coverage %.1f%% >= %.1f%%\n", got, min) } }'
 
 check-tag version:
@@ -59,7 +73,13 @@ check-release version:
   just check-tag {{version}}
   just check-readme-version {{version}}
 
+# Build local binary
 build:
-  {{goexperiment}} {{go}} build -ldflags="-X main.version={{version}}" -o codexsm .
+  {{go_with_experiment}} build -ldflags="-X main.version={{version}}" -o {{bin}} .
 
+# Remove generated coverage files
+clean:
+  rm -f coverage_unit.out coverage_integration.out
+
+# Run the smallest full quality gate
 check: fmt lint test-all build
