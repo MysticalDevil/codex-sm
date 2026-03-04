@@ -8,7 +8,11 @@ import (
 	"github.com/MysticalDevil/codex-sm/cli"
 )
 
+// version is injected at build time via -ldflags.
+var version = "dev"
+
 func main() {
+	cli.Version = version
 	root := cli.NewRootCmd()
 	if err := root.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)

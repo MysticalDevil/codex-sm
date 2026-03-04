@@ -7,6 +7,7 @@ gofumpt := if env_var_or_default("GOFUMPT", "") != "" {
   "gofumpt"
 }
 goexperiment := "GOEXPERIMENT=jsonv2"
+version := env_var_or_default("VERSION", "dev")
 
 default:
   @just --list
@@ -39,6 +40,6 @@ cover-integration:
 cover: cover-unit cover-integration
 
 build:
-  {{goexperiment}} {{go}} build -o codex-sm .
+  {{goexperiment}} {{go}} build -ldflags="-X main.version={{version}}" -o codex-sm .
 
 check: fmt lint test-all build

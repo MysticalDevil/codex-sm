@@ -8,7 +8,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const version = "0.1.0"
+// Version is the application version and is usually injected at build time.
+var Version = "dev"
 
 // NewRootCmd builds the top-level csm command and registers all subcommands.
 func NewRootCmd() *cobra.Command {

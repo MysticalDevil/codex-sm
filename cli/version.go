@@ -7,11 +7,19 @@ import (
 )
 
 func newVersionCmd() *cobra.Command {
-	return &cobra.Command{
+	var short bool
+
+	cmd := &cobra.Command{
 		Use:   "version",
 		Short: "Print version",
 		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Fprintln(cmd.OutOrStdout(), version)
+			if short {
+				fmt.Fprintln(cmd.OutOrStdout(), Version)
+				return
+			}
+			fmt.Fprintf(cmd.OutOrStdout(), "codex-sm %s\n", Version)
 		},
 	}
+	cmd.Flags().BoolVar(&short, "short", false, "print version only")
+	return cmd
 }
