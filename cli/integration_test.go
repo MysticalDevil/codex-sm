@@ -172,6 +172,153 @@ func TestList_ComposableContainsFilters(t *testing.T) {
 	}
 }
 
+func TestList_ShortFlags(t *testing.T) {
+	_, root, _, _ := fixtureRoots(t)
+
+	cmd := newIsolatedRootCmd(t, root)
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	cmd.SetOut(stdout)
+	cmd.SetErr(stderr)
+	cmd.SetArgs([]string{
+		"list",
+		"--sessions-root", root,
+		"-f", "csv",
+		"--column", "session_id",
+		"--no-header",
+		"-i", idCSV,
+		"-l", "1",
+	})
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("list short flags execute: %v", err)
+	}
+
+	out := strings.TrimSpace(stdout.String())
+	if out != idCSV {
+		t.Fatalf("expected %s, got %q", idCSV, out)
+	}
+}
+
+func TestList_LongFlags(t *testing.T) {
+	_, root, _, _ := fixtureRoots(t)
+
+	cmd := newIsolatedRootCmd(t, root)
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	cmd.SetOut(stdout)
+	cmd.SetErr(stderr)
+	cmd.SetArgs([]string{
+		"list",
+		"--sessions-root", root,
+		"--format", "csv",
+		"--column", "session_id",
+		"--no-header",
+		"--id", idCSV,
+		"--limit", "1",
+	})
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("list long flags execute: %v", err)
+	}
+
+	out := strings.TrimSpace(stdout.String())
+	if out != idCSV {
+		t.Fatalf("expected %s, got %q", idCSV, out)
+	}
+}
+
+func TestList_MixedShortAndLongFlags(t *testing.T) {
+	_, root, _, _ := fixtureRoots(t)
+
+	cmd := newIsolatedRootCmd(t, root)
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	cmd.SetOut(stdout)
+	cmd.SetErr(stderr)
+	cmd.SetArgs([]string{
+		"list",
+		"--sessions-root", root,
+		"-f", "csv",
+		"--column", "session_id",
+		"--no-header",
+		"--id-prefix", "99999999-9999-9999-9999",
+		"-l", "1",
+	})
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("list mixed flags execute: %v", err)
+	}
+
+	out := strings.TrimSpace(stdout.String())
+	if out != idCSV {
+		t.Fatalf("expected %s, got %q", idCSV, out)
+	}
+}
+
+func TestList_FlagConflict_LastValueWins(t *testing.T) {
+	_, root, _, _ := fixtureRoots(t)
+
+	cmd := newIsolatedRootCmd(t, root)
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	cmd.SetOut(stdout)
+	cmd.SetErr(stderr)
+	cmd.SetArgs([]string{
+		"list",
+		"--sessions-root", root,
+		"--format", "csv",
+		"--column", "session_id",
+		"--no-header",
+		"--id", idCSV,
+		"-i", idColumns,
+		"--limit", "1",
+	})
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("list conflict execute: %v", err)
+	}
+
+	out := strings.TrimSpace(stdout.String())
+	if out != idColumns {
+		t.Fatalf("expected last -i value %s, got %q", idColumns, out)
+	}
+}
+
+func TestList_ShortFlagHHelpAndHealth(t *testing.T) {
+	_, root, _, _ := fixtureRoots(t)
+
+	helpCmd := newIsolatedRootCmd(t, root)
+	helpOut := &bytes.Buffer{}
+	helpErr := &bytes.Buffer{}
+	helpCmd.SetOut(helpOut)
+	helpCmd.SetErr(helpErr)
+	helpCmd.SetArgs([]string{"list", "-h"})
+	if err := helpCmd.Execute(); err != nil {
+		t.Fatalf("list -h execute: %v", err)
+	}
+	if !strings.Contains(helpOut.String(), "Usage:") {
+		t.Fatalf("expected help usage output, got: %q", helpOut.String())
+	}
+
+	healthCmd := newIsolatedRootCmd(t, root)
+	healthOut := &bytes.Buffer{}
+	healthErr := &bytes.Buffer{}
+	healthCmd.SetOut(healthOut)
+	healthCmd.SetErr(healthErr)
+	healthCmd.SetArgs([]string{
+		"list",
+		"--sessions-root", root,
+		"-H", "corrupted",
+		"-f", "csv",
+		"--column", "health",
+		"--no-header",
+		"-l", "1",
+	})
+	if err := healthCmd.Execute(); err != nil {
+		t.Fatalf("list -H execute: %v", err)
+	}
+	if !strings.Contains(healthOut.String(), "corrupted") {
+		t.Fatalf("expected corrupted row with -H, got: %q", healthOut.String())
+	}
+}
+
 func TestList_NoHeaderAndColumn(t *testing.T) {
 	_, root, _, _ := fixtureRoots(t)
 
