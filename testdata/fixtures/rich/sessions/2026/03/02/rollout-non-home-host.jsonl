@@ -1,0 +1,2 @@
+{"type":"session_meta","payload":{"id":"45454545-4545-4545-4545-454545454545","timestamp":"2026-03-02T09:44:00.024Z","cwd":"/var/tmp/proj"}}
+{"type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"host non home fixture"}]}}

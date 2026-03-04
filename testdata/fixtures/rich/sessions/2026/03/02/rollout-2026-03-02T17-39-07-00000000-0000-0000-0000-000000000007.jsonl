@@ -1,0 +1,2 @@
+{"type":"session_meta","payload":{"id":"00000000-0000-0000-0000-000000000007","timestamp":"2026-03-02T09:39:07.024Z","cwd":"/workspace/app7"}}
+{"type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"session seven baseline"}]}}

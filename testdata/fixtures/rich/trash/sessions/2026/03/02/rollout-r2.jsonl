@@ -1,0 +1,2 @@
+{"type":"session_meta","payload":{"id":"99990000-1111-2222-3333-aaaaaaaaaaaa","timestamp":"2026-03-02T09:54:00.024Z","cwd":"/workspace/trash/r2"}}
+{"type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"restore real fixture"}]}}

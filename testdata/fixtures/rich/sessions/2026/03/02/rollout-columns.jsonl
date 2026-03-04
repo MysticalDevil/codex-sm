@@ -1,0 +1,2 @@
+{"type":"session_meta","payload":{"id":"88888888-8888-8888-8888-888888888888","timestamp":"2026-03-02T09:44:00.024Z","cwd":"/workspace/columns"}}
+{"type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"columns fixture"}]}}

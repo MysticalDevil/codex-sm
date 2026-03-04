@@ -1,0 +1,2 @@
+{"type":"session_meta","payload":{"id":"88888888-1111-2222-3333-444444444444","timestamp":"2026-03-02T09:52:00.024Z","cwd":"/workspace/delete/preview"}}
+{"type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"preview fixture"}]}}

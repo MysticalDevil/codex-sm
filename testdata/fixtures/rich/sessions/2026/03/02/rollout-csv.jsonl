@@ -1,0 +1,2 @@
+{"type":"session_meta","payload":{"id":"99999999-9999-9999-9999-999999999999","timestamp":"2026-03-02T09:44:00.024Z","cwd":"/workspace/csv"}}
+{"type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"csv format fixture"}]}}
