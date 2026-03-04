@@ -8,6 +8,16 @@
 - Required experiment: `GOEXPERIMENT=jsonv2`
 - JSON packages: `encoding/json/v2`, `encoding/json/jsontext`
 
+> [!IMPORTANT]
+> `GOEXPERIMENT=jsonv2` is currently required for both build and install.
+> If this env is missing, `encoding/json/v2` and `encoding/json/jsontext` will fail to compile.
+>
+> Recommended:
+>
+> ```bash
+> export GOEXPERIMENT=jsonv2
+> ```
+
 It provides:
 
 - Session listing (`list`)
@@ -40,6 +50,21 @@ It provides:
   - tree grouping (`--group-by month|day|health|host|none`)
   - selected session detail view
   - safe dry-run delete preview (`d`)
+  - semantic preview highlighting (`U/A` role markers and `<...>` tag coloring)
+
+## TUI Status
+
+Current TUI is usable for daily browsing and safe cleanup preview:
+
+- stable session tree navigation and preview scrolling
+- multiple grouping modes for tree browsing
+- readable bottom info bar with host path preview
+- dry-run delete preview from TUI (`d`)
+
+Current limitations:
+
+- TUI is browse/preview focused (no in-TUI real delete/restore flow yet)
+- layout and color tuning are still being iterated
 
 ## Build
 
