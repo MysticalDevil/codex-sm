@@ -40,22 +40,22 @@ func newDeleteCmd() *cobra.Command {
 		Long: "Delete sessions matched by selectors.\n\n" +
 			"By default this command runs in dry-run mode and does not modify files.\n" +
 			"Use `--dry-run=false --confirm` for real deletion.",
-		Example: "  csm delete --id <session_id>\n" +
-			"  csm delete --id-prefix 019ca9 --dry-run=false --confirm\n" +
-			"  csm delete --older-than 90d --dry-run=false --confirm --yes\n" +
-			"  csm delete --id <session_id> --dry-run=false --confirm --hard",
+		Example: "  codex-sm delete --id <session_id>\n" +
+			"  codex-sm delete --id-prefix 019ca9 --dry-run=false --confirm\n" +
+			"  codex-sm delete --older-than 90d --dry-run=false --confirm --yes\n" +
+			"  codex-sm delete --id <session_id> --dry-run=false --confirm --hard",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			lg := logger().With("command", "delete")
 			var err error
-			sessionsRoot, err = resolveOrDefault(sessionsRoot, config.DefaultSessionsRoot)
+			sessionsRoot, err = resolveOrDefault(sessionsRoot, runtimeSessionsRoot)
 			if err != nil {
 				return err
 			}
-			trashRoot, err = resolveOrDefault(trashRoot, config.DefaultTrashRoot)
+			trashRoot, err = resolveOrDefault(trashRoot, runtimeTrashRoot)
 			if err != nil {
 				return err
 			}
-			logFile, err = resolveOrDefault(logFile, config.DefaultLogFile)
+			logFile, err = resolveOrDefault(logFile, runtimeLogFile)
 			if err != nil {
 				return err
 			}

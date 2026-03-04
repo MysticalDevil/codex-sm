@@ -60,16 +60,16 @@ func newListCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "List Codex sessions",
-		Example: "  csm list\n" +
-			"  csm list --detailed\n" +
-			"  csm list --head-width 48\n" +
-			"  csm list --limit 0 --pager\n" +
-			"  csm list --sort size --order asc --limit 20\n" +
-			"  csm list --id-prefix 019ca9 --format json\n" +
-			"  csm list --format csv --column session_id,updated_at,size",
+		Example: "  codex-sm list\n" +
+			"  codex-sm list --detailed\n" +
+			"  codex-sm list --head-width 48\n" +
+			"  codex-sm list --limit 0 --pager\n" +
+			"  codex-sm list --sort size --order asc --limit 20\n" +
+			"  codex-sm list --id-prefix 019ca9 --format json\n" +
+			"  codex-sm list --format csv --column session_id,updated_at,size",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if strings.TrimSpace(sessionsRoot) == "" {
-				v, err := config.DefaultSessionsRoot()
+				v, err := runtimeSessionsRoot()
 				if err != nil {
 					return err
 				}

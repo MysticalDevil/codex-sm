@@ -241,6 +241,43 @@ func TestList_UsesFixtureDefaultSessionsRoot(t *testing.T) {
 	}
 }
 
+func TestList_UsesConfigSessionsRootWhenFlagMissing(t *testing.T) {
+	workspace, root, _, _ := fixtureRoots(t)
+	cfgPath := filepath.Join(workspace, "config.json")
+	cfg := []byte(`{"sessions_root":"` + root + `"}`)
+	if err := os.WriteFile(cfgPath, cfg, 0o644); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+	t.Setenv("CSM_CONFIG", cfgPath)
+	t.Setenv("SESSIONS_ROOT", "")
+
+	cmd := NewRootCmd()
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	cmd.SetOut(stdout)
+	cmd.SetErr(stderr)
+	cmd.SetArgs([]string{"list", "--limit", "1", "--color", "never"})
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("list execute: %v", err)
+	}
+	if !strings.Contains(stdout.String(), "showing 1 of") {
+		t.Fatalf("unexpected list output: %q", stdout.String())
+	}
+}
+
+func TestDoctor_StrictFailsOnWarnings(t *testing.T) {
+	_, root, _, _ := fixtureRoots(t)
+	t.Setenv("SESSIONS_ROOT", root)
+
+	cmd := NewRootCmd()
+	cmd.SetOut(&bytes.Buffer{})
+	cmd.SetErr(&bytes.Buffer{})
+	cmd.SetArgs([]string{"doctor", "--strict"})
+	if err := cmd.Execute(); err == nil {
+		t.Fatal("expected strict doctor failure")
+	}
+}
+
 func TestDelete_DryRunWritesAuditAndKeepsFile(t *testing.T) {
 	workspace, root, _, logFile := fixtureRoots(t)
 	sessionPath := filepath.Join(workspace, "sessions", "2026", "03", "02", "rollout-delete-dry.jsonl")

@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/MysticalDevil/codex-sm/audit"
-	"github.com/MysticalDevil/codex-sm/config"
 	"github.com/MysticalDevil/codex-sm/session"
 
 	"github.com/spf13/cobra"
@@ -51,21 +50,21 @@ func newRestoreCmd() *cobra.Command {
 		Long: "Restore sessions that were previously soft-deleted to trash.\n\n" +
 			"By default this command runs in dry-run mode and does not modify files.\n" +
 			"Use `--dry-run=false --confirm` for real restore.",
-		Example: "  csm restore --id <session_id>\n" +
-			"  csm restore --id-prefix 019ca9 --dry-run=false --confirm\n" +
-			"  csm restore --older-than 30d --dry-run=false --confirm --yes",
+		Example: "  codex-sm restore --id <session_id>\n" +
+			"  codex-sm restore --id-prefix 019ca9 --dry-run=false --confirm\n" +
+			"  codex-sm restore --older-than 30d --dry-run=false --confirm --yes",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			lg := logger().With("command", "restore")
 			var err error
-			sessionsRoot, err = resolveOrDefault(sessionsRoot, config.DefaultSessionsRoot)
+			sessionsRoot, err = resolveOrDefault(sessionsRoot, runtimeSessionsRoot)
 			if err != nil {
 				return err
 			}
-			trashRoot, err = resolveOrDefault(trashRoot, config.DefaultTrashRoot)
+			trashRoot, err = resolveOrDefault(trashRoot, runtimeTrashRoot)
 			if err != nil {
 				return err
 			}
-			logFile, err = resolveOrDefault(logFile, config.DefaultLogFile)
+			logFile, err = resolveOrDefault(logFile, runtimeLogFile)
 			if err != nil {
 				return err
 			}

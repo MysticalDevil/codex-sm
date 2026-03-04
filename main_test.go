@@ -22,4 +22,3 @@ func TestNormalizeBuildInfoVersion(t *testing.T) {
 		})
 	}
 }
-

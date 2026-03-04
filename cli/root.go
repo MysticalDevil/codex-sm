@@ -1,4 +1,4 @@
-// Package cli wires csm commands to the internal session and audit services.
+// Package cli wires codex-sm commands to the internal session and audit services.
 package cli
 
 import (
@@ -11,7 +11,7 @@ import (
 // Version is the application version and is usually injected at build time.
 var Version = "dev"
 
-// NewRootCmd builds the top-level csm command and registers all subcommands.
+// NewRootCmd builds the top-level codex-sm command and registers all subcommands.
 func NewRootCmd() *cobra.Command {
 	var (
 		logLevel  string
@@ -19,23 +19,27 @@ func NewRootCmd() *cobra.Command {
 	)
 
 	cmd := &cobra.Command{
-		Use:   "csm",
+		Use:   "codex-sm",
 		Short: "Codex session manager",
-		Long: "csm manages local Codex sessions.\n\n" +
+		Long: "codex-sm manages local Codex sessions.\n\n" +
 			"Build/install requires GOEXPERIMENT=jsonv2.\n\n" +
-			"Use `csm help <command>` to view details for a subcommand.\n" +
-			"Examples: `csm help delete`, `csm help list`, `csm help group`, `csm help version`.",
-		Example: "  csm list\n" +
-			"  csm tui\n" +
-			"  csm group --by day\n" +
-			"  csm delete --id <session_id>\n" +
-			"  csm version --short\n" +
-			"  csm help delete",
+			"Use `codex-sm help <command>` to view details for a subcommand.\n" +
+			"Examples: `codex-sm help delete`, `codex-sm help list`, `codex-sm help group`, `codex-sm help doctor`, `codex-sm help version`.",
+		Example: "  codex-sm list\n" +
+			"  codex-sm tui\n" +
+			"  codex-sm group --by day\n" +
+			"  codex-sm delete --id <session_id>\n" +
+			"  codex-sm doctor\n" +
+			"  codex-sm version --short\n" +
+			"  codex-sm help delete",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
 		},
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			return configureLogger(logFormat, logLevel, cmd.ErrOrStderr())
+			if err := configureLogger(logFormat, logLevel, cmd.ErrOrStderr()); err != nil {
+				return err
+			}
+			return loadRuntimeConfig()
 		},
 	}
 	cmd.PersistentFlags().StringVar(&logLevel, "log-level", "warn", "log level: debug|info|warn|error")
@@ -47,6 +51,7 @@ func NewRootCmd() *cobra.Command {
 	cmd.AddCommand(newRestoreCmd())
 	cmd.AddCommand(newTUICmd())
 	cmd.AddCommand(newVersionCmd())
+	cmd.AddCommand(newDoctorCmd())
 	applyHelpStyles(cmd)
 	return cmd
 }
