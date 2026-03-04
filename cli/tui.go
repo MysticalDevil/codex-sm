@@ -1,19 +1,12 @@
 package cli
 
 import (
-	"bufio"
-	"encoding/json/jsontext"
-	"encoding/json/v2"
 	"fmt"
-	"os"
 	"path/filepath"
-	"regexp"
-	"slices"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/mattn/go-runewidth"
 	"github.com/spf13/cobra"
 
 	"github.com/MysticalDevil/codex-sm/config"
@@ -57,43 +50,39 @@ type tuiModel struct {
 	lastPath      string
 	focus         tuiFocus
 	groupBy       string
+	source        string
+	theme         tuiTheme
+	trashRoot     string
+	logFile       string
+	dryRun        bool
+	confirm       bool
+	yes           bool
+	hardDelete    bool
+	maxBatch      int
+	pendingAction string
+	pendingID     string
 }
 
 const (
-	tokyoBg        = "#1a1b26"
-	tokyoFg        = "#c0caf5"
-	tokyoBlue      = "#7aa2f7"
-	tokyoCyan      = "#7dcfff"
-	tokyoMagenta   = "#bb9af7"
-	tokyoGreen     = "#9ece6a"
-	tokyoYellow    = "#e0af68"
-	tokyoOrange    = "#ff9e64"
-	tokyoTeal      = "#73daca"
-	tokyoRed       = "#f7768e"
-	tokyoComment   = "#565f89"
-	tokyoSelection = "#283457"
-
 	tuiMinWidth  = 100
 	tuiMinHeight = 24
-)
-
-var angleTagRe = regexp.MustCompile(`<[^>\n]{1,80}>`)
-
-type angleTagTone int
-
-const (
-	angleTagToneDefault angleTagTone = iota
-	angleTagToneSystem
-	angleTagToneLifecycle
-	angleTagToneDanger
-	angleTagToneSuccess
 )
 
 func newTUICmd() *cobra.Command {
 	var (
 		sessionsRoot string
+		trashRoot    string
+		logFile      string
 		limit        int
 		groupBy      string
+		source       string
+		themeName    string
+		themeColors  []string
+		dryRun       bool
+		confirm      bool
+		yes          bool
+		hardDelete   bool
+		maxBatch     int
 	)
 
 	cmd := &cobra.Command{
@@ -104,11 +93,13 @@ func newTUICmd() *cobra.Command {
 			"  j/k or Down/Up: move cursor\n" +
 			"  g/G: first/last\n" +
 			"  Ctrl+d / Ctrl+u: scroll preview\n" +
-			"  d: dry-run delete preview for current session\n" +
+			"  d: delete current session (respects --dry-run/--confirm)\n" +
+			"  r: restore current session (only when --source=trash)\n" +
+			"  y/n: confirm/cancel pending action\n" +
 			"  q: quit",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if strings.TrimSpace(sessionsRoot) == "" {
-				v, err := config.DefaultSessionsRoot()
+				v, err := runtimeSessionsRoot()
 				if err != nil {
 					return err
 				}
@@ -120,8 +111,49 @@ func newTUICmd() *cobra.Command {
 				}
 				sessionsRoot = v
 			}
+			if strings.TrimSpace(trashRoot) == "" {
+				v, err := runtimeTrashRoot()
+				if err != nil {
+					return err
+				}
+				trashRoot = v
+			} else {
+				v, err := config.ResolvePath(trashRoot)
+				if err != nil {
+					return err
+				}
+				trashRoot = v
+			}
+			if strings.TrimSpace(logFile) == "" {
+				v, err := runtimeLogFile()
+				if err != nil {
+					return err
+				}
+				logFile = v
+			} else {
+				v, err := config.ResolvePath(logFile)
+				if err != nil {
+					return err
+				}
+				logFile = v
+			}
 
-			items, err := session.ScanSessions(sessionsRoot)
+			if strings.TrimSpace(source) == "" {
+				source = strings.TrimSpace(runtimeConfig.TUI.Source)
+			}
+			source = strings.ToLower(strings.TrimSpace(source))
+			if source == "" {
+				source = "sessions"
+			}
+			if source != "sessions" && source != "trash" {
+				return fmt.Errorf("invalid --source %q (allowed: sessions, trash)", source)
+			}
+			scanRoot := sessionsRoot
+			if source == "trash" {
+				scanRoot = filepath.Join(trashRoot, "sessions")
+			}
+
+			items, err := session.ScanSessions(scanRoot)
 			if err != nil {
 				return err
 			}
@@ -131,7 +163,14 @@ func newTUICmd() *cobra.Command {
 			}
 
 			home, _ := config.ResolvePath("~")
+			if strings.TrimSpace(groupBy) == "" {
+				groupBy = strings.TrimSpace(runtimeConfig.TUI.GroupBy)
+			}
 			mode, err := normalizeTUIGroupBy(groupBy)
+			if err != nil {
+				return err
+			}
+			theme, err := resolveTUITheme(runtimeConfig.TUI.Theme, runtimeConfig.TUI.Colors, themeName, themeColors)
 			if err != nil {
 				return err
 			}
@@ -143,6 +182,15 @@ func newTUICmd() *cobra.Command {
 				previewCache: make(map[string][]string),
 				focus:        focusTree,
 				groupBy:      mode,
+				source:       source,
+				theme:        theme,
+				trashRoot:    trashRoot,
+				logFile:      logFile,
+				dryRun:       dryRun,
+				confirm:      confirm,
+				yes:          yes,
+				hardDelete:   hardDelete,
+				maxBatch:     maxBatch,
 			}
 			m.rebuildTree()
 			_, err = tea.NewProgram(m, tea.WithAltScreen()).Run()
@@ -151,8 +199,18 @@ func newTUICmd() *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&sessionsRoot, "sessions-root", "", "sessions root directory")
+	cmd.Flags().StringVar(&trashRoot, "trash-root", "", "trash root directory")
+	cmd.Flags().StringVar(&logFile, "log-file", "", "action log file")
 	cmd.Flags().IntVar(&limit, "limit", 100, "max sessions loaded into TUI (0 means unlimited)")
-	cmd.Flags().StringVar(&groupBy, "group-by", "month", "tree group key: month|day|health|host|none")
+	cmd.Flags().StringVar(&groupBy, "group-by", "", "tree group key: month|day|health|host|none")
+	cmd.Flags().StringVar(&source, "source", "", "session source: sessions|trash")
+	cmd.Flags().StringVar(&themeName, "theme", "", "TUI theme: tokyonight|catppuccin|gruvbox|onedark|nord|dracula")
+	cmd.Flags().StringArrayVar(&themeColors, "theme-color", nil, "custom theme override (key=value), repeatable")
+	cmd.Flags().BoolVar(&dryRun, "dry-run", true, "simulate delete/restore from TUI")
+	cmd.Flags().BoolVar(&confirm, "confirm", false, "required for real delete/restore from TUI")
+	cmd.Flags().BoolVar(&yes, "yes", false, "skip TUI confirmation prompts")
+	cmd.Flags().BoolVar(&hardDelete, "hard", false, "hard delete on session source")
+	cmd.Flags().IntVar(&maxBatch, "max-batch", 50, "max sessions allowed for one real TUI action")
 	return cmd
 }
 
@@ -256,7 +314,13 @@ func (m *tuiModel) handleKey(key string) bool {
 			}
 		}
 	case "d":
-		m.runDryRunPreview()
+		m.requestDelete()
+	case "r":
+		m.requestRestore()
+	case "y":
+		m.commitPendingAction()
+	case "n", "esc":
+		m.cancelPendingAction()
 	}
 	return false
 }
@@ -271,17 +335,24 @@ func (m tuiModel) View() string {
 		totalH = 32
 	}
 
+	borderColor := m.colorHex("border")
+	borderFocusColor := m.colorHex("border_focus")
+	fgColor := m.colorHex("fg")
+	bgColor := m.colorHex("bg")
+	statusColor := m.colorHex("status")
+
 	keysPanelStyle := lipgloss.NewStyle().
 		Border(lipgloss.NormalBorder()).
-		BorderForeground(lipgloss.Color(tokyoBlue)).
-		Foreground(lipgloss.Color(tokyoCyan)).
+		BorderForeground(lipgloss.Color(borderColor)).
+		Foreground(lipgloss.Color(fgColor)).
+		Background(lipgloss.Color(bgColor)).
 		Padding(0, 1)
 	keysOuterH := 3
 	keysInnerW := max(20, totalW-keysPanelStyle.GetHorizontalFrameSize())
 	keybar := keysPanelStyle.
 		Width(keysInnerW).
 		Bold(true).
-		Render(renderKeysLine(keysInnerW))
+		Render(renderKeysLine(keysInnerW, m.theme))
 
 	if m.width > 0 && m.height > 0 && (m.width < tuiMinWidth || m.height < tuiMinHeight) {
 		msg := fmt.Sprintf(
@@ -293,9 +364,9 @@ func (m tuiModel) View() string {
 			Width(max(32, totalW-2)).
 			Height(max(4, mainAreaH-2)).
 			Border(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color(tokyoBlue)).
-			Foreground(lipgloss.Color(tokyoFg)).
-			Background(lipgloss.Color(tokyoBg)).
+			BorderForeground(lipgloss.Color(borderColor)).
+			Foreground(lipgloss.Color(fgColor)).
+			Background(lipgloss.Color(bgColor)).
 			Padding(1, 2).
 			Render(msg)
 		return strings.Join([]string{warn, keybar}, "\n")
@@ -304,15 +375,15 @@ func (m tuiModel) View() string {
 	mainAreaH := max(8, totalH-keysOuterH)
 
 	if len(m.sessions) == 0 || len(m.tree) == 0 {
-		empty := lipgloss.NewStyle().Foreground(lipgloss.Color(tokyoComment)).
+		empty := lipgloss.NewStyle().Foreground(lipgloss.Color(statusColor)).
 			Render("No sessions found.")
 		emptyPane := lipgloss.NewStyle().
 			Width(max(32, totalW-2)).
 			Height(max(4, mainAreaH-2)).
 			Border(lipgloss.NormalBorder()).
-			BorderForeground(lipgloss.Color(tokyoBlue)).
-			Foreground(lipgloss.Color(tokyoFg)).
-			Background(lipgloss.Color(tokyoBg)).
+			BorderForeground(lipgloss.Color(borderColor)).
+			Foreground(lipgloss.Color(fgColor)).
+			Background(lipgloss.Color(bgColor)).
 			Padding(0, 1).
 			Render(empty + "\n" + m.status)
 		return strings.Join([]string{keybar, emptyPane}, "\n")
@@ -347,18 +418,18 @@ func (m tuiModel) View() string {
 
 	leftBase := lipgloss.NewStyle().
 		Border(lipgloss.NormalBorder()).
-		Foreground(lipgloss.Color(tokyoFg)).
-		Background(lipgloss.Color(tokyoBg)).
+		Foreground(lipgloss.Color(fgColor)).
+		Background(lipgloss.Color(bgColor)).
 		Padding(0, 1)
 	rightBase := lipgloss.NewStyle().
 		Border(lipgloss.NormalBorder()).
-		Foreground(lipgloss.Color(tokyoFg)).
-		Background(lipgloss.Color(tokyoBg)).
+		Foreground(lipgloss.Color(fgColor)).
+		Background(lipgloss.Color(bgColor)).
 		Padding(0, 1)
 	infoBase := lipgloss.NewStyle().
 		Border(lipgloss.NormalBorder()).
-		Foreground(lipgloss.Color(tokyoFg)).
-		Background(lipgloss.Color(tokyoBg)).
+		Foreground(lipgloss.Color(fgColor)).
+		Background(lipgloss.Color(bgColor)).
 		Padding(0, 1)
 
 	leftW := max(12, leftOuterW-leftBase.GetHorizontalFrameSize())
@@ -374,21 +445,22 @@ func (m tuiModel) View() string {
 	} else {
 		rightTitleText += " *"
 	}
-	leftTitle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(tokyoTeal)).Render(leftTitleText)
-	rightTitle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(tokyoCyan)).Render(rightTitleText)
+	leftTitle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(m.colorHex("title_tree"))).Render(leftTitleText)
+	rightTitle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(m.colorHex("title_preview"))).Render(rightTitleText)
 
 	leftLines := make([]string, 0, m.visibleRows()+1)
 	previewLines := make([]string, 0, m.visibleRows()+1)
 	infoLines := make([]string, 0, 4)
 	leftLines = append(leftLines, leftTitle)
 	previewLines = append(previewLines, rightTitle)
+	previewLines = append(previewLines, lipgloss.NewStyle().Foreground(lipgloss.Color(statusColor)).Render(" "+truncateDisplay(m.status, max(8, rightW-2))))
 
 	start, end := m.visibleRange()
 	for i := start; i < end; i++ {
 		item := m.tree[i]
 		if item.kind == treeItemMonth {
 			line := truncateDisplay(item.label, leftW-4)
-			line = lipgloss.NewStyle().Foreground(lipgloss.Color(tokyoYellow)).Render(line)
+			line = lipgloss.NewStyle().Foreground(lipgloss.Color(m.colorHex("group"))).Render(line)
 			leftLines = append(leftLines, "  "+line)
 			continue
 		}
@@ -397,17 +469,20 @@ func (m tuiModel) View() string {
 		if i+1 >= len(m.tree) || m.tree[i+1].kind == treeItemMonth {
 			connector = "└─"
 		}
-		connectorPart := lipgloss.NewStyle().Foreground(lipgloss.Color(tokyoComment)).Render("  " + connector + " ")
+		connectorPart := lipgloss.NewStyle().Foreground(lipgloss.Color(statusColor)).Render("  " + connector + " ")
 		idWidth := max(4, leftW-10)
 		idText := truncateDisplay(item.label, idWidth)
 
 		if i == m.cursor {
 			if m.focus == focusTree {
-				idText = lipgloss.NewStyle().Foreground(lipgloss.Color(tokyoBg)).Background(lipgloss.Color(tokyoCyan)).Bold(true).Render(idText)
-				leftLines = append(leftLines, lipgloss.NewStyle().Foreground(lipgloss.Color(tokyoCyan)).Render("▌")+" "+connectorPart+idText)
+				idText = lipgloss.NewStyle().
+					Foreground(lipgloss.Color(m.colorHex("selected_fg"))).
+					Background(lipgloss.Color(m.colorHex("selected_bg"))).
+					Bold(true).Render(idText)
+				leftLines = append(leftLines, lipgloss.NewStyle().Foreground(lipgloss.Color(m.colorHex("cursor_active"))).Render("▌")+" "+connectorPart+idText)
 			} else {
-				idText = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(tokyoBlue)).Render(idText)
-				leftLines = append(leftLines, lipgloss.NewStyle().Foreground(lipgloss.Color(tokyoBlue)).Render("▏")+" "+connectorPart+idText)
+				idText = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(m.colorHex("cursor_inactive"))).Render(idText)
+				leftLines = append(leftLines, lipgloss.NewStyle().Foreground(lipgloss.Color(m.colorHex("cursor_inactive"))).Render("▏")+" "+connectorPart+idText)
 			}
 		} else {
 			leftLines = append(leftLines, "  "+connectorPart+idText)
@@ -420,7 +495,7 @@ func (m tuiModel) View() string {
 		infoInnerH = 2
 	}
 	previewInnerH := max(2, previewOuterH-rightBase.GetVerticalFrameSize())
-	previewContentHeight := max(2, previewInnerH-3) // title + scroll + bar
+	previewContentHeight := max(2, previewInnerH-4) // title + status + scroll + bar
 	previewTextWidth := max(8, rightW-8)
 	if ok {
 		preview := m.previewFor(selected.Path, previewTextWidth, previewContentHeight)
@@ -434,29 +509,29 @@ func (m tuiModel) View() string {
 			end = len(preview)
 		}
 		scrollInfo := fmt.Sprintf(" scroll %d-%d/%d ", start+1, end, len(preview))
-		scrollStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(tokyoComment))
-		barStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(tokyoTeal))
+		scrollStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(m.colorHex("scroll")))
+		barStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(m.colorHex("bar")))
 		if m.focus == focusPreview {
-			scrollStyle = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(tokyoCyan))
-			barStyle = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(tokyoCyan))
+			scrollStyle = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(m.colorHex("scroll_active")))
+			barStyle = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(m.colorHex("bar_active")))
 		}
 		previewLines = append(previewLines, scrollStyle.Render(truncateDisplay(scrollInfo, previewTextWidth)))
 		previewLines = append(previewLines, barStyle.Render(" "+buildPreviewScrollBar(start, end, len(preview), max(10, previewTextWidth-2))))
 		previewLines = append(previewLines, preview[start:end]...)
 		h, v := m.detailRows(selected)
-		infoLines = append(infoLines, lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(tokyoOrange)).Render(h))
-		infoLines = append(infoLines, lipgloss.NewStyle().Foreground(lipgloss.Color(tokyoFg)).Render(v))
+		infoLines = append(infoLines, lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(m.colorHex("info_header"))).Render(h))
+		infoLines = append(infoLines, lipgloss.NewStyle().Foreground(lipgloss.Color(m.colorHex("info_value"))).Render(v))
 	} else {
 		previewLines = append(previewLines, " Select a session node")
-		infoLines = append(infoLines, lipgloss.NewStyle().Foreground(lipgloss.Color(tokyoRed)).Render("No session selected"))
+		infoLines = append(infoLines, lipgloss.NewStyle().Foreground(lipgloss.Color(m.colorHex("tag_danger"))).Render("No session selected"))
 	}
 
-	leftBorder := tokyoBlue
-	rightBorder := tokyoBlue
+	leftBorder := borderColor
+	rightBorder := borderColor
 	if m.focus == focusTree {
-		leftBorder = tokyoCyan
+		leftBorder = borderFocusColor
 	} else {
-		rightBorder = tokyoCyan
+		rightBorder = borderFocusColor
 	}
 
 	leftPane := leftBase.
@@ -471,9 +546,9 @@ func (m tuiModel) View() string {
 		BorderForeground(lipgloss.Color(rightBorder)).
 		Render(strings.Join(previewLines, "\n"))
 
-	infoBorder := tokyoBlue
+	infoBorder := borderColor
 	if m.focus == focusPreview {
-		infoBorder = tokyoCyan
+		infoBorder = borderFocusColor
 	}
 	infoPane := infoBase.
 		Width(rightW).
@@ -488,755 +563,4 @@ func (m tuiModel) View() string {
 		mainArea,
 		keybar,
 	}, "\n")
-}
-
-func (m *tuiModel) runDryRunPreview() {
-	selected, ok := m.selectedSession()
-	if !ok {
-		m.status = "No sessions to simulate."
-		return
-	}
-	sum, err := session.DeleteSessions(
-		[]session.Session{selected},
-		session.Selector{ID: selected.SessionID},
-		session.DeleteOptions{
-			DryRun:       true,
-			SessionsRoot: m.sessionsRoot,
-			TrashRoot:    filepath.Join(filepath.Dir(m.sessionsRoot), "trash"),
-		},
-	)
-	if err != nil {
-		m.status = "dry-run failed: " + err.Error()
-		return
-	}
-	m.status = fmt.Sprintf(
-		"dry-run: action=%s matched=%d affected=%s",
-		sum.Action,
-		sum.MatchedCount,
-		formatBytesIEC(sum.AffectedBytes),
-	)
-}
-
-func (m *tuiModel) visibleRows() int {
-	h := m.height
-	if h <= 0 {
-		return 12
-	}
-	rows := h - 8
-	if rows < 5 {
-		return 5
-	}
-	return rows
-}
-
-func (m *tuiModel) visibleRange() (int, int) {
-	rows := m.visibleRows()
-	start := m.offset
-	if start < 0 {
-		start = 0
-	}
-	end := start + rows
-	if end > len(m.tree) {
-		end = len(m.tree)
-	}
-	return start, end
-}
-
-func (m *tuiModel) clampOffset() {
-	if m.cursor < m.offset {
-		m.offset = m.cursor
-	}
-	rows := m.visibleRows()
-	if m.cursor >= m.offset+rows {
-		m.offset = m.cursor - rows + 1
-	}
-	if m.offset < 0 {
-		m.offset = 0
-	}
-	maxOffset := len(m.tree) - rows
-	if maxOffset < 0 {
-		maxOffset = 0
-	}
-	if m.offset > maxOffset {
-		m.offset = maxOffset
-	}
-}
-
-func sortTUISessions(items []session.Session) {
-	slices.SortStableFunc(items, func(a, b session.Session) int {
-		c := b.UpdatedAt.Compare(a.UpdatedAt)
-		if c != 0 {
-			return c
-		}
-		return strings.Compare(a.SessionID, b.SessionID)
-	})
-}
-
-func (m *tuiModel) rebuildTree() {
-	m.tree = make([]treeItem, 0, len(m.sessions)+16)
-	mode := strings.ToLower(strings.TrimSpace(m.groupBy))
-	if mode == "" {
-		mode = "month"
-	}
-	currentGroup := ""
-	for i, s := range m.sessions {
-		group := m.groupKeyForSession(s, mode)
-		if mode != "none" && group != currentGroup {
-			currentGroup = group
-			m.tree = append(m.tree, treeItem{
-				kind:   treeItemMonth,
-				label:  "▾ " + group,
-				month:  group,
-				indent: 0,
-			})
-		}
-		m.tree = append(m.tree, treeItem{
-			kind:   treeItemSession,
-			label:  shortID(s.SessionID),
-			month:  group,
-			index:  i,
-			indent: 1,
-		})
-	}
-	m.cursor = 0
-	m.skipToSelectable(1)
-	m.syncPreviewSelection()
-}
-
-func (m *tuiModel) groupKeyForSession(s session.Session, mode string) string {
-	switch mode {
-	case "none":
-		return ""
-	case "day":
-		if s.UpdatedAt.IsZero() {
-			return "unknown-day"
-		}
-		return s.UpdatedAt.Local().Format("2006-01-02")
-	case "health":
-		if strings.TrimSpace(string(s.Health)) == "" {
-			return "unknown-health"
-		}
-		return string(s.Health)
-	case "host":
-		host := compactHomePath(s.HostDir, m.home)
-		if strings.TrimSpace(host) == "" {
-			return "unknown-host"
-		}
-		return host
-	case "month":
-		fallthrough
-	default:
-		if s.UpdatedAt.IsZero() {
-			return "unknown-month"
-		}
-		return s.UpdatedAt.Format("2006-01")
-	}
-}
-
-func normalizeTUIGroupBy(v string) (string, error) {
-	mode := strings.ToLower(strings.TrimSpace(v))
-	if mode == "" {
-		mode = "month"
-	}
-	switch mode {
-	case "month", "day", "health", "host", "none":
-		return mode, nil
-	default:
-		return "", fmt.Errorf("invalid --group-by %q (allowed: month, day, health, host, none)", v)
-	}
-}
-
-func (m *tuiModel) skipToSelectable(step int) {
-	if len(m.tree) == 0 {
-		return
-	}
-	if m.cursor < 0 {
-		m.cursor = 0
-	}
-	if m.cursor >= len(m.tree) {
-		m.cursor = len(m.tree) - 1
-	}
-	for m.cursor >= 0 && m.cursor < len(m.tree) {
-		if m.tree[m.cursor].kind == treeItemSession {
-			return
-		}
-		m.cursor += step
-	}
-	if step > 0 {
-		m.cursor = len(m.tree) - 1
-	} else {
-		m.cursor = 0
-	}
-}
-
-func (m *tuiModel) selectedSession() (session.Session, bool) {
-	if len(m.tree) == 0 || m.cursor < 0 || m.cursor >= len(m.tree) {
-		return session.Session{}, false
-	}
-	item := m.tree[m.cursor]
-	if item.kind != treeItemSession || item.index < 0 || item.index >= len(m.sessions) {
-		return session.Session{}, false
-	}
-	return m.sessions[item.index], true
-}
-
-func (m *tuiModel) detailRows(selected session.Session) (header string, values string) {
-	host := compactHomePath(selected.HostDir, m.home)
-	if strings.TrimSpace(host) == "" {
-		host = "-"
-	}
-	contentWidth := max(40, m.width-4)
-	hostW := max(18, minInt(36, contentWidth/3))
-	cols := []struct {
-		name string
-		val  string
-		w    int
-	}{
-		{name: "ID", val: shortID(selected.SessionID), w: 12},
-		{name: "UPDATED", val: formatDisplayTime(selected.UpdatedAt), w: 19},
-		{name: "SIZE", val: formatBytesIEC(selected.SizeBytes), w: 8},
-		{name: "HEALTH", val: string(selected.Health), w: 12},
-		{name: "HOST", val: previewHostPath(host, hostW), w: hostW},
-	}
-
-	var headerParts []string
-	var valueParts []string
-	for _, c := range cols {
-		headerParts = append(headerParts, fitCell(c.name, c.w))
-		if c.name == "HOST" {
-			valueParts = append(valueParts, fitCellMiddle(c.val, c.w))
-			continue
-		}
-		valueParts = append(valueParts, fitCell(c.val, c.w))
-	}
-	return strings.Join(headerParts, "  "), strings.Join(valueParts, "  ")
-}
-
-func (m *tuiModel) previewFor(path string, width, lines int) []string {
-	if width < 10 {
-		width = 10
-	}
-	if lines < 5 {
-		lines = 5
-	}
-	if cached, ok := m.previewCache[path]; ok {
-		return cached
-	}
-
-	const maxPreviewLines = 600
-	out := make([]string, 0, minInt(maxPreviewLines, lines*10))
-	f, err := os.Open(path)
-	if err != nil {
-		out = append(out, " failed to open preview: "+err.Error())
-		m.previewCache[path] = out
-		return out
-	}
-	defer func() { _ = f.Close() }()
-
-	sc := bufio.NewScanner(f)
-	sc.Buffer(make([]byte, 0, 64*1024), 1024*1024)
-	for sc.Scan() && len(out) < maxPreviewLines {
-		line := strings.TrimSpace(sc.Text())
-		if line == "" || !jsontext.Value([]byte(line)).IsValid() {
-			continue
-		}
-		role, text := previewLine(line)
-		if strings.TrimSpace(text) == "" {
-			continue
-		}
-		if isPreviewNoise(text) {
-			continue
-		}
-		prefix := "?"
-		switch role {
-		case "user":
-			prefix = "U"
-		case "assistant":
-			prefix = "A"
-		}
-		first := true
-		contentWidth := max(4, width-3) // " <role> " prefix takes 3 cells
-		wrapped := wrapText(text, contentWidth)
-		trimmed := wrapped
-		truncated := false
-		if len(trimmed) > 2 {
-			trimmed = trimmed[:2]
-			truncated = true
-		}
-		for i, chunk := range trimmed {
-			if truncated && i == len(trimmed)-1 {
-				chunk = withEllipsis(chunk, contentWidth)
-			}
-			p := " "
-			if first {
-				p = prefix
-				first = false
-			}
-			prefixCell := fmt.Sprintf(" %s ", p)
-			remaining := max(0, width-runewidth.StringWidth(prefixCell))
-			chunk = truncateDisplay(chunk, remaining)
-
-			prefixStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(tokyoComment))
-			switch p {
-			case "U":
-				prefixStyle = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(tokyoCyan))
-			case "A":
-				prefixStyle = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(tokyoBlue))
-			case "?":
-				prefixStyle = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(tokyoMagenta))
-			}
-
-			row := prefixStyle.Render(prefixCell) + highlightAngleTags(chunk)
-			out = append(out, row)
-		}
-	}
-	if err := sc.Err(); err != nil {
-		out = append(out, " preview read error: "+err.Error())
-	}
-	if len(out) == 0 {
-		out = append(out, " no dialogue preview available")
-	}
-	m.previewCache[path] = out
-	return out
-}
-
-func previewLine(line string) (role string, text string) {
-	var item struct {
-		Type    string `json:"type"`
-		Payload struct {
-			Type    string `json:"type"`
-			Role    string `json:"role"`
-			Text    string `json:"text"`
-			Content []struct {
-				Text string `json:"text"`
-			} `json:"content"`
-		} `json:"payload"`
-	}
-	if err := json.Unmarshal([]byte(line), &item); err != nil {
-		return "", ""
-	}
-	if item.Type != "response_item" || item.Payload.Type != "message" {
-		return "", ""
-	}
-	for _, c := range item.Payload.Content {
-		if v := compactPreviewText(c.Text); v != "" {
-			return item.Payload.Role, v
-		}
-	}
-	return item.Payload.Role, compactPreviewText(item.Payload.Text)
-}
-
-func compactPreviewText(v string) string {
-	v = strings.TrimSpace(v)
-	if v == "" {
-		return ""
-	}
-	return strings.Join(strings.Fields(v), " ")
-}
-
-func minInt(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
-
-func fitCell(v string, width int) string {
-	if width <= 0 {
-		return ""
-	}
-	if runewidth.StringWidth(v) > width {
-		v = truncateDisplay(v, width)
-	}
-	w := runewidth.StringWidth(v)
-	if w >= width {
-		return v
-	}
-	return v + strings.Repeat(" ", width-w)
-}
-
-func fitCellMiddle(v string, width int) string {
-	if width <= 0 {
-		return ""
-	}
-	if runewidth.StringWidth(v) > width {
-		v = truncateMiddleDisplay(v, width)
-	}
-	w := runewidth.StringWidth(v)
-	if w >= width {
-		return v
-	}
-	return v + strings.Repeat(" ", width-w)
-}
-
-func wrapText(v string, width int) []string {
-	if width <= 0 {
-		return []string{v}
-	}
-	v = strings.TrimSpace(v)
-	if v == "" {
-		return []string{""}
-	}
-	words := strings.Fields(v)
-	if len(words) <= 1 {
-		return wrapRunesByWidth(v, width)
-	}
-	out := make([]string, 0, len(words))
-	line := words[0]
-	for _, w := range words[1:] {
-		candidate := line + " " + w
-		if runewidth.StringWidth(candidate) <= width {
-			line = candidate
-			continue
-		}
-		out = append(out, line)
-		if runewidth.StringWidth(w) > width {
-			split := wrapRunesByWidth(w, width)
-			if len(split) > 0 {
-				out = append(out, split[:len(split)-1]...)
-				line = split[len(split)-1]
-				continue
-			}
-		}
-		line = w
-	}
-	out = append(out, line)
-	return out
-}
-
-func wrapRunesByWidth(v string, width int) []string {
-	if width <= 0 {
-		return []string{v}
-	}
-	var out []string
-	var b strings.Builder
-	current := 0
-	for _, r := range v {
-		rw := runewidth.RuneWidth(r)
-		if rw <= 0 {
-			rw = 1
-		}
-		if current+rw > width && b.Len() > 0 {
-			out = append(out, b.String())
-			b.Reset()
-			current = 0
-		}
-		b.WriteRune(r)
-		current += rw
-	}
-	if b.Len() > 0 {
-		out = append(out, b.String())
-	}
-	if len(out) == 0 {
-		return []string{""}
-	}
-	return out
-}
-
-func truncateDisplay(v string, width int) string {
-	if width <= 0 {
-		return v
-	}
-	if runewidth.StringWidth(v) <= width {
-		return v
-	}
-	if width <= 3 {
-		return strings.Repeat(".", width)
-	}
-	target := width - 3
-	var b strings.Builder
-	current := 0
-	for _, r := range v {
-		rw := runewidth.RuneWidth(r)
-		if rw <= 0 {
-			rw = 1
-		}
-		if current+rw > target {
-			break
-		}
-		b.WriteRune(r)
-		current += rw
-	}
-	b.WriteString("...")
-	return b.String()
-}
-
-func truncateMiddleDisplay(v string, width int) string {
-	if width <= 0 {
-		return ""
-	}
-	if runewidth.StringWidth(v) <= width {
-		return v
-	}
-	if width <= 3 {
-		return truncateDisplay(v, width)
-	}
-	leftTarget := (width - 3) / 2
-	rightTarget := width - 3 - leftTarget
-	left := takeDisplayPrefix(v, leftTarget)
-	right := takeDisplaySuffix(v, rightTarget)
-	return left + "..." + right
-}
-
-func takeDisplayPrefix(v string, width int) string {
-	if width <= 0 {
-		return ""
-	}
-	var b strings.Builder
-	current := 0
-	for _, r := range v {
-		rw := runewidth.RuneWidth(r)
-		if rw <= 0 {
-			rw = 1
-		}
-		if current+rw > width {
-			break
-		}
-		b.WriteRune(r)
-		current += rw
-	}
-	return b.String()
-}
-
-func takeDisplaySuffix(v string, width int) string {
-	if width <= 0 {
-		return ""
-	}
-	runes := []rune(v)
-	current := 0
-	start := len(runes)
-	for i := len(runes) - 1; i >= 0; i-- {
-		rw := runewidth.RuneWidth(runes[i])
-		if rw <= 0 {
-			rw = 1
-		}
-		if current+rw > width {
-			break
-		}
-		current += rw
-		start = i
-	}
-	return string(runes[start:])
-}
-
-func withEllipsis(v string, width int) string {
-	if width <= 0 {
-		return ""
-	}
-	if width <= 3 {
-		return truncateDisplay(v, width)
-	}
-	if runewidth.StringWidth(v)+3 <= width {
-		return v + "..."
-	}
-	return truncateDisplay(v, width-3) + "..."
-}
-
-func previewHostPath(host string, width int) string {
-	if width <= 0 || host == "" {
-		return host
-	}
-	if runewidth.StringWidth(host) <= width {
-		return host
-	}
-
-	segs := strings.Split(strings.Trim(host, "/"), "/")
-	if len(segs) >= 2 {
-		tail := segs[len(segs)-2] + "/" + segs[len(segs)-1]
-		if strings.HasPrefix(host, "~/") {
-			candidate := "~/.../" + tail
-			if runewidth.StringWidth(candidate) <= width {
-				return candidate
-			}
-		} else {
-			candidate := ".../" + tail
-			if runewidth.StringWidth(candidate) <= width {
-				return candidate
-			}
-		}
-	}
-	return truncateMiddleDisplay(host, width)
-}
-
-func renderKeysLine(width int) string {
-	plain := "[KEYS] Tab/h/l t/p/1/2 switch pane | j/k scroll | g/G top/bottom | Ctrl+d/u preview | d dry-run | q quit"
-	if width <= 0 {
-		return plain
-	}
-	if width < 72 {
-		return truncateDisplay(plain, width)
-	}
-	parts := []string{
-		lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(tokyoMagenta)).Render("[KEYS]"),
-		lipgloss.NewStyle().Foreground(lipgloss.Color(tokyoCyan)).Render(" Tab/h/l t/p/1/2 "),
-		lipgloss.NewStyle().Foreground(lipgloss.Color(tokyoComment)).Render("switch pane"),
-		lipgloss.NewStyle().Foreground(lipgloss.Color(tokyoYellow)).Render(" | "),
-		lipgloss.NewStyle().Foreground(lipgloss.Color(tokyoTeal)).Render("j/k"),
-		lipgloss.NewStyle().Foreground(lipgloss.Color(tokyoComment)).Render(" scroll"),
-		lipgloss.NewStyle().Foreground(lipgloss.Color(tokyoYellow)).Render(" | "),
-		lipgloss.NewStyle().Foreground(lipgloss.Color(tokyoBlue)).Render("g/G"),
-		lipgloss.NewStyle().Foreground(lipgloss.Color(tokyoComment)).Render(" top/bottom"),
-		lipgloss.NewStyle().Foreground(lipgloss.Color(tokyoYellow)).Render(" | "),
-		lipgloss.NewStyle().Foreground(lipgloss.Color(tokyoGreen)).Render("Ctrl+d/u"),
-		lipgloss.NewStyle().Foreground(lipgloss.Color(tokyoComment)).Render(" preview"),
-		lipgloss.NewStyle().Foreground(lipgloss.Color(tokyoYellow)).Render(" | "),
-		lipgloss.NewStyle().Foreground(lipgloss.Color(tokyoOrange)).Render("d"),
-		lipgloss.NewStyle().Foreground(lipgloss.Color(tokyoComment)).Render(" dry-run"),
-		lipgloss.NewStyle().Foreground(lipgloss.Color(tokyoYellow)).Render(" | "),
-		lipgloss.NewStyle().Foreground(lipgloss.Color(tokyoRed)).Render("q"),
-		lipgloss.NewStyle().Foreground(lipgloss.Color(tokyoComment)).Render(" quit"),
-	}
-	return strings.Join(parts, "")
-}
-
-func highlightAngleTags(v string) string {
-	if strings.TrimSpace(v) == "" {
-		return v
-	}
-	matches := angleTagRe.FindAllStringIndex(v, -1)
-	if len(matches) == 0 {
-		return v
-	}
-
-	styleDefault := lipgloss.NewStyle().Foreground(lipgloss.Color(tokyoYellow))
-	styleSystem := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(tokyoCyan))
-	styleLifecycle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(tokyoTeal))
-	styleDanger := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(tokyoOrange))
-	styleSuccess := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(tokyoGreen))
-
-	var b strings.Builder
-	last := 0
-	for _, m := range matches {
-		if m[0] > last {
-			b.WriteString(v[last:m[0]])
-		}
-		tag := v[m[0]:m[1]]
-		switch classifyAngleTag(tag) {
-		case angleTagToneDanger:
-			b.WriteString(styleDanger.Render(tag))
-		case angleTagToneSystem:
-			b.WriteString(styleSystem.Render(tag))
-		case angleTagToneLifecycle:
-			b.WriteString(styleLifecycle.Render(tag))
-		case angleTagToneSuccess:
-			b.WriteString(styleSuccess.Render(tag))
-		default:
-			b.WriteString(styleDefault.Render(tag))
-		}
-		last = m[1]
-	}
-	if last < len(v) {
-		b.WriteString(v[last:])
-	}
-	return b.String()
-}
-
-func classifyAngleTag(tag string) angleTagTone {
-	name := strings.TrimSpace(tag)
-	name = strings.TrimPrefix(name, "<")
-	name = strings.TrimSuffix(name, ">")
-	name = strings.TrimSpace(name)
-	name = strings.TrimPrefix(name, "/")
-	if i := strings.IndexAny(name, " \t"); i >= 0 {
-		name = name[:i]
-	}
-	name = strings.ToLower(strings.TrimSpace(name))
-	if name == "" {
-		return angleTagToneDefault
-	}
-
-	if strings.Contains(name, "error") || strings.Contains(name, "fail") || strings.Contains(name, "abort") || strings.Contains(name, "panic") {
-		return angleTagToneDanger
-	}
-	if strings.Contains(name, "ok") || strings.Contains(name, "success") || strings.Contains(name, "done") {
-		return angleTagToneSuccess
-	}
-	if strings.Contains(name, "mode") || strings.Contains(name, "context") || strings.Contains(name, "permission") || strings.Contains(name, "sandbox") || strings.Contains(name, "instruction") {
-		return angleTagToneSystem
-	}
-	if strings.Contains(name, "turn") || strings.Contains(name, "session") || strings.Contains(name, "meta") || strings.Contains(name, "event") {
-		return angleTagToneLifecycle
-	}
-
-	return angleTagToneDefault
-}
-
-func (m *tuiModel) syncPreviewSelection() {
-	selected, ok := m.selectedSession()
-	if !ok {
-		m.lastPath = ""
-		m.previewOffset = 0
-		return
-	}
-	if selected.Path != m.lastPath {
-		m.lastPath = selected.Path
-		m.previewOffset = 0
-	}
-}
-
-func (m *tuiModel) previewPageStep() int {
-	step := m.visibleRows() / 2
-	if step < 1 {
-		return 1
-	}
-	return step
-}
-
-func buildPreviewScrollBar(start, end, total, width int) string {
-	if width < 8 {
-		width = 8
-	}
-	if total <= 0 {
-		return "[" + strings.Repeat("─", width) + "]"
-	}
-	if end < start {
-		end = start
-	}
-	if end > total {
-		end = total
-	}
-	beginRatio := float64(start) / float64(total)
-	endRatio := float64(end) / float64(total)
-	l := int(beginRatio * float64(width))
-	r := int(endRatio * float64(width))
-	if r <= l {
-		r = l + 1
-	}
-	if r > width {
-		r = width
-	}
-	var b strings.Builder
-	b.WriteByte('[')
-	for i := 0; i < width; i++ {
-		if i >= l && i < r {
-			b.WriteString("█")
-		} else {
-			b.WriteString("─")
-		}
-	}
-	b.WriteByte(']')
-	return b.String()
-}
-
-func isPreviewNoise(v string) bool {
-	l := strings.ToLower(strings.TrimSpace(v))
-	if l == "" {
-		return true
-	}
-	noise := []string{
-		"agents.md",
-		"instructions for",
-		"filesystem sandboxing",
-		"approved command prefix",
-		"global agent rules",
-		"tooling priorities",
-		"validation before finish",
-		"use-modern-go",
-	}
-	for _, k := range noise {
-		if strings.Contains(l, k) {
-			return true
-		}
-	}
-	return false
 }

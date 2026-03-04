@@ -321,11 +321,11 @@ func TestTruncateMiddleDisplay(t *testing.T) {
 }
 
 func TestRenderKeysLine(t *testing.T) {
-	short := renderKeysLine(24)
+	short := renderKeysLine(24, tuiTheme{Name: "tokyonight", Colors: cloneColorMap(builtinThemes["tokyonight"])})
 	if w := runewidth.StringWidth(stripANSIForTest(short)); w > 24 {
 		t.Fatalf("short keys line overflow: width=%d", w)
 	}
-	long := renderKeysLine(200)
+	long := renderKeysLine(200, tuiTheme{Name: "tokyonight", Colors: cloneColorMap(builtinThemes["tokyonight"])})
 	if !strings.Contains(stripANSIForTest(long), "[KEYS]") {
 		t.Fatalf("expected KEYS header in long line, got: %q", long)
 	}
@@ -440,11 +440,72 @@ func TestTUIUpdateAndDryRunPreview(t *testing.T) {
 	}
 
 	updated.runDryRunPreview()
-	if !strings.Contains(updated.status, "dry-run: action=") {
+	if !strings.Contains(updated.status, "delete: action=dry-run") {
 		t.Fatalf("unexpected dry-run status: %q", updated.status)
 	}
 
 	if _, cmd := updated.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'q'}}); cmd == nil {
 		t.Fatal("expected quit command on q")
+	}
+}
+
+func TestResolveTUITheme(t *testing.T) {
+	theme, err := resolveTUITheme("tokyonight", map[string]string{"keys_label": "#ffffff"}, "catppuccin", []string{"keys_key=#123456"})
+	if err != nil {
+		t.Fatalf("resolve theme: %v", err)
+	}
+	if theme.Name != "catppuccin" {
+		t.Fatalf("theme name mismatch: %q", theme.Name)
+	}
+	if got := theme.hex("keys_label", ""); got != "#ffffff" {
+		t.Fatalf("config override not applied: %q", got)
+	}
+	if got := theme.hex("keys_key", ""); got != "#123456" {
+		t.Fatalf("flag override not applied: %q", got)
+	}
+}
+
+func TestResolveTUIThemeInvalidOverride(t *testing.T) {
+	if _, err := resolveTUITheme("", nil, "", []string{"broken"}); err == nil {
+		t.Fatal("expected invalid theme override error")
+	}
+}
+
+func TestTUIRequestDeletePendingAndConfirm(t *testing.T) {
+	workspace := testsupport.PrepareFixtureSandbox(t, "rich")
+	sessionsRoot := filepath.Join(workspace, "sessions")
+	trashRoot := filepath.Join(workspace, "trash")
+	logFile := filepath.Join(workspace, "logs", "actions.log")
+	target := filepath.Join(workspace, "sessions", "2026", "03", "02", "rollout-delete-dry.jsonl")
+
+	m := tuiModel{
+		sessions: []session.Session{{
+			SessionID: "11111111-1111-1111-1111-111111111111",
+			Path:      target,
+			UpdatedAt: time.Now(),
+			SizeBytes: 1,
+			Health:    session.HealthOK,
+		}},
+		sessionsRoot: sessionsRoot,
+		trashRoot:    trashRoot,
+		logFile:      logFile,
+		dryRun:       false,
+		confirm:      true,
+		yes:          false,
+		maxBatch:     10,
+		source:       "sessions",
+		previewCache: map[string][]string{},
+	}
+	m.rebuildTree()
+	m.requestDelete()
+	if m.pendingAction != "delete" {
+		t.Fatalf("expected pending delete, got %q", m.pendingAction)
+	}
+	m.commitPendingAction()
+	if m.pendingAction != "" {
+		t.Fatalf("pending action not cleared: %q", m.pendingAction)
+	}
+	if !strings.Contains(m.status, "delete: action=") {
+		t.Fatalf("unexpected status: %q", m.status)
 	}
 }
