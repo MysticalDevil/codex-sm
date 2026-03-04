@@ -22,11 +22,13 @@ func NewRootCmd() *cobra.Command {
 		Use:   "csm",
 		Short: "Codex session manager",
 		Long: "csm manages local Codex sessions.\n\n" +
+			"Build/install requires GOEXPERIMENT=jsonv2.\n\n" +
 			"Use `csm help <command>` to view details for a subcommand.\n" +
-			"Examples: `csm help delete`, `csm help list`, `csm help group`.",
+			"Examples: `csm help delete`, `csm help list`, `csm help group`, `csm help version`.",
 		Example: "  csm list\n" +
 			"  csm group --by day\n" +
 			"  csm delete --id <session_id>\n" +
+			"  csm version --short\n" +
 			"  csm help delete",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()

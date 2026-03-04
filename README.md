@@ -2,6 +2,12 @@
 
 `codex-sm` is a safety-first local Codex session manager written in Go.
 
+## Compatibility
+
+- Go: `1.26+`
+- Required experiment: `GOEXPERIMENT=jsonv2`
+- JSON packages: `encoding/json/v2`, `encoding/json/jsontext`
+
 It provides:
 
 - Session listing (`list`)
@@ -31,7 +37,6 @@ It provides:
 
 ## Build
 
-This project uses Go JSON v2 packages (`encoding/json/v2`, `encoding/json/jsontext`).
 When building/testing from source, enable:
 
 ```bash
@@ -45,7 +50,13 @@ just build
 Or:
 
 ```bash
-go build -o codex-sm .
+GOEXPERIMENT=jsonv2 go build -ldflags="-X main.version=0.1.2" -o codex-sm .
+```
+
+Default local build version is `dev`. Set `VERSION` for release builds:
+
+```bash
+VERSION=0.1.2 just build
 ```
 
 ## Install
@@ -53,13 +64,13 @@ go build -o codex-sm .
 Preferred (Go):
 
 ```bash
-GOEXPERIMENT=jsonv2 go install github.com/MysticalDevil/codex-sm@v0.1.1
+GOEXPERIMENT=jsonv2 go install github.com/MysticalDevil/codex-sm@v0.1.2
 ```
 
 With `mise`:
 
 ```bash
-GOEXPERIMENT=jsonv2 mise install go:github.com/MysticalDevil/codex-sm@v0.1.1
+GOEXPERIMENT=jsonv2 mise install go:github.com/MysticalDevil/codex-sm@v0.1.2
 ```
 
 Note:
@@ -82,6 +93,9 @@ codex-sm list --detailed
 
 # Custom columns, no header
 codex-sm list --format csv --no-header --column session_id,health
+
+# Sort by size ascending
+codex-sm list --sort size --order asc --limit 20
 
 # Show all with pager
 codex-sm list --limit 0 --pager
@@ -132,6 +146,7 @@ codex-sm help list
 codex-sm help group
 codex-sm help delete
 codex-sm help restore
+codex-sm help version
 ```
 
 ## Development
@@ -145,7 +160,9 @@ just test-all
 just cover
 just cover-unit
 just cover-integration
+just cover-gate
 just check
+just check-release 0.1.2
 ```
 
 Tooling defaults:

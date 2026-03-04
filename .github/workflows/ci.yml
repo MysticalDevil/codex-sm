@@ -39,10 +39,17 @@ jobs:
         run: go vet ./...
 
       - name: Test (unit)
-        run: go test ./...
+        run: go test -count=1 ./... -coverprofile=coverage_unit.out
 
       - name: Test (integration)
-        run: go test -tags=integration ./cli
+        run: go test -count=1 -tags=integration ./cli -coverprofile=coverage_integration.out
+
+      - name: Coverage gate
+        run: |
+          unit_cov=$(go tool cover -func=coverage_unit.out | awk '/^total:/ {gsub("%","",$3); print $3}')
+          integration_cov=$(go tool cover -func=coverage_integration.out | awk '/^total:/ {gsub("%","",$3); print $3}')
+          awk -v got="$unit_cov" 'BEGIN { min=50; if (got+0 < min) { printf("unit coverage %.1f%% < %.1f%%\n", got, min); exit 1 } else { printf("unit coverage %.1f%% >= %.1f%%\n", got, min) } }'
+          awk -v got="$integration_cov" 'BEGIN { min=65; if (got+0 < min) { printf("integration coverage %.1f%% < %.1f%%\n", got, min); exit 1 } else { printf("integration coverage %.1f%% >= %.1f%%\n", got, min) } }'
 
       - name: Build
-        run: go build .
+        run: go build -ldflags="-X main.version=ci-${{ github.sha }}" .
