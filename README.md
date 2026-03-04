@@ -28,14 +28,21 @@ It provides:
 
 ## Build
 
+This project uses Go JSON v2 packages (`encoding/json/v2`, `encoding/json/jsontext`).
+When building/testing from source, enable:
+
 ```bash
-make build
+export GOEXPERIMENT=jsonv2
+```
+
+```bash
+just build
 ```
 
 Or:
 
 ```bash
-go build .
+go build -o codex-sm .
 ```
 
 ## Install
@@ -43,13 +50,13 @@ go build .
 Preferred (Go):
 
 ```bash
-go install github.com/MysticalDevil/codex-sm@v0.1.1
+GOEXPERIMENT=jsonv2 go install github.com/MysticalDevil/codex-sm@v0.1.1
 ```
 
 With `mise`:
 
 ```bash
-mise install go:github.com/MysticalDevil/codex-sm@v0.1.1
+GOEXPERIMENT=jsonv2 mise install go:github.com/MysticalDevil/codex-sm@v0.1.1
 ```
 
 Note:
@@ -65,37 +72,37 @@ alias csm='codex-sm'
 
 ```bash
 # List recent sessions (default limit: 10)
-csm list
+codex-sm list
 
 # Detailed list view
-csm list --detailed
+codex-sm list --detailed
 
 # Custom columns, no header
-csm list --format csv --no-header --column session_id,health
+codex-sm list --format csv --no-header --column session_id,health
 
 # Show all with pager
-csm list --limit 0 --pager
+codex-sm list --limit 0 --pager
 
 # Group by day
-csm group --by day
+codex-sm group --by day
 
 # Group by health with sorting and limit
-csm group --by health --sort count --order desc --limit 5
+codex-sm group --by health --sort count --order desc --limit 5
 
 # Dry-run delete (default behavior)
-csm delete --id-prefix 019ca9
+codex-sm delete --id-prefix 019ca9
 
 # Real soft delete
-csm delete --id-prefix 019ca9 --dry-run=false --confirm
+codex-sm delete --id-prefix 019ca9 --dry-run=false --confirm
 
 # Real hard delete
-csm delete --id 019ca9c1-3df3-7551-b04b-b2a91c486755 --dry-run=false --confirm --hard
+codex-sm delete --id 019ca9c1-3df3-7551-b04b-b2a91c486755 --dry-run=false --confirm --hard
 
 # Dry-run restore from trash
-csm restore --id-prefix 019ca9
+codex-sm restore --id-prefix 019ca9
 
 # Real restore
-csm restore --id-prefix 019ca9 --dry-run=false --confirm
+codex-sm restore --id-prefix 019ca9 --dry-run=false --confirm
 ```
 
 ## Delete/Restore Safety Model
@@ -117,20 +124,20 @@ Rules:
 ## Command Help
 
 ```bash
-csm help
-csm help list
-csm help group
-csm help delete
-csm help restore
+codex-sm help
+codex-sm help list
+codex-sm help group
+codex-sm help delete
+codex-sm help restore
 ```
 
 ## Development
 
 ```bash
-make fmt
-make lint
-make test
-make check
+just fmt
+just lint
+just test
+just check
 ```
 
 Tooling defaults:
