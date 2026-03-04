@@ -23,7 +23,12 @@ lint:
 test:
   {{goexperiment}} {{go}} test ./...
 
+test-integration:
+  {{goexperiment}} {{go}} test -tags=integration ./cli
+
+test-all: test test-integration
+
 build:
   {{goexperiment}} {{go}} build -o codex-sm .
 
-check: fmt lint test build
+check: fmt lint test-all build

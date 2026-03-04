@@ -38,8 +38,11 @@ jobs:
       - name: Vet
         run: go vet ./...
 
-      - name: Test
+      - name: Test (unit)
         run: go test ./...
+
+      - name: Test (integration)
+        run: go test -tags=integration ./cli
 
       - name: Build
         run: go build .

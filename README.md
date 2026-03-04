@@ -139,7 +139,9 @@ codex-sm help restore
 ```bash
 just fmt
 just lint
-just test
+just test            # unit tests
+just test-integration
+just test-all
 just check
 ```
 
