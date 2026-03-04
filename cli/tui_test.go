@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/mattn/go-runewidth"
 
 	"github.com/MysticalDevil/codex-sm/internal/testsupport"
@@ -280,5 +281,170 @@ func TestRebuildTreeGroupingModes(t *testing.T) {
 				t.Fatalf("expected no group nodes for mode=%s, got=%d", tc.mode, groupCount)
 			}
 		})
+	}
+}
+
+func TestPreviewHostPath(t *testing.T) {
+	tests := []struct {
+		name  string
+		host  string
+		width int
+	}{
+		{name: "short_keep", host: "~/work/a", width: 24},
+		{name: "home_tail", host: "~/ai-workspace/codex-session-manager", width: 20},
+		{name: "abs_tail", host: "/var/db/repos/mystical-overlay/app-misc/spacedrive-bin", width: 20},
+		{name: "very_narrow", host: "/very/long/path/with/many/segments", width: 8},
+	}
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			got := previewHostPath(tc.host, tc.width)
+			if got == "" {
+				t.Fatal("previewHostPath returned empty")
+			}
+			if w := runewidth.StringWidth(got); w > tc.width {
+				t.Fatalf("width overflow: got=%q width=%d limit=%d", got, w, tc.width)
+			}
+		})
+	}
+}
+
+func TestTruncateMiddleDisplay(t *testing.T) {
+	v := "/very/long/path/to/project/codex-session-manager"
+	got := truncateMiddleDisplay(v, 20)
+	if w := runewidth.StringWidth(got); w > 20 {
+		t.Fatalf("truncateMiddleDisplay overflow: %q width=%d", got, w)
+	}
+	if !strings.Contains(got, "...") {
+		t.Fatalf("expected middle ellipsis, got: %q", got)
+	}
+}
+
+func TestRenderKeysLine(t *testing.T) {
+	short := renderKeysLine(24)
+	if w := runewidth.StringWidth(stripANSIForTest(short)); w > 24 {
+		t.Fatalf("short keys line overflow: width=%d", w)
+	}
+	long := renderKeysLine(200)
+	if !strings.Contains(stripANSIForTest(long), "[KEYS]") {
+		t.Fatalf("expected KEYS header in long line, got: %q", long)
+	}
+}
+
+func TestGroupKeyForSession(t *testing.T) {
+	m := tuiModel{home: "/home/omega"}
+	s := session.Session{
+		SessionID: "x",
+		UpdatedAt: time.Date(2026, 3, 5, 10, 0, 0, 0, time.Local),
+		Health:    session.HealthOK,
+		HostDir:   "/home/omega/work/project",
+	}
+	if got := m.groupKeyForSession(s, "month"); got == "" || !strings.Contains(got, "2026-03") {
+		t.Fatalf("month group key unexpected: %q", got)
+	}
+	if got := m.groupKeyForSession(s, "day"); got == "" || !strings.Contains(got, "2026-03-05") {
+		t.Fatalf("day group key unexpected: %q", got)
+	}
+	if got := m.groupKeyForSession(s, "health"); got != string(session.HealthOK) {
+		t.Fatalf("health group key unexpected: %q", got)
+	}
+	if got := m.groupKeyForSession(s, "host"); got == "" || !strings.Contains(got, "~/work/project") {
+		t.Fatalf("host group key unexpected: %q", got)
+	}
+	if got := m.groupKeyForSession(s, "none"); got != "" {
+		t.Fatalf("none group key expected empty, got %q", got)
+	}
+}
+
+func TestTUIViewAndHelpersCoverage(t *testing.T) {
+	workspace := testsupport.PrepareFixtureSandbox(t, "rich")
+	root := filepath.Join(workspace, "tmp")
+	if err := os.MkdirAll(root, 0o755); err != nil {
+		t.Fatalf("mkdir tmp: %v", err)
+	}
+	p := filepath.Join(root, "view.jsonl")
+	content := `{"type":"session_meta","payload":{"id":"x","timestamp":"2026-03-02T09:44:00.024Z"}}` + "\n" +
+		`{"type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"hello <environment_context> world"}]}}` + "\n" +
+		`{"type":"response_item","payload":{"type":"message","role":"assistant","content":[{"type":"output_text","text":"ok <turn_aborted> done"}]}}` + "\n"
+	if err := os.WriteFile(p, []byte(content), 0o644); err != nil {
+		t.Fatalf("write preview fixture: %v", err)
+	}
+
+	m := tuiModel{
+		sessions: []session.Session{
+			{
+				SessionID: "019c-test-id",
+				UpdatedAt: time.Date(2026, 3, 5, 12, 0, 0, 0, time.Local),
+				Health:    session.HealthOK,
+				HostDir:   "/home/omega/work/project",
+				Path:      p,
+			},
+		},
+		width:        120,
+		height:       36,
+		home:         "/home/omega",
+		sessionsRoot: filepath.Join(workspace, "sessions"),
+		previewCache: make(map[string][]string),
+		groupBy:      "month",
+		focus:        focusTree,
+	}
+	m.rebuildTree()
+	out := m.View()
+	if !strings.Contains(out, "SESSIONS") || !strings.Contains(out, "PREVIEW") {
+		t.Fatalf("unexpected view output: %q", out)
+	}
+	if !strings.Contains(stripANSIForTest(out), "[KEYS]") {
+		t.Fatalf("expected keys bar in view: %q", out)
+	}
+
+	// Helper coverage paths.
+	if got := buildPreviewScrollBar(0, 1, 10, 16); got == "" {
+		t.Fatal("empty preview scroll bar")
+	}
+	if got := fitCell("abc", 8); runewidth.StringWidth(got) != 8 {
+		t.Fatalf("fitCell width unexpected: %q", got)
+	}
+	if got := fitCellMiddle("/very/long/path/to/project", 12); runewidth.StringWidth(got) != 12 {
+		t.Fatalf("fitCellMiddle width unexpected: %q", got)
+	}
+	if step := m.previewPageStep(); step <= 0 {
+		t.Fatalf("previewPageStep should be positive, got %d", step)
+	}
+	if !isPreviewNoise("filesystem sandboxing note") {
+		t.Fatal("expected preview noise detection")
+	}
+}
+
+func TestTUIUpdateAndDryRunPreview(t *testing.T) {
+	workspace := testsupport.PrepareFixtureSandbox(t, "rich")
+	sessionsRoot := filepath.Join(workspace, "sessions")
+	m := tuiModel{
+		sessions: []session.Session{
+			{
+				SessionID: "11111111-1111-1111-1111-111111111111",
+				UpdatedAt: time.Date(2026, 3, 2, 10, 0, 0, 0, time.Local),
+				Health:    session.HealthOK,
+				HostDir:   "/tmp/host",
+				Path:      filepath.Join(sessionsRoot, "2026", "03", "02", "rollout-delete-dry.jsonl"),
+			},
+		},
+		previewCache: make(map[string][]string),
+		sessionsRoot: sessionsRoot,
+	}
+	m.rebuildTree()
+
+	model, _ := m.Update(tea.WindowSizeMsg{Width: 100, Height: 30})
+	updated := model.(tuiModel)
+	if updated.width != 100 || updated.height != 30 {
+		t.Fatalf("window size not updated: %+v", updated)
+	}
+
+	updated.runDryRunPreview()
+	if !strings.Contains(updated.status, "dry-run: action=") {
+		t.Fatalf("unexpected dry-run status: %q", updated.status)
+	}
+
+	if _, cmd := updated.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'q'}}); cmd == nil {
+		t.Fatal("expected quit command on q")
 	}
 }
