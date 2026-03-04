@@ -40,7 +40,7 @@ jobs:
       - name: Docs consistency
         run: |
           test -f docs/ARCHITECTURE.md
-          rg -q "docs/ARCHITECTURE.md" README.md
+          grep -q "docs/ARCHITECTURE.md" README.md
 
       - name: Vet
         run: go vet ./...
