@@ -37,6 +37,13 @@ Rules:
 - CLI and TUI reuse the same core session/audit logic.
 - destructive actions default to simulation (`dry-run`) paths.
 - action logging stays centralized in `audit`.
+- each batch operation is tagged with a `batch_id` for traceability and rollback.
+
+Rollback flow:
+
+1. `delete` (soft-delete) writes one `batch_id` into action logs.
+2. `restore --batch-id <id>` resolves session ids from audit logs.
+3. restore scans trash and restores matched sessions under normal safety guards.
 
 ## Theme And Color Conventions
 

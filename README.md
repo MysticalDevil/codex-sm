@@ -41,6 +41,13 @@ It provides:
 - Default delete mode is soft delete (move to trash)
 - Optional hard delete with `--hard`
 - Interactive confirmation for real delete/restore (enabled by default)
+- Batch preview modes for real operations:
+  - `--preview sample` (default, first `--preview-limit` items; default limit `20`)
+  - `--preview full` (show all matched items)
+  - `--preview none` (suppress preview output)
+- Batch audit and rollback:
+  - each delete/restore invocation writes a `batch_id` to action logs
+  - rollback by batch: `restore --batch-id <batch_id>`
 - Readable CLI output:
   - compact list view by default
   - `HEAD` with noise filtering
@@ -198,6 +205,9 @@ codexsm delete --id-prefix 019ca9
 # Real soft delete
 codexsm delete --id-prefix 019ca9 --dry-run=false --confirm
 
+# Real soft delete with full preview
+codexsm delete --id-prefix 019ca9 --dry-run=false --confirm --preview full
+
 # Real hard delete
 codexsm delete --id 019ca9c1-3df3-7551-b04b-b2a91c486755 --dry-run=false --confirm --hard
 
@@ -206,6 +216,9 @@ codexsm restore --id-prefix 019ca9
 
 # Real restore
 codexsm restore --id-prefix 019ca9 --dry-run=false --confirm
+
+# Roll back one soft-delete batch
+codexsm restore --batch-id b-20260305T120102Z-9f1a2b3c4d5e --dry-run=false --confirm
 ```
 
 ## Delete/Restore Safety Model
@@ -214,6 +227,7 @@ codexsm restore --id-prefix 019ca9 --dry-run=false --confirm
 
 - `--id <session_id>`
 - `--id-prefix <prefix>`
+- `--batch-id <batch_id>` (restore only; cannot combine with selector flags)
 - `--older-than <duration>` (for example `30d`, `12h`)
 - `--health <ok|corrupted|missing-meta>`
 
@@ -223,6 +237,7 @@ Rules:
 - Dry-run is default
 - Real operation requires `--confirm`
 - Batch real operation requires approval (`--yes` or interactive confirm)
+- `--preview` controls pre-execution preview style (`sample|full|none`)
 
 ## Command Help
 

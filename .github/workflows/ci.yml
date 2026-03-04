@@ -61,5 +61,15 @@ jobs:
       - name: Build
         run: go build -ldflags="-X main.version=ci-${{ github.sha }}" -o codexsm .
 
+      - name: CLI batch rollback guards (smoke)
+        run: |
+          ./codexsm restore --help | grep -q -- "--batch-id"
+          ./codexsm delete --help | grep -q -- "--preview"
+          if ./codexsm restore --batch-id b-test --id deadbeef >/tmp/codexsm-restore-conflict.log 2>&1; then
+            echo "expected restore conflict to fail"
+            exit 1
+          fi
+          grep -q "cannot be combined" /tmp/codexsm-restore-conflict.log
+
       - name: Doctor (sanity)
         run: ./codexsm doctor
