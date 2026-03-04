@@ -29,6 +29,15 @@ func matches(s Session, sel Selector, now time.Time) bool {
 	if sel.IDPrefix != "" && !strings.HasPrefix(s.SessionID, sel.IDPrefix) {
 		return false
 	}
+	if sel.HostContains != "" && !containsFold(s.HostDir, sel.HostContains) {
+		return false
+	}
+	if sel.PathContains != "" && !containsFold(s.Path, sel.PathContains) {
+		return false
+	}
+	if sel.HeadContains != "" && !containsFold(s.Head, sel.HeadContains) {
+		return false
+	}
 	if sel.HasHealth && s.Health != sel.Health {
 		return false
 	}
@@ -39,4 +48,8 @@ func matches(s Session, sel Selector, now time.Time) bool {
 		}
 	}
 	return true
+}
+
+func containsFold(src, sub string) bool {
+	return strings.Contains(strings.ToLower(src), strings.ToLower(sub))
 }

@@ -35,6 +35,9 @@ func newRestoreCmd() *cobra.Command {
 		logFile      string
 		id           string
 		idPrefix     string
+		hostContains string
+		pathContains string
+		headContains string
 		olderThan    string
 		health       string
 		dryRun       bool
@@ -52,6 +55,7 @@ func newRestoreCmd() *cobra.Command {
 			"Use `--dry-run=false --confirm` for real restore.",
 		Example: "  codexsm restore --id <session_id>\n" +
 			"  codexsm restore --id-prefix 019ca9 --dry-run=false --confirm\n" +
+			"  codexsm restore --path-contains /trash/sessions/2026/03/02 --head-contains fixture --dry-run=false --confirm --yes\n" +
 			"  codexsm restore --older-than 30d --dry-run=false --confirm --yes",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			lg := logger().With("command", "restore")
@@ -69,12 +73,12 @@ func newRestoreCmd() *cobra.Command {
 				return err
 			}
 
-			sel, err := buildSelector(id, idPrefix, olderThan, health)
+			sel, err := buildSelector(id, idPrefix, hostContains, pathContains, headContains, olderThan, health)
 			if err != nil {
 				return err
 			}
 			if !sel.HasAnyFilter() {
-				return WithExitCode(errors.New("restore requires at least one selector (--id/--id-prefix/--older-than/--health)"), 1)
+				return WithExitCode(errors.New("restore requires at least one selector (--id/--id-prefix/--host-contains/--path-contains/--head-contains/--older-than/--health)"), 1)
 			}
 
 			trashSessionsRoot := filepath.Join(trashRoot, "sessions")
@@ -150,6 +154,9 @@ func newRestoreCmd() *cobra.Command {
 	cmd.Flags().StringVar(&logFile, "log-file", "", "action log file (jsonl)")
 	cmd.Flags().StringVar(&id, "id", "", "exact session id")
 	cmd.Flags().StringVar(&idPrefix, "id-prefix", "", "session id prefix")
+	cmd.Flags().StringVar(&hostContains, "host-contains", "", "case-insensitive substring match against host path")
+	cmd.Flags().StringVar(&pathContains, "path-contains", "", "case-insensitive substring match against session file path")
+	cmd.Flags().StringVar(&headContains, "head-contains", "", "case-insensitive substring match against preview head text")
 	cmd.Flags().StringVar(&olderThan, "older-than", "", "select sessions older than duration (e.g. 30d, 12h)")
 	cmd.Flags().StringVar(&health, "health", "", "health filter: ok|corrupted|missing-meta")
 	cmd.Flags().BoolVar(&dryRun, "dry-run", true, "simulate restore without changing files")
@@ -178,7 +185,7 @@ func restoreSessions(candidates []session.Session, sel session.Selector, opts re
 		Results:      make([]session.DeleteResult, 0, len(candidates)),
 	}
 	if !sel.HasAnyFilter() {
-		summary.ErrorSummary = "restore requires at least one selector (--id/--id-prefix/--older-than/--health)"
+		summary.ErrorSummary = "restore requires at least one selector (--id/--id-prefix/--host-contains/--path-contains/--head-contains/--older-than/--health)"
 		return summary, errors.New(summary.ErrorSummary)
 	}
 	if opts.MaxBatch <= 0 {

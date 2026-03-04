@@ -34,6 +34,9 @@ type Session struct {
 type Selector struct {
 	ID           string        `json:"id,omitempty"`
 	IDPrefix     string        `json:"id_prefix,omitempty"`
+	HostContains string        `json:"host_contains,omitempty"`
+	PathContains string        `json:"path_contains,omitempty"`
+	HeadContains string        `json:"head_contains,omitempty"`
 	OlderThan    time.Duration `json:"older_than,omitempty"`
 	HasOlderThan bool          `json:"has_older_than,omitempty"`
 	Health       Health        `json:"health,omitempty"`
@@ -44,6 +47,9 @@ type Selector struct {
 func (s Selector) HasAnyFilter() bool {
 	return strings.TrimSpace(s.ID) != "" ||
 		strings.TrimSpace(s.IDPrefix) != "" ||
+		strings.TrimSpace(s.HostContains) != "" ||
+		strings.TrimSpace(s.PathContains) != "" ||
+		strings.TrimSpace(s.HeadContains) != "" ||
 		s.HasOlderThan ||
 		s.HasHealth
 }

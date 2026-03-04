@@ -23,6 +23,9 @@ func newDeleteCmd() *cobra.Command {
 		logFile      string
 		id           string
 		idPrefix     string
+		hostContains string
+		pathContains string
+		headContains string
 		olderThan    string
 		health       string
 		dryRun       bool
@@ -43,6 +46,7 @@ func newDeleteCmd() *cobra.Command {
 		Example: "  codexsm delete --id <session_id>\n" +
 			"  codexsm delete --id-prefix 019ca9 --dry-run=false --confirm\n" +
 			"  codexsm delete --older-than 90d --dry-run=false --confirm --yes\n" +
+			"  codexsm delete --host-contains /workspace/delete --head-contains fixture --dry-run=false --confirm --yes\n" +
 			"  codexsm delete --id <session_id> --dry-run=false --confirm --hard",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			lg := logger().With("command", "delete")
@@ -60,7 +64,7 @@ func newDeleteCmd() *cobra.Command {
 				return err
 			}
 
-			sel, err := buildSelector(id, idPrefix, olderThan, health)
+			sel, err := buildSelector(id, idPrefix, hostContains, pathContains, headContains, olderThan, health)
 			if err != nil {
 				return err
 			}
@@ -143,6 +147,9 @@ func newDeleteCmd() *cobra.Command {
 	cmd.Flags().StringVar(&logFile, "log-file", "", "action log file (jsonl)")
 	cmd.Flags().StringVar(&id, "id", "", "exact session id")
 	cmd.Flags().StringVar(&idPrefix, "id-prefix", "", "session id prefix")
+	cmd.Flags().StringVar(&hostContains, "host-contains", "", "case-insensitive substring match against host path")
+	cmd.Flags().StringVar(&pathContains, "path-contains", "", "case-insensitive substring match against session file path")
+	cmd.Flags().StringVar(&headContains, "head-contains", "", "case-insensitive substring match against preview head text")
 	cmd.Flags().StringVar(&olderThan, "older-than", "", "select sessions older than duration (e.g. 30d, 12h)")
 	cmd.Flags().StringVar(&health, "health", "", "health filter: ok|corrupted|missing-meta")
 	cmd.Flags().BoolVar(&dryRun, "dry-run", true, "simulate delete without changing files")

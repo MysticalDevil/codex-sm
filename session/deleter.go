@@ -53,7 +53,7 @@ func DeleteSessions(candidates []Session, sel Selector, opts DeleteOptions) (Del
 	}
 
 	if !sel.HasAnyFilter() {
-		summary.ErrorSummary = "delete requires at least one selector (--id/--id-prefix/--older-than/--health)"
+		summary.ErrorSummary = "delete requires at least one selector (--id/--id-prefix/--host-contains/--path-contains/--head-contains/--older-than/--health)"
 		return summary, errors.New(summary.ErrorSummary)
 	}
 	if opts.MaxBatch <= 0 {

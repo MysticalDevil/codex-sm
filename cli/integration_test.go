@@ -143,6 +143,35 @@ func TestList_HostDirDisplayHomeAndNonHome(t *testing.T) {
 	}
 }
 
+func TestList_ComposableContainsFilters(t *testing.T) {
+	_, root, _, _ := fixtureRoots(t)
+
+	cmd := newIsolatedRootCmd(t, root)
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	cmd.SetOut(stdout)
+	cmd.SetErr(stderr)
+	cmd.SetArgs([]string{
+		"list",
+		"--sessions-root", root,
+		"--format", "csv",
+		"--column", "session_id",
+		"--no-header",
+		"--host-contains", "/var/tmp",
+		"--path-contains", "rollout-non-home-host",
+		"--head-contains", "NON HOME",
+		"--limit", "0",
+	})
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("list execute: %v", err)
+	}
+
+	out := strings.TrimSpace(stdout.String())
+	if out != idNonHome {
+		t.Fatalf("expected only %s, got %q", idNonHome, out)
+	}
+}
+
 func TestList_NoHeaderAndColumn(t *testing.T) {
 	_, root, _, _ := fixtureRoots(t)
 

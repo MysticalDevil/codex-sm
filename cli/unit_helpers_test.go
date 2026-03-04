@@ -103,17 +103,17 @@ func TestColorAndSelectorHelpers(t *testing.T) {
 		t.Fatal("never should disable color")
 	}
 
-	if _, err := buildSelector("", "", "bad", ""); err == nil {
+	if _, err := buildSelector("", "", "", "", "", "bad", ""); err == nil {
 		t.Fatal("expected older-than parse error")
 	}
-	if _, err := buildSelector("", "", "", "bad"); err == nil {
+	if _, err := buildSelector("", "", "", "", "", "", "bad"); err == nil {
 		t.Fatal("expected health parse error")
 	}
-	sel, err := buildSelector("id", "pre", "1h", "ok")
+	sel, err := buildSelector("id", "pre", " host ", " /sessions ", " fixture ", "1h", "ok")
 	if err != nil {
 		t.Fatalf("buildSelector valid: %v", err)
 	}
-	if sel.ID != "id" || sel.IDPrefix != "pre" || !sel.HasOlderThan || !sel.HasHealth {
+	if sel.ID != "id" || sel.IDPrefix != "pre" || sel.HostContains != "host" || sel.PathContains != "/sessions" || sel.HeadContains != "fixture" || !sel.HasOlderThan || !sel.HasHealth {
 		t.Fatalf("unexpected selector: %+v", sel)
 	}
 

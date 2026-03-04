@@ -42,6 +42,9 @@ func newListCmd() *cobra.Command {
 		sessionsRoot string
 		id           string
 		idPrefix     string
+		hostContains string
+		pathContains string
+		headContains string
 		olderThan    string
 		health       string
 		format       string
@@ -65,6 +68,7 @@ func newListCmd() *cobra.Command {
 			"  codexsm list --head-width 48\n" +
 			"  codexsm list --limit 0 --pager\n" +
 			"  codexsm list --sort size --order asc --limit 20\n" +
+			"  codexsm list --host-contains /workspace --head-contains fixture\n" +
 			"  codexsm list --id-prefix 019ca9 --format json\n" +
 			"  codexsm list --format csv --column session_id,updated_at,size",
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -82,7 +86,7 @@ func newListCmd() *cobra.Command {
 				sessionsRoot = v
 			}
 
-			sel, err := buildSelector(id, idPrefix, olderThan, health)
+			sel, err := buildSelector(id, idPrefix, hostContains, pathContains, headContains, olderThan, health)
 			if err != nil {
 				return err
 			}
@@ -154,6 +158,9 @@ func newListCmd() *cobra.Command {
 	cmd.Flags().StringVar(&sessionsRoot, "sessions-root", "", "sessions root directory")
 	cmd.Flags().StringVar(&id, "id", "", "exact session id")
 	cmd.Flags().StringVar(&idPrefix, "id-prefix", "", "session id prefix")
+	cmd.Flags().StringVar(&hostContains, "host-contains", "", "case-insensitive substring match against host path")
+	cmd.Flags().StringVar(&pathContains, "path-contains", "", "case-insensitive substring match against session file path")
+	cmd.Flags().StringVar(&headContains, "head-contains", "", "case-insensitive substring match against preview head text")
 	cmd.Flags().StringVar(&olderThan, "older-than", "", "select sessions older than duration (e.g. 30d, 12h)")
 	cmd.Flags().StringVar(&health, "health", "", "health filter: ok|corrupted|missing-meta")
 	cmd.Flags().StringVar(&format, "format", "table", "output format: table|json|csv|tsv")
@@ -758,10 +765,13 @@ func formatCSVTime(t time.Time) string {
 	return t.Format(time.RFC3339)
 }
 
-func buildSelector(id, idPrefix, olderThan, health string) (session.Selector, error) {
+func buildSelector(id, idPrefix, hostContains, pathContains, headContains, olderThan, health string) (session.Selector, error) {
 	sel := session.Selector{
-		ID:       strings.TrimSpace(id),
-		IDPrefix: strings.TrimSpace(idPrefix),
+		ID:           strings.TrimSpace(id),
+		IDPrefix:     strings.TrimSpace(idPrefix),
+		HostContains: strings.TrimSpace(hostContains),
+		PathContains: strings.TrimSpace(pathContains),
+		HeadContains: strings.TrimSpace(headContains),
 	}
 
 	if strings.TrimSpace(olderThan) != "" {

@@ -28,6 +28,9 @@ func newGroupCmd() *cobra.Command {
 		sessionsRoot string
 		id           string
 		idPrefix     string
+		hostContains string
+		pathContains string
+		headContains string
 		olderThan    string
 		health       string
 		by           string
@@ -46,6 +49,7 @@ func newGroupCmd() *cobra.Command {
 		Example: "  codexsm group --by day\n" +
 			"  codexsm group --by health\n" +
 			"  codexsm group --by day --older-than 30d\n" +
+			"  codexsm group --by health --host-contains /workspace --head-contains fixture\n" +
 			"  codexsm group --by health --sort size --order desc --format csv",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var err error
@@ -54,7 +58,7 @@ func newGroupCmd() *cobra.Command {
 				return err
 			}
 
-			sel, err := buildSelector(id, idPrefix, olderThan, health)
+			sel, err := buildSelector(id, idPrefix, hostContains, pathContains, headContains, olderThan, health)
 			if err != nil {
 				return err
 			}
@@ -102,6 +106,9 @@ func newGroupCmd() *cobra.Command {
 	cmd.Flags().StringVar(&sessionsRoot, "sessions-root", "", "sessions root directory")
 	cmd.Flags().StringVar(&id, "id", "", "exact session id")
 	cmd.Flags().StringVar(&idPrefix, "id-prefix", "", "session id prefix")
+	cmd.Flags().StringVar(&hostContains, "host-contains", "", "case-insensitive substring match against host path")
+	cmd.Flags().StringVar(&pathContains, "path-contains", "", "case-insensitive substring match against session file path")
+	cmd.Flags().StringVar(&headContains, "head-contains", "", "case-insensitive substring match against preview head text")
 	cmd.Flags().StringVar(&olderThan, "older-than", "", "select sessions older than duration (e.g. 30d, 12h)")
 	cmd.Flags().StringVar(&health, "health", "", "health filter: ok|corrupted|missing-meta")
 	cmd.Flags().StringVar(&by, "by", "day", "group key: day|health")
