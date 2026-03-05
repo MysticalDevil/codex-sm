@@ -1,16 +1,14 @@
 package cli
 
 import (
-	"bufio"
 	"errors"
 	"fmt"
-	"io"
-	"os"
 	"strings"
 	"time"
 
 	"github.com/MysticalDevil/codexsm/audit"
 	"github.com/MysticalDevil/codexsm/config"
+	"github.com/MysticalDevil/codexsm/internal/ops"
 	"github.com/MysticalDevil/codexsm/session"
 
 	"github.com/spf13/cobra"
@@ -200,29 +198,8 @@ func printDeleteSummary(cmd *cobra.Command, s session.DeleteSummary) {
 	}
 }
 
-type previewMode string
-
-const (
-	previewFull   previewMode = "full"
-	previewSample previewMode = "sample"
-	previewNone   previewMode = "none"
-)
-
-func parsePreviewMode(v string) (previewMode, error) {
-	switch strings.ToLower(strings.TrimSpace(v)) {
-	case "", string(previewSample):
-		return previewSample, nil
-	case string(previewFull):
-		return previewFull, nil
-	case string(previewNone):
-		return previewNone, nil
-	default:
-		return "", fmt.Errorf("invalid --preview %q (allowed: full, sample, none)", v)
-	}
-}
-
-func printDeletePreview(cmd *cobra.Command, candidates []session.Session, hard bool, mode previewMode, previewLimit int) {
-	if mode == previewNone {
+func printDeletePreview(cmd *cobra.Command, candidates []session.Session, hard bool, mode ops.PreviewMode, previewLimit int) {
+	if mode == ops.PreviewNone {
 		return
 	}
 	action := "soft-delete"
@@ -234,7 +211,7 @@ func printDeletePreview(cmd *cobra.Command, candidates []session.Session, hard b
 		totalBytes += s.SizeBytes
 	}
 	sampleLimit := previewLimit
-	if mode == previewFull {
+	if mode == ops.PreviewFull {
 		sampleLimit = len(candidates)
 	}
 	if sampleLimit < 0 {
@@ -248,54 +225,25 @@ func printDeletePreview(cmd *cobra.Command, candidates []session.Session, hard b
 		}
 		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "  - %s %s\n", shortID(s.SessionID), s.Path)
 	}
-	if mode == previewSample && len(candidates) > sampleLimit {
+	if mode == ops.PreviewSample && len(candidates) > sampleLimit {
 		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "  ... and %d more\n", len(candidates)-sampleLimit)
 	}
 }
 
 func interactiveConfirmDelete(cmd *cobra.Command, count int, hard bool) (bool, error) {
 	in := cmd.InOrStdin()
-	out := cmd.ErrOrStderr()
-	if !isInteractiveReader(in) {
+	if !ops.IsInteractiveReader(in) {
 		logger().Warn("interactive confirm requested but stdin is not terminal", "count", count)
 		return false, fmt.Errorf("interactive confirm requires a terminal stdin; use --yes to continue non-interactively")
 	}
-
-	reader := bufio.NewReader(in)
+	ok, err := ops.ConfirmDelete(in, cmd.ErrOrStderr(), count, hard)
+	if err != nil {
+		return false, err
+	}
+	mode := "soft"
 	if hard {
-		if _, err := fmt.Fprintf(out, "Hard delete %d session(s). Type DELETE to continue: ", count); err != nil {
-			return false, err
-		}
-		text, err := reader.ReadString('\n')
-		if err != nil {
-			return false, err
-		}
-		ok := strings.TrimSpace(text) == "DELETE"
-		logger().Info("hard delete interactive confirmation received", "approved", ok, "count", count)
-		return ok, nil
+		mode = "hard"
 	}
-
-	if _, err := fmt.Fprintf(out, "Delete %d session(s) to trash? [y/N]: ", count); err != nil {
-		return false, err
-	}
-	text, err := reader.ReadString('\n')
-	if err != nil {
-		return false, err
-	}
-	v := strings.ToLower(strings.TrimSpace(text))
-	ok := v == "y" || v == "yes"
-	logger().Info("delete interactive confirmation received", "approved", ok, "count", count, "mode", "soft")
+	logger().Info("delete interactive confirmation received", "approved", ok, "count", count, "mode", mode)
 	return ok, nil
-}
-
-func isInteractiveReader(r io.Reader) bool {
-	f, ok := r.(*os.File)
-	if !ok {
-		return false
-	}
-	fi, err := f.Stat()
-	if err != nil {
-		return false
-	}
-	return (fi.Mode() & os.ModeCharDevice) != 0
 }
