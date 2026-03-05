@@ -8,6 +8,7 @@ import (
 
 	"github.com/MysticalDevil/codexsm/audit"
 	"github.com/MysticalDevil/codexsm/config"
+	"github.com/MysticalDevil/codexsm/internal/deleteexec"
 	"github.com/MysticalDevil/codexsm/internal/ops"
 	"github.com/MysticalDevil/codexsm/session"
 
@@ -100,7 +101,7 @@ func newDeleteCmd() *cobra.Command {
 				yes = true
 			}
 
-			opts := session.DeleteOptions{
+			opts := deleteexec.Options{
 				DryRun:       dryRun,
 				Confirm:      confirm,
 				Yes:          yes,
@@ -109,7 +110,7 @@ func newDeleteCmd() *cobra.Command {
 				TrashRoot:    trashRoot,
 				SessionsRoot: sessionsRoot,
 			}
-			summary, deleteErr := session.DeleteSessions(candidates, sel, opts)
+			summary, deleteErr := deleteexec.Execute(candidates, sel, opts)
 
 			rec := audit.ActionRecord{
 				BatchID:       batchID,
