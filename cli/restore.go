@@ -1,32 +1,22 @@
 package cli
 
 import (
-	"bufio"
 	"errors"
 	"fmt"
-	"io"
-	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/MysticalDevil/codexsm/audit"
+	"github.com/MysticalDevil/codexsm/internal/fileutil"
+	"github.com/MysticalDevil/codexsm/internal/ops"
+	"github.com/MysticalDevil/codexsm/internal/restoreexec"
 	"github.com/MysticalDevil/codexsm/session"
 
 	"github.com/spf13/cobra"
 )
 
-type restoreSummary struct {
-	Action        string
-	Simulation    bool
-	MatchedCount  int
-	Succeeded     int
-	Failed        int
-	Skipped       int
-	AffectedBytes int64
-	Results       []session.DeleteResult
-	ErrorSummary  string
-}
+type restoreSummary = restoreexec.Summary
 
 func newRestoreCmd() *cobra.Command {
 	var (
@@ -221,99 +211,14 @@ func newRestoreCmd() *cobra.Command {
 	return cmd
 }
 
-type restoreOptions struct {
-	DryRun             bool
-	Confirm            bool
-	Yes                bool
-	AllowEmptySelector bool
-	MaxBatch           int
-	SessionsRoot       string
-	TrashSessionsRoot  string
-}
+type restoreOptions = restoreexec.Options
 
 func restoreSessions(candidates []session.Session, sel session.Selector, opts restoreOptions) (restoreSummary, error) {
-	summary := restoreSummary{
-		Action:       restoreActionName(opts.DryRun),
-		Simulation:   opts.DryRun,
-		MatchedCount: len(candidates),
-		Results:      make([]session.DeleteResult, 0, len(candidates)),
-	}
-	if !sel.HasAnyFilter() && !opts.AllowEmptySelector {
-		summary.ErrorSummary = "restore requires at least one selector (--id/--id-prefix/--host-contains/--path-contains/--head-contains/--older-than/--health or --batch-id)"
-		return summary, errors.New(summary.ErrorSummary)
-	}
-	if opts.MaxBatch <= 0 {
-		opts.MaxBatch = 50
-	}
-	if !opts.DryRun {
-		if !opts.Confirm {
-			summary.ErrorSummary = "real restore requires --confirm"
-			return summary, errors.New(summary.ErrorSummary)
-		}
-		if len(candidates) > 1 && !opts.Yes {
-			summary.ErrorSummary = "batch restore requires --yes"
-			return summary, errors.New(summary.ErrorSummary)
-		}
-		if len(candidates) > opts.MaxBatch {
-			summary.ErrorSummary = fmt.Sprintf("matched %d sessions; exceeds --max-batch=%d", len(candidates), opts.MaxBatch)
-			return summary, errors.New(summary.ErrorSummary)
-		}
-	}
-
-	for _, s := range candidates {
-		summary.AffectedBytes += s.SizeBytes
-		rel, err := filepath.Rel(opts.TrashSessionsRoot, s.Path)
-		if err != nil || strings.HasPrefix(rel, "..") || rel == "." {
-			rel = filepath.Base(s.Path)
-		}
-		dst := filepath.Join(opts.SessionsRoot, rel)
-
-		if opts.DryRun {
-			summary.Skipped++
-			summary.Results = append(summary.Results, session.DeleteResult{
-				SessionID:   s.SessionID,
-				Path:        s.Path,
-				Destination: dst,
-				Status:      "simulated",
-			})
-			continue
-		}
-
-		if _, err := os.Stat(dst); err == nil {
-			summary.Failed++
-			summary.Results = append(summary.Results, session.DeleteResult{
-				SessionID: s.SessionID,
-				Path:      s.Path,
-				Status:    "failed",
-				Error:     fmt.Sprintf("destination exists: %s", dst),
-			})
-			continue
-		}
-		if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
-			summary.Failed++
-			summary.Results = append(summary.Results, session.DeleteResult{SessionID: s.SessionID, Path: s.Path, Status: "failed", Error: err.Error()})
-			continue
-		}
-		if err := moveFile(s.Path, dst); err != nil {
-			summary.Failed++
-			summary.Results = append(summary.Results, session.DeleteResult{SessionID: s.SessionID, Path: s.Path, Status: "failed", Error: err.Error()})
-			continue
-		}
-		summary.Succeeded++
-		summary.Results = append(summary.Results, session.DeleteResult{SessionID: s.SessionID, Path: s.Path, Destination: dst, Status: "restored"})
-	}
-
-	if summary.Failed > 0 {
-		summary.ErrorSummary = fmt.Sprintf("%d failed", summary.Failed)
-	}
-	return summary, nil
+	return restoreexec.Execute(candidates, sel, opts)
 }
 
 func restoreActionName(dryRun bool) string {
-	if dryRun {
-		return "restore-dry-run"
-	}
-	return "restore"
+	return restoreexec.ActionName(dryRun)
 }
 
 func printRestoreSummary(cmd *cobra.Command, s restoreSummary) {
@@ -329,8 +234,8 @@ func printRestoreSummary(cmd *cobra.Command, s restoreSummary) {
 	}
 }
 
-func printRestorePreview(cmd *cobra.Command, candidates []session.Session, mode previewMode, previewLimit int) {
-	if mode == previewNone {
+func printRestorePreview(cmd *cobra.Command, candidates []session.Session, mode ops.PreviewMode, previewLimit int) {
+	if mode == ops.PreviewNone {
 		return
 	}
 	var totalBytes int64
@@ -338,7 +243,7 @@ func printRestorePreview(cmd *cobra.Command, candidates []session.Session, mode 
 		totalBytes += s.SizeBytes
 	}
 	sampleLimit := previewLimit
-	if mode == previewFull {
+	if mode == ops.PreviewFull {
 		sampleLimit = len(candidates)
 	}
 	if sampleLimit < 0 {
@@ -352,78 +257,29 @@ func printRestorePreview(cmd *cobra.Command, candidates []session.Session, mode 
 		}
 		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "  - %s %s\n", shortID(s.SessionID), s.Path)
 	}
-	if mode == previewSample && len(candidates) > sampleLimit {
+	if mode == ops.PreviewSample && len(candidates) > sampleLimit {
 		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "  ... and %d more\n", len(candidates)-sampleLimit)
 	}
 }
 
 func interactiveConfirmRestore(cmd *cobra.Command, count int) (bool, error) {
 	in := cmd.InOrStdin()
-	out := cmd.ErrOrStderr()
-	if !isInteractiveReader(in) {
+	if !ops.IsInteractiveReader(in) {
 		logger().Warn("interactive restore requested but stdin is not terminal", "count", count)
 		return false, fmt.Errorf("interactive confirm requires a terminal stdin; use --yes to continue non-interactively")
 	}
-	if _, err := fmt.Fprintf(out, "Restore %d session(s) from trash? [y/N]: ", count); err != nil {
-		return false, err
-	}
-	reader := bufio.NewReader(in)
-	text, err := reader.ReadString('\n')
+	ok, err := ops.ConfirmRestore(in, cmd.ErrOrStderr(), count)
 	if err != nil {
 		return false, err
 	}
-	v := strings.ToLower(strings.TrimSpace(text))
-	ok := v == "y" || v == "yes"
 	logger().Info("restore interactive confirmation received", "approved", ok, "count", count)
 	return ok, nil
 }
 
 func moveFile(src, dst string) error {
-	if err := os.Rename(src, dst); err == nil {
-		return nil
-	}
-	if err := copyFileForRestore(src, dst); err != nil {
-		return err
-	}
-	return os.Remove(src)
+	return fileutil.MoveFile(src, dst)
 }
 
 func copyFileForRestore(src, dst string) (retErr error) {
-	in, err := os.Open(src)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		if closeErr := in.Close(); closeErr != nil {
-			if retErr == nil {
-				retErr = closeErr
-			} else {
-				retErr = errors.Join(retErr, closeErr)
-			}
-		}
-	}()
-
-	out, err := os.Create(dst)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		if closeErr := out.Close(); closeErr != nil {
-			if retErr == nil {
-				retErr = closeErr
-			} else {
-				retErr = errors.Join(retErr, closeErr)
-			}
-		}
-	}()
-
-	if _, err := io.Copy(out, in); err != nil {
-		retErr = err
-		return
-	}
-	if err := out.Sync(); err != nil {
-		retErr = err
-		return
-	}
-	return
+	return fileutil.CopyFile(src, dst)
 }
