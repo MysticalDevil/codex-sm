@@ -5,6 +5,7 @@
 Project design notes:
 
 - [Architecture Notes](./docs/ARCHITECTURE.md)
+- [Changelog](./CHANGELOG.md)
 
 ## Compatibility
 
@@ -72,6 +73,7 @@ It provides:
 - Safe deletion (`delete`, dry-run by default)
 - Session restore from trash (`restore`, dry-run by default)
 - Environment diagnostics (`doctor`)
+- Config management (`config show/init/validate`)
 
 ## Features
 
@@ -202,6 +204,10 @@ codexsm group --by health --sort count --order desc --limit 5
 codexsm doctor
 codexsm doctor --strict
 
+# Config checks
+codexsm config show --resolved
+codexsm config validate
+
 # Dry-run delete (default behavior)
 codexsm delete --id-prefix 019ca9
 
@@ -251,6 +257,7 @@ codexsm help group
 codexsm help delete
 codexsm help restore
 codexsm help doctor
+codexsm help config
 codexsm help version
 ```
 

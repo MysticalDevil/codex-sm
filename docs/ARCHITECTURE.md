@@ -6,7 +6,8 @@ Current codebase is acceptable for the current release scope and does not requir
 
 Known hot spot:
 
-- `cli/tui.go` is feature-rich and relatively large; it should be split incrementally (renderer, keymap/action handler, and preview parser) in future iterations.
+- `cli/delete.go` and `cli/restore.go` still contain command orchestration + output responsibilities and should continue converging to thinner wrappers.
+- `session/scanner.go` has been split, but scan/parse/score tuning can still be optimized with benchmarks.
 
 ## Architecture Design
 
@@ -18,16 +19,25 @@ Known hot spot:
 
 2. Command layer:
 - `cli/list.go`
+- `cli/list_columns.go`
+- `cli/pager.go`
+- `cli/ansi.go`
 - `cli/group.go`
 - `cli/delete.go`
 - `cli/restore.go`
 - `cli/tui.go`
+- `cli/tui_view.go`
 - `cli/doctor.go`
+- `cli/config.go`
 
 3. Domain and storage logic:
 - `session/*` for scanning/filtering/delete operations
 - `audit/*` for action logs
 - `config/*` for path and app config resolution
+- `internal/ops/*` for shared operation helpers (`preview mode`, interactive confirms)
+- `internal/fileutil/*` for move/copy file helpers
+- `internal/restoreexec/*` and `internal/deleteexec/*` for operation execution wrappers
+- `internal/tui/layout/*` for TUI layout metrics
 
 4. Test support:
 - `internal/testsupport/*` fixture sandbox helpers
@@ -44,6 +54,18 @@ Rollback flow:
 1. `delete` (soft-delete) writes one `batch_id` into action logs.
 2. `restore --batch-id <id>` resolves session ids from audit logs.
 3. restore scans trash and restores matched sessions under normal safety guards.
+
+## Performance Baselines
+
+Current benchmark baselines are tracked in Go benchmark tests:
+
+- `session/bench_test.go`
+  - `BenchmarkScanSessions`
+  - `BenchmarkFilterSessions`
+- `cli/list_bench_test.go`
+  - `BenchmarkRenderTable`
+
+These baselines are intended to protect refactors in scan/filter/render hot paths.
 
 ## Theme And Color Conventions
 
