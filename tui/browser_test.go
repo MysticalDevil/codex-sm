@@ -627,4 +627,7 @@ func TestRenderTreeLinesMarksMissingHost(t *testing.T) {
 	if !strings.Contains(joined, "! ") {
 		t.Fatalf("expected missing-host marker in tree lines: %q", joined)
 	}
+	if !strings.Contains(joined, "•") {
+		t.Fatalf("expected health marker in tree lines: %q", joined)
+	}
 }

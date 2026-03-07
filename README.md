@@ -27,13 +27,13 @@ export GOEXPERIMENT=jsonv2
 ## Install
 
 ```bash
-GOEXPERIMENT=jsonv2 go install github.com/MysticalDevil/codexsm@v0.2.0
+GOEXPERIMENT=jsonv2 go install github.com/MysticalDevil/codexsm@v0.2.1
 ```
 
 Or with `mise`:
 
 ```bash
-GOEXPERIMENT=jsonv2 mise install go:github.com/MysticalDevil/codexsm@v0.2.0
+GOEXPERIMENT=jsonv2 mise install go:github.com/MysticalDevil/codexsm@v0.2.1
 ```
 
 ## Quick Start
@@ -122,13 +122,13 @@ Example:
 just build
 just check
 just cover-gate
-just check-release 0.2.0
+just check-release 0.2.1
 ```
 
 Release build example:
 
 ```bash
-GOEXPERIMENT=jsonv2 go build -ldflags="-X main.version=0.2.0" -o codexsm .
+GOEXPERIMENT=jsonv2 go build -ldflags="-X main.version=0.2.1" -o codexsm .
 ```
 
 ## License

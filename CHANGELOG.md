@@ -6,6 +6,18 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 
 ## [Unreleased]
 
+## [v0.2.1] - 2026-03-08
+
+### Added
+
+- Added shell completion usage examples to command documentation.
+- Added TUI tree health markers for faster anomaly scanning.
+
+### Changed
+
+- Improved `doctor session_host_paths` readability with compact sample paths and clearer action layout.
+- Updated README and command guide release examples toward `v0.2.1`.
+
 ## [v0.2.0] - 2026-03-08
 
 ### Added

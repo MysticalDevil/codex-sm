@@ -25,6 +25,22 @@ codexsm help doctor
 codexsm help config
 ```
 
+## Shell Completion
+
+```bash
+# Bash
+codexsm completion bash > ~/.local/share/bash-completion/completions/codexsm
+
+# Zsh
+codexsm completion zsh > "${fpath[1]}/_codexsm"
+
+# Fish
+codexsm completion fish > ~/.config/fish/completions/codexsm.fish
+
+# PowerShell
+codexsm completion powershell > codexsm.ps1
+```
+
 ## Session Browsing
 
 ```bash
@@ -132,5 +148,5 @@ just test-all
 just cover
 just cover-gate
 just check
-just check-release 0.2.0
+just check-release 0.2.1
 ```

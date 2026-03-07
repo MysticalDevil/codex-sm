@@ -184,6 +184,13 @@ func (m tuiModel) renderTreeLines(leftW int, statusColor string) []string {
 			label = "! " + label
 		}
 		idText := truncateDisplay(label, idWidth)
+		healthMark := lipgloss.NewStyle().Foreground(lipgloss.Color(statusColor)).Render("•")
+		if item.index >= 0 && item.index < len(m.sessions) {
+			healthMark = lipgloss.NewStyle().
+				Bold(true).
+				Foreground(lipgloss.Color(m.healthColorHex(m.sessions[item.index].Health))).
+				Render("•")
+		}
 		if item.hostMissing {
 			idText = lipgloss.NewStyle().Foreground(lipgloss.Color(m.colorHex("tag_danger"))).Render(idText)
 		}
@@ -193,13 +200,13 @@ func (m tuiModel) renderTreeLines(leftW int, statusColor string) []string {
 					Foreground(lipgloss.Color(m.colorHex("selected_fg"))).
 					Background(lipgloss.Color(m.colorHex("selected_bg"))).
 					Bold(true).Render(idText)
-				leftLines = append(leftLines, lipgloss.NewStyle().Foreground(lipgloss.Color(m.colorHex("cursor_active"))).Render("▌")+" "+connectorPart+idText)
+				leftLines = append(leftLines, lipgloss.NewStyle().Foreground(lipgloss.Color(m.colorHex("cursor_active"))).Render("▌")+" "+connectorPart+healthMark+" "+idText)
 			} else {
 				idText = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(m.colorHex("cursor_inactive"))).Render(idText)
-				leftLines = append(leftLines, lipgloss.NewStyle().Foreground(lipgloss.Color(m.colorHex("cursor_inactive"))).Render("▏")+" "+connectorPart+idText)
+				leftLines = append(leftLines, lipgloss.NewStyle().Foreground(lipgloss.Color(m.colorHex("cursor_inactive"))).Render("▏")+" "+connectorPart+healthMark+" "+idText)
 			}
 		} else {
-			leftLines = append(leftLines, "  "+connectorPart+idText)
+			leftLines = append(leftLines, "  "+connectorPart+healthMark+" "+idText)
 		}
 	}
 	return leftLines
