@@ -6,10 +6,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"text/tabwriter"
 
 	"github.com/MysticalDevil/codexsm/config"
+	"github.com/MysticalDevil/codexsm/session"
 	"github.com/spf13/cobra"
 )
 
@@ -62,12 +64,13 @@ func newDoctorCmd() *cobra.Command {
 }
 
 func runDoctorChecks() []doctorCheck {
-	checks := make([]doctorCheck, 0, 8)
+	checks := make([]doctorCheck, 0, 10)
 
 	checks = append(checks, checkConfigFile())
 
 	sessionsRoot, sessionsErr := runtimeSessionsRoot()
 	checks = append(checks, checkDir("sessions_root", sessionsRoot, sessionsErr))
+	checks = append(checks, checkSessionHostPaths(sessionsRoot, sessionsErr))
 
 	trashRoot, trashErr := runtimeTrashRoot()
 	checks = append(checks, checkDir("trash_root", trashRoot, trashErr))
@@ -75,6 +78,79 @@ func runDoctorChecks() []doctorCheck {
 	logFile, logErr := runtimeLogFile()
 	checks = append(checks, checkLogFile(logFile, logErr))
 	return checks
+}
+
+func checkSessionHostPaths(sessionsRoot string, sessionsErr error) doctorCheck {
+	if sessionsErr != nil {
+		return doctorCheck{Name: "session_host_paths", Level: doctorWarn, Detail: "skipped: sessions_root unresolved"}
+	}
+	if _, err := os.Stat(sessionsRoot); err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return doctorCheck{Name: "session_host_paths", Level: doctorWarn, Detail: "skipped: sessions_root missing"}
+		}
+		return doctorCheck{Name: "session_host_paths", Level: doctorFail, Detail: err.Error()}
+	}
+
+	items, err := session.ScanSessions(sessionsRoot)
+	if err != nil {
+		return doctorCheck{Name: "session_host_paths", Level: doctorFail, Detail: err.Error()}
+	}
+	if len(items) == 0 {
+		return doctorCheck{Name: "session_host_paths", Level: doctorPass, Detail: "no sessions found"}
+	}
+
+	withHost := 0
+	missingCountByHost := make(map[string]int)
+	for _, s := range items {
+		host := strings.TrimSpace(s.HostDir)
+		if host == "" {
+			continue
+		}
+		withHost++
+		if _, statErr := os.Stat(host); statErr == nil {
+			continue
+		} else if errors.Is(statErr, os.ErrNotExist) {
+			missingCountByHost[host]++
+		} else {
+			return doctorCheck{Name: "session_host_paths", Level: doctorFail, Detail: fmt.Sprintf("stat host %s: %v", host, statErr)}
+		}
+	}
+	if len(missingCountByHost) == 0 {
+		return doctorCheck{
+			Name:   "session_host_paths",
+			Level:  doctorPass,
+			Detail: fmt.Sprintf("all host paths exist (sessions=%d with_host=%d)", len(items), withHost),
+		}
+	}
+
+	hosts := make([]string, 0, len(missingCountByHost))
+	for host := range missingCountByHost {
+		hosts = append(hosts, host)
+	}
+	sort.Strings(hosts)
+	sample := hosts
+	if len(sample) > 3 {
+		sample = sample[:3]
+	}
+	var sampleParts []string
+	for _, host := range sample {
+		sampleParts = append(sampleParts, fmt.Sprintf("%s(%d)", host, missingCountByHost[host]))
+	}
+
+	suggestHost := sample[0]
+	return doctorCheck{
+		Name:  "session_host_paths",
+		Level: doctorWarn,
+		Detail: fmt.Sprintf(
+			"missing hosts=%d sessions=%d sample=%s | strategy: review `codexsm list --host-contains %q`; migrate to trash (soft-delete) `codexsm delete --host-contains %q`; optional hard delete after review `codexsm delete --host-contains %q --dry-run=false --confirm --hard`",
+			len(missingCountByHost),
+			withHost,
+			strings.Join(sampleParts, ", "),
+			suggestHost,
+			suggestHost,
+			suggestHost,
+		),
+	}
 }
 
 func checkConfigFile() doctorCheck {

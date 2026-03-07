@@ -1,4 +1,4 @@
-package cli
+package browser
 
 import (
 	"strings"
@@ -7,7 +7,7 @@ import (
 )
 
 func renderKeysLine(width int, theme tuiTheme) string {
-	plain := "[KEYS] Tab/h/l t/p/1/2 switch pane | j/k scroll | g/G top/bottom | Ctrl+d/u preview | d dry-run | q quit"
+	plain := "[KEYS] Tab/h/l t/p/1/2 switch pane | j/k scroll | g/G top/bottom | Ctrl+d/u preview | d/r/m action | y/n confirm | q quit"
 	if width <= 0 {
 		return plain
 	}
@@ -30,6 +30,9 @@ func renderKeysLine(width int, theme tuiTheme) string {
 		lipgloss.NewStyle().Foreground(lipgloss.Color(theme.hex("keys_sep", builtinThemes[defaultTUIThemeName()]["keys_sep"]))).Render(" | "),
 		lipgloss.NewStyle().Foreground(lipgloss.Color(theme.hex("keys_key", builtinThemes[defaultTUIThemeName()]["keys_key"]))).Render("d/r"),
 		lipgloss.NewStyle().Foreground(lipgloss.Color(theme.hex("keys_text", builtinThemes[defaultTUIThemeName()]["keys_text"]))).Render(" action"),
+		lipgloss.NewStyle().Foreground(lipgloss.Color(theme.hex("keys_sep", builtinThemes[defaultTUIThemeName()]["keys_sep"]))).Render(" | "),
+		lipgloss.NewStyle().Foreground(lipgloss.Color(theme.hex("keys_key", builtinThemes[defaultTUIThemeName()]["keys_key"]))).Render("m"),
+		lipgloss.NewStyle().Foreground(lipgloss.Color(theme.hex("keys_text", builtinThemes[defaultTUIThemeName()]["keys_text"]))).Render(" migrate-host"),
 		lipgloss.NewStyle().Foreground(lipgloss.Color(theme.hex("keys_sep", builtinThemes[defaultTUIThemeName()]["keys_sep"]))).Render(" | "),
 		lipgloss.NewStyle().Foreground(lipgloss.Color(theme.hex("keys_key", builtinThemes[defaultTUIThemeName()]["keys_key"]))).Render("y/n"),
 		lipgloss.NewStyle().Foreground(lipgloss.Color(theme.hex("keys_text", builtinThemes[defaultTUIThemeName()]["keys_text"]))).Render(" confirm"),

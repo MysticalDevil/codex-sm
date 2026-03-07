@@ -1,4 +1,4 @@
-package cli
+package browser
 
 import (
 	"os"
@@ -284,6 +284,36 @@ func TestRebuildTreeGroupingModes(t *testing.T) {
 	}
 }
 
+func TestRebuildTreeHostGroupingDoesNotDuplicateHeaders(t *testing.T) {
+	m := tuiModel{
+		groupBy: "host",
+		home:    "",
+		sessions: []session.Session{
+			{SessionID: "s1", UpdatedAt: time.Date(2026, 3, 5, 11, 0, 0, 0, time.Local), HostDir: "/host/a"},
+			{SessionID: "s2", UpdatedAt: time.Date(2026, 3, 5, 10, 0, 0, 0, time.Local), HostDir: "/host/b"},
+			{SessionID: "s3", UpdatedAt: time.Date(2026, 3, 5, 9, 0, 0, 0, time.Local), HostDir: "/host/a"},
+			{SessionID: "s4", UpdatedAt: time.Date(2026, 3, 5, 8, 0, 0, 0, time.Local), HostDir: "/host/b"},
+		},
+	}
+	m.rebuildTree()
+
+	groupHeaderCount := 0
+	seenHeaders := map[string]struct{}{}
+	for _, item := range m.tree {
+		if item.kind != treeItemMonth {
+			continue
+		}
+		groupHeaderCount++
+		if _, exists := seenHeaders[item.month]; exists {
+			t.Fatalf("duplicate group header found for host %q", item.month)
+		}
+		seenHeaders[item.month] = struct{}{}
+	}
+	if groupHeaderCount != 2 {
+		t.Fatalf("expected 2 host group headers, got %d", groupHeaderCount)
+	}
+}
+
 func TestPreviewHostPath(t *testing.T) {
 	tests := []struct {
 		name  string
@@ -507,5 +537,66 @@ func TestTUIRequestDeletePendingAndConfirm(t *testing.T) {
 	}
 	if !strings.Contains(m.status, "delete: action=") {
 		t.Fatalf("unexpected status: %q", m.status)
+	}
+}
+
+func TestTUIRequestHostMigrateDryRunMissingHost(t *testing.T) {
+	workspace := testsupport.PrepareFixtureSandbox(t, "rich")
+	sessionsRoot := filepath.Join(workspace, "sessions")
+	missingHost := filepath.Join(workspace, "missing-host")
+	otherHost := t.TempDir()
+
+	m := tuiModel{
+		sessions: []session.Session{
+			{SessionID: "s1", Path: filepath.Join(workspace, "sessions", "2026", "03", "02", "rollout-delete-dry.jsonl"), UpdatedAt: time.Now(), HostDir: missingHost},
+			{SessionID: "s2", Path: filepath.Join(workspace, "sessions", "2026", "03", "02", "rollout-delete-prefix-1.jsonl"), UpdatedAt: time.Now().Add(-time.Minute), HostDir: missingHost},
+			{SessionID: "s3", Path: filepath.Join(workspace, "sessions", "2026", "03", "02", "rollout-delete-prefix-2.jsonl"), UpdatedAt: time.Now().Add(-2 * time.Minute), HostDir: otherHost},
+		},
+		sessionsRoot: sessionsRoot,
+		trashRoot:    filepath.Join(workspace, "trash"),
+		dryRun:       true,
+		source:       "sessions",
+		maxBatch:     10,
+		previewCache: map[string][]string{},
+	}
+	m.rebuildTree()
+	m.requestHostMigrate()
+	if !strings.Contains(m.status, "migrate-host: action=dry-run matched=2") {
+		t.Fatalf("unexpected status: %q", m.status)
+	}
+}
+
+func TestTUIRequestHostMigrateRejectsExistingHost(t *testing.T) {
+	host := t.TempDir()
+	m := tuiModel{
+		sessions: []session.Session{
+			{SessionID: "s1", Path: filepath.Join(t.TempDir(), "noop.jsonl"), UpdatedAt: time.Now(), HostDir: host},
+		},
+		dryRun:       true,
+		source:       "sessions",
+		maxBatch:     10,
+		previewCache: map[string][]string{},
+	}
+	m.rebuildTree()
+	m.requestHostMigrate()
+	if !strings.Contains(m.status, "Selected host path exists") {
+		t.Fatalf("unexpected status: %q", m.status)
+	}
+}
+
+func TestRenderTreeLinesMarksMissingHost(t *testing.T) {
+	missingHost := filepath.Join(t.TempDir(), "missing-host")
+	m := tuiModel{
+		groupBy: "none",
+		sessions: []session.Session{
+			{SessionID: "s1", UpdatedAt: time.Now(), HostDir: missingHost},
+		},
+		previewCache: map[string][]string{},
+	}
+	m.rebuildTree()
+	lines := m.renderTreeLines(80, "#999999")
+	joined := stripANSIForTest(strings.Join(lines, "\n"))
+	if !strings.Contains(joined, "! ") {
+		t.Fatalf("expected missing-host marker in tree lines: %q", joined)
 	}
 }

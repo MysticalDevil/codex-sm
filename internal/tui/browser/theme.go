@@ -1,4 +1,4 @@
-package cli
+package browser
 
 import (
 	"fmt"
@@ -106,6 +106,15 @@ func cloneColorMap(m map[string]string) map[string]string {
 		out[k] = v
 	}
 	return out
+}
+
+func DefaultThemeName() string {
+	return defaultTUIThemeName()
+}
+
+func ValidateTheme(cfgName string, cfgColors map[string]string, flagName string, flagColors []string) error {
+	_, err := resolveTUITheme(cfgName, cfgColors, flagName, flagColors)
+	return err
 }
 
 var builtinThemes = map[string]map[string]string{

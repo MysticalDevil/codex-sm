@@ -1,7 +1,9 @@
-package cli
+package browser
 
 import (
+	"errors"
 	"fmt"
+	"os"
 	"slices"
 	"strings"
 
@@ -69,25 +71,46 @@ func (m *tuiModel) rebuildTree() {
 	if mode == "" {
 		mode = "month"
 	}
-	currentGroup := ""
-	for i, s := range m.sessions {
-		group := m.groupKeyForSession(s, mode)
-		if mode != "none" && group != currentGroup {
-			currentGroup = group
+	if mode == "none" {
+		for i, s := range m.sessions {
+			m.tree = append(m.tree, treeItem{
+				kind:        treeItemSession,
+				label:       shortID(s.SessionID),
+				month:       m.groupKeyForSession(s, mode),
+				index:       i,
+				indent:      1,
+				hostMissing: m.sessionHostMissing(s),
+			})
+		}
+	} else {
+		groupOrder := make([]string, 0, len(m.sessions))
+		grouped := make(map[string][]int, len(m.sessions))
+		for i, s := range m.sessions {
+			group := m.groupKeyForSession(s, mode)
+			if _, exists := grouped[group]; !exists {
+				groupOrder = append(groupOrder, group)
+			}
+			grouped[group] = append(grouped[group], i)
+		}
+
+		for _, group := range groupOrder {
 			m.tree = append(m.tree, treeItem{
 				kind:   treeItemMonth,
 				label:  "▾ " + group,
 				month:  group,
 				indent: 0,
 			})
+			for _, i := range grouped[group] {
+				m.tree = append(m.tree, treeItem{
+					kind:        treeItemSession,
+					label:       shortID(m.sessions[i].SessionID),
+					month:       group,
+					index:       i,
+					indent:      1,
+					hostMissing: m.sessionHostMissing(m.sessions[i]),
+				})
+			}
 		}
-		m.tree = append(m.tree, treeItem{
-			kind:   treeItemSession,
-			label:  shortID(s.SessionID),
-			month:  group,
-			index:  i,
-			indent: 1,
-		})
 	}
 	m.cursor = 0
 	m.skipToSelectable(1)
@@ -171,10 +194,33 @@ func (m *tuiModel) selectedSession() (session.Session, bool) {
 	return m.sessions[item.index], true
 }
 
+func (m *tuiModel) selectedSessionHostMissing() bool {
+	if len(m.tree) == 0 || m.cursor < 0 || m.cursor >= len(m.tree) {
+		return false
+	}
+	item := m.tree[m.cursor]
+	if item.kind != treeItemSession {
+		return false
+	}
+	return item.hostMissing
+}
+
+func (m *tuiModel) sessionHostMissing(s session.Session) bool {
+	host := strings.TrimSpace(s.HostDir)
+	if host == "" {
+		return false
+	}
+	_, err := os.Stat(host)
+	return errors.Is(err, os.ErrNotExist)
+}
+
 func (m *tuiModel) detailRows(selected session.Session) (header string, values string) {
 	host := compactHomePath(selected.HostDir, m.home)
 	if strings.TrimSpace(host) == "" {
 		host = "-"
+	}
+	if m.selectedSessionHostMissing() {
+		host += " (missing)"
 	}
 	contentWidth := max(40, m.width-4)
 	hostW := max(18, minInt(36, contentWidth/3))

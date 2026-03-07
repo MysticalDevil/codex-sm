@@ -1,4 +1,4 @@
-package cli
+package browser
 
 import (
 	"fmt"
@@ -179,7 +179,14 @@ func (m tuiModel) renderTreeLines(leftW int, statusColor string) []string {
 		}
 		connectorPart := lipgloss.NewStyle().Foreground(lipgloss.Color(statusColor)).Render("  " + connector + " ")
 		idWidth := max(4, leftW-10)
-		idText := truncateDisplay(item.label, idWidth)
+		label := item.label
+		if item.hostMissing {
+			label = "! " + label
+		}
+		idText := truncateDisplay(label, idWidth)
+		if item.hostMissing {
+			idText = lipgloss.NewStyle().Foreground(lipgloss.Color(m.colorHex("tag_danger"))).Render(idText)
+		}
 		if i == m.cursor {
 			if m.focus == focusTree {
 				idText = lipgloss.NewStyle().
