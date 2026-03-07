@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
-	"text/tabwriter"
 
 	"github.com/MysticalDevil/codexsm/config"
 	"github.com/MysticalDevil/codexsm/session"
@@ -128,24 +127,24 @@ func checkSessionHostPaths(sessionsRoot string, sessionsErr error) doctorCheck {
 		hosts = append(hosts, host)
 	}
 	sort.Strings(hosts)
-	sample := hosts
-	if len(sample) > 3 {
-		sample = sample[:3]
+	displayHosts := hosts
+	if len(displayHosts) > 3 {
+		displayHosts = displayHosts[:3]
 	}
-	var sampleParts []string
-	for _, host := range sample {
-		sampleParts = append(sampleParts, fmt.Sprintf("%s(%d)", host, missingCountByHost[host]))
+	hostLines := make([]string, 0, len(displayHosts))
+	for _, host := range displayHosts {
+		hostLines = append(hostLines, fmt.Sprintf("- %s (%d)", host, missingCountByHost[host]))
 	}
 
-	suggestHost := sample[0]
+	suggestHost := displayHosts[0]
 	return doctorCheck{
 		Name:  "session_host_paths",
 		Level: doctorWarn,
 		Detail: fmt.Sprintf(
-			"missing hosts=%d sessions=%d sample=%s\nstrategy:\n- review `codexsm list --host-contains %q`\n- migrate to trash (soft-delete) `codexsm delete --host-contains %q`\n- optional hard delete after review `codexsm delete --host-contains %q --dry-run=false --confirm --hard`",
+			"missing_hosts=%d impacted_sessions=%d\nsample_hosts:\n%s\nrecommended_actions:\n1. review: codexsm list --host-contains %s\n2. migrate (soft-delete): codexsm delete --host-contains %s\n3. optional hard-delete: codexsm delete --host-contains %s --dry-run=false --confirm --hard",
 			len(missingCountByHost),
 			withHost,
-			strings.Join(sampleParts, ", "),
+			strings.Join(hostLines, "\n"),
 			suggestHost,
 			suggestHost,
 			suggestHost,
@@ -233,10 +232,30 @@ func isWritableDir(path string) (bool, string) {
 
 func renderDoctorChecks(checks []doctorCheck, color bool) string {
 	var buf bytes.Buffer
-	w := tabwriter.NewWriter(&buf, 2, 4, 2, ' ', 0)
-	_, _ = fmt.Fprintln(w, "CHECK\tSTATUS\tDETAIL")
+
+	checkW := len("CHECK")
+	statusW := len("STATUS")
 	for _, c := range checks {
-		status := string(c.Level)
+		if len(c.Name) > checkW {
+			checkW = len(c.Name)
+		}
+		if len(c.Level) > statusW {
+			statusW = len(c.Level)
+		}
+	}
+
+	headCheck := padRight("CHECK", checkW)
+	headStatus := padRight("STATUS", statusW)
+	headDetail := "DETAIL"
+	if color {
+		headCheck = colorize(headCheck, ansiCyanBold, true)
+		headStatus = colorize(headStatus, ansiCyanBold, true)
+		headDetail = colorize(headDetail, ansiCyanBold, true)
+	}
+	_, _ = fmt.Fprintf(&buf, "%s  %s  %s\n", headCheck, headStatus, headDetail)
+
+	for _, c := range checks {
+		status := padRight(string(c.Level), statusW)
 		if color {
 			switch c.Level {
 			case doctorPass:
@@ -251,13 +270,19 @@ func renderDoctorChecks(checks []doctorCheck, color bool) string {
 		if len(lines) == 0 {
 			lines = []string{""}
 		}
-		_, _ = fmt.Fprintf(w, "%s\t%s\t%s\n", c.Name, status, lines[0])
+		_, _ = fmt.Fprintf(&buf, "%s  %s  %s\n", padRight(c.Name, checkW), status, lines[0])
 		for _, line := range lines[1:] {
-			_, _ = fmt.Fprintf(w, "\t\t%s\n", line)
+			_, _ = fmt.Fprintf(&buf, "%s  %s  %s\n", strings.Repeat(" ", checkW), strings.Repeat(" ", statusW), line)
 		}
 	}
-	_ = w.Flush()
 	return buf.String()
+}
+
+func padRight(s string, width int) string {
+	if len(s) >= width {
+		return s
+	}
+	return s + strings.Repeat(" ", width-len(s))
 }
 
 func doctorDetailLines(detail string) []string {

@@ -62,10 +62,10 @@ func TestCheckSessionHostPathsWarnsWhenHostMissing(t *testing.T) {
 	if got.Level != doctorWarn {
 		t.Fatalf("expected warn, got %s detail=%q", got.Level, got.Detail)
 	}
-	if !strings.Contains(got.Detail, "migrate to trash (soft-delete)") {
-		t.Fatalf("expected migrate strategy in detail, got: %q", got.Detail)
+	if !strings.Contains(got.Detail, "recommended_actions:") {
+		t.Fatalf("expected action block in detail, got: %q", got.Detail)
 	}
-	if !strings.Contains(got.Detail, "codexsm delete --host-contains") {
+	if !strings.Contains(got.Detail, "migrate (soft-delete): codexsm delete --host-contains") {
 		t.Fatalf("expected delete suggestion in detail, got: %q", got.Detail)
 	}
 }

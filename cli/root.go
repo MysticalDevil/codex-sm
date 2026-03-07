@@ -52,6 +52,7 @@ func NewRootCmd() *cobra.Command {
 	cmd.AddCommand(newRestoreCmd())
 	cmd.AddCommand(newConfigCmd())
 	cmd.AddCommand(newTUICmd())
+	cmd.AddCommand(newCompletionCmd())
 	cmd.AddCommand(newVersionCmd())
 	cmd.AddCommand(newDoctorCmd())
 	applyHelpStyles(cmd)
