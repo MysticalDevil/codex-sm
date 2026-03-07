@@ -132,5 +132,5 @@ just test-all
 just cover
 just cover-gate
 just check
-just check-release 0.1.9
+just check-release 0.2.0
 ```

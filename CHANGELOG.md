@@ -6,6 +6,24 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 
 ## [Unreleased]
 
+## [v0.2.0] - 2026-03-08
+
+### Added
+
+- Added shell completion command: `codexsm completion [bash|zsh|fish|powershell]`.
+- Added completion command tests for valid and invalid shell cases.
+
+### Changed
+
+- Improved `doctor` output readability:
+  - uppercased status values (`PASS/WARN/FAIL`)
+  - colored table headers
+  - aligned multi-line detail rendering
+  - clearer `session_host_paths` action block
+- Updated display-layer health statuses to uppercase in CLI list and TUI (`OK/CORRUPTED/MISSING-META`).
+- Polished README and docs command/architecture presentation.
+- Updated release examples and checks toward `v0.2.0`.
+
 ## [v0.1.9] - 2026-03-08
 
 ### Added
