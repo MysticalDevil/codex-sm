@@ -1,0 +1,2 @@
+[env]
+GOEXPERIMENT = "jsonv2"
