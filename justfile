@@ -13,6 +13,12 @@ bin := env_var_or_default("BIN", "codexsm")
 integration_pkg := env_var_or_default("INTEGRATION_PKG", "./cli")
 unit_cov_min := env_var_or_default("UNIT_COV_MIN", "50")
 integration_cov_min := env_var_or_default("INTEGRATION_COV_MIN", "65")
+gen_seed := env_var_or_default("GEN_SEED", "20260308")
+gen_count := env_var_or_default("GEN_COUNT", "20")
+gen_min_turns := env_var_or_default("GEN_MIN_TURNS", "40")
+gen_max_turns := env_var_or_default("GEN_MAX_TURNS", "240")
+gen_start_time := env_var_or_default("GEN_START_TIME", "2026-03-01T00:00:00Z")
+gen_output_root := env_var_or_default("GEN_OUTPUT_ROOT", "tmp/generated-sessions")
 
 # Show available targets
 default:
@@ -76,6 +82,16 @@ check-release version:
 # Build local binary
 build:
   {{go_with_experiment}} build -ldflags="-X main.version={{version}}" -o {{bin}} .
+
+# Generate seeded random session dataset
+gen-sessions:
+  python3 scripts/gen_seeded_sessions.py \
+    --seed {{gen_seed}} \
+    --count {{gen_count}} \
+    --min-turns {{gen_min_turns}} \
+    --max-turns {{gen_max_turns}} \
+    --start-time {{gen_start_time}} \
+    --output-root {{gen_output_root}}
 
 # Remove generated coverage files
 clean:
