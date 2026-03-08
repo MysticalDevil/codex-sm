@@ -103,9 +103,9 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Generate deterministic random Codex session files.")
     parser.add_argument("--output-root", default="testdata/_generated/sessions", help="output root directory")
     parser.add_argument("--seed", type=int, required=True, help="RNG seed for deterministic output")
-    parser.add_argument("--count", type=int, default=20, help="number of session files to generate")
-    parser.add_argument("--min-turns", type=int, default=40, help="minimum conversation turns per session")
-    parser.add_argument("--max-turns", type=int, default=240, help="maximum conversation turns per session")
+    parser.add_argument("--count", type=int, default=3000, help="number of session files to generate")
+    parser.add_argument("--min-turns", type=int, default=12, help="minimum conversation turns per session")
+    parser.add_argument("--max-turns", type=int, default=48, help="maximum conversation turns per session")
     parser.add_argument(
         "--start-time",
         default="2026-03-01T00:00:00Z",
