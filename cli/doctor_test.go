@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bytes"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"os"
@@ -89,6 +90,70 @@ func TestDoctorRiskCommandPassesWhenNoRiskFound(t *testing.T) {
 	}
 	if !strings.Contains(stdout.String(), "no risky sessions found") {
 		t.Fatalf("expected no-risk output, got: %q", stdout.String())
+	}
+}
+
+func TestDoctorRiskCommandJSONFormat(t *testing.T) {
+	workspace := testsupport.PrepareFixtureSandbox(t, "rich")
+	root := filepath.Join(workspace, "sessions")
+	cmd := NewRootCmd()
+	stdout := &bytes.Buffer{}
+	cmd.SetOut(stdout)
+	cmd.SetErr(&bytes.Buffer{})
+	cmd.SetArgs([]string{"doctor", "risk", "--sessions-root", root, "--format", "json", "--sample-limit", "2"})
+	err := cmd.Execute()
+	if err == nil {
+		t.Fatal("expected non-zero when risky sessions exist")
+	}
+
+	var payload struct {
+		SessionsTotal int `json:"sessions_total"`
+		RiskTotal     int `json:"risk_total"`
+		SampleLimit   int `json:"sample_limit"`
+		Samples       []struct {
+			Level string `json:"level"`
+			Path  string `json:"path"`
+		} `json:"samples"`
+	}
+	if unmarshalErr := json.Unmarshal(stdout.Bytes(), &payload); unmarshalErr != nil {
+		t.Fatalf("json unmarshal: %v output=%q", unmarshalErr, stdout.String())
+	}
+	if payload.SessionsTotal == 0 || payload.RiskTotal == 0 {
+		t.Fatalf("unexpected json payload: %+v", payload)
+	}
+	if payload.SampleLimit != 2 {
+		t.Fatalf("expected sample limit=2, got %+v", payload)
+	}
+}
+
+func TestDoctorRiskCommandIntegrityMismatchIsRisk(t *testing.T) {
+	sessionsRoot := t.TempDir()
+	host := t.TempDir()
+	writeDoctorSessionFixture(t, sessionsRoot, "oksha", host)
+	p := filepath.Join(sessionsRoot, "2026", "03", "08", "oksha.jsonl")
+	if err := os.WriteFile(p+".sha256", []byte(strings.Repeat("0", 64)+"  oksha.jsonl\n"), 0o644); err != nil {
+		t.Fatalf("write sidecar: %v", err)
+	}
+
+	cmd := NewRootCmd()
+	stdout := &bytes.Buffer{}
+	cmd.SetOut(stdout)
+	cmd.SetErr(&bytes.Buffer{})
+	cmd.SetArgs([]string{"doctor", "risk", "--sessions-root", sessionsRoot, "--format", "json", "--integrity-check=true"})
+	err := cmd.Execute()
+	if err == nil {
+		t.Fatal("expected risk detection")
+	}
+
+	var payload struct {
+		RiskTotal int `json:"risk_total"`
+		High      int `json:"high"`
+	}
+	if unmarshalErr := json.Unmarshal(stdout.Bytes(), &payload); unmarshalErr != nil {
+		t.Fatalf("json unmarshal: %v output=%q", unmarshalErr, stdout.String())
+	}
+	if payload.RiskTotal == 0 || payload.High == 0 {
+		t.Fatalf("expected high risk from integrity mismatch, got %+v", payload)
 	}
 }
 

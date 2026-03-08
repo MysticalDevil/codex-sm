@@ -31,6 +31,7 @@ func NewRootCmd() *cobra.Command {
 			"  codexsm config show --resolved\n" +
 			"  codexsm delete --id <session_id>\n" +
 			"  codexsm doctor\n" +
+			"  codexsm doctor risk --format json\n" +
 			"  codexsm version --short\n" +
 			"  codexsm help delete",
 		RunE: func(cmd *cobra.Command, args []string) error {

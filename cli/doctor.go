@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bytes"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"os"
@@ -67,6 +68,8 @@ func newDoctorRiskCmd() *cobra.Command {
 	var (
 		sessionsRoot string
 		sampleLimit  int
+		format       string
+		integrity    bool
 	)
 	cmd := &cobra.Command{
 		Use:   "risk",
@@ -78,7 +81,8 @@ func newDoctorRiskCmd() *cobra.Command {
 			"  - extension point reserved for integrity checks",
 		Example: "  codexsm doctor risk\n" +
 			"  codexsm doctor risk --sessions-root ~/.codex/sessions\n" +
-			"  codexsm doctor risk --sample-limit 20",
+			"  codexsm doctor risk --sample-limit 20\n" +
+			"  codexsm doctor risk --format json --integrity-check",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			root := strings.TrimSpace(sessionsRoot)
 			if root == "" {
@@ -106,11 +110,15 @@ func newDoctorRiskCmd() *cobra.Command {
 				Session session.Session
 				Risk    session.Risk
 			}
+			var checker session.IntegrityChecker
+			if integrity {
+				checker = session.SHA256SidecarChecker
+			}
 			risky := make([]riskyItem, 0, len(items))
 			highCount := 0
 			mediumCount := 0
 			for _, s := range items {
-				r := session.EvaluateRisk(s, nil)
+				r := session.EvaluateRisk(s, checker)
 				if r.Level == session.RiskNone {
 					continue
 				}
@@ -139,9 +147,75 @@ func newDoctorRiskCmd() *cobra.Command {
 			if len(items) > 0 {
 				rate = float64(len(risky)) / float64(len(items)) * 100
 			}
+			usedFormat := strings.ToLower(strings.TrimSpace(format))
+			if usedFormat == "" {
+				usedFormat = "text"
+			}
+			if usedFormat != "text" && usedFormat != "json" {
+				return WithExitCode(fmt.Errorf("invalid --format %q (allowed: text, json)", format), 2)
+			}
+			if usedFormat == "json" {
+				type riskSample struct {
+					Level     session.RiskLevel  `json:"level"`
+					Reason    session.RiskReason `json:"reason"`
+					Health    session.Health     `json:"health"`
+					SessionID string             `json:"session_id"`
+					Path      string             `json:"path"`
+					Detail    string             `json:"detail,omitempty"`
+				}
+				type riskReport struct {
+					SessionsTotal  int          `json:"sessions_total"`
+					RiskTotal      int          `json:"risk_total"`
+					RiskRate       float64      `json:"risk_rate"`
+					High           int          `json:"high"`
+					Medium         int          `json:"medium"`
+					IntegrityCheck bool         `json:"integrity_check"`
+					SampleLimit    int          `json:"sample_limit"`
+					Samples        []riskSample `json:"samples"`
+				}
+				rep := riskReport{
+					SessionsTotal:  len(items),
+					RiskTotal:      len(risky),
+					RiskRate:       rate,
+					High:           highCount,
+					Medium:         mediumCount,
+					IntegrityCheck: integrity,
+					SampleLimit:    sampleLimit,
+					Samples:        make([]riskSample, 0, minInt(sampleLimit, len(risky))),
+				}
+				for i, item := range risky {
+					if i >= sampleLimit {
+						break
+					}
+					rep.Samples = append(rep.Samples, riskSample{
+						Level:     item.Risk.Level,
+						Reason:    item.Risk.Reason,
+						Health:    item.Session.Health,
+						SessionID: item.Session.SessionID,
+						Path:      item.Session.Path,
+						Detail:    item.Risk.Detail,
+					})
+				}
+				b, err := json.Marshal(rep)
+				if err != nil {
+					return WithExitCode(err, 2)
+				}
+				if _, err := fmt.Fprintln(cmd.OutOrStdout(), string(b)); err != nil {
+					return err
+				}
+				if len(risky) > 0 {
+					return WithExitCode(fmt.Errorf("risk sessions detected: %d", len(risky)), 1)
+				}
+				return nil
+			}
+
 			var buf bytes.Buffer
 			_, _ = fmt.Fprintf(&buf, "RISK SUMMARY\n")
-			_, _ = fmt.Fprintf(&buf, "sessions_total=%d risk_total=%d risk_rate=%.1f%% high=%d medium=%d\n", len(items), len(risky), rate, highCount, mediumCount)
+			_, _ = fmt.Fprintf(
+				&buf,
+				"sessions_total=%d risk_total=%d risk_rate=%.1f%% high=%d medium=%d integrity_check=%v\n",
+				len(items), len(risky), rate, highCount, mediumCount, integrity,
+			)
 			if len(risky) == 0 {
 				_, _ = fmt.Fprintln(&buf, "no risky sessions found")
 				if _, err := fmt.Fprint(cmd.OutOrStdout(), buf.String()); err != nil {
@@ -175,9 +249,19 @@ func newDoctorRiskCmd() *cobra.Command {
 			return WithExitCode(fmt.Errorf("risk sessions detected: %d", len(risky)), 1)
 		},
 	}
+	cmd.SilenceUsage = true
 	cmd.Flags().StringVar(&sessionsRoot, "sessions-root", "", "sessions root directory")
 	cmd.Flags().IntVar(&sampleLimit, "sample-limit", 10, "max risky sessions to print")
+	cmd.Flags().StringVar(&format, "format", "text", "output format: text|json")
+	cmd.Flags().BoolVar(&integrity, "integrity-check", true, "enable SHA256 sidecar integrity check")
 	return cmd
+}
+
+func minInt(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
 
 func riskRank(level session.RiskLevel) int {
