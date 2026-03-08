@@ -220,7 +220,7 @@ func validateAppConfig(cfg config.AppConfig) error {
 	checkPath("log_file", cfg.LogFile)
 
 	if v := strings.ToLower(strings.TrimSpace(cfg.TUI.GroupBy)); v != "" {
-		allowed := []string{"host", "month"}
+		allowed := []string{"host", "day", "month"}
 		if !slices.Contains(allowed, v) {
 			errs = append(errs, fmt.Errorf("tui.group_by: invalid value %q (allowed: %s)", cfg.TUI.GroupBy, strings.Join(allowed, ", ")))
 		}

@@ -25,6 +25,11 @@ func TestValidateAppConfig(t *testing.T) {
 	if err := validateAppConfig(valid); err != nil {
 		t.Fatalf("validateAppConfig valid: %v", err)
 	}
+	validDay := valid
+	validDay.TUI.GroupBy = "day"
+	if err := validateAppConfig(validDay); err != nil {
+		t.Fatalf("validateAppConfig valid day group: %v", err)
+	}
 
 	badGroup := valid
 	badGroup.TUI.GroupBy = "weekly"

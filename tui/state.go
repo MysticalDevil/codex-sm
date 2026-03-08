@@ -107,6 +107,11 @@ func (m *tuiModel) rebuildTree() {
 
 func (m *tuiModel) groupKeyForSession(s session.Session, mode string) string {
 	switch mode {
+	case "day":
+		if s.UpdatedAt.IsZero() {
+			return "unknown-day"
+		}
+		return s.UpdatedAt.Local().Format("2006-01-02")
 	case "host":
 		host := compactHomePath(s.HostDir, m.home)
 		if strings.TrimSpace(host) == "" {
@@ -129,10 +134,10 @@ func normalizeTUIGroupBy(v string) (string, error) {
 		mode = "host"
 	}
 	switch mode {
-	case "month", "host":
+	case "month", "day", "host":
 		return mode, nil
 	default:
-		return "", fmt.Errorf("invalid --group-by %q (allowed: month, host)", v)
+		return "", fmt.Errorf("invalid --group-by %q (allowed: month, day, host)", v)
 	}
 }
 

@@ -220,7 +220,7 @@ func TestClassifyAngleTag(t *testing.T) {
 }
 
 func TestNormalizeTUIGroupBy(t *testing.T) {
-	okCases := []string{"month", "host", ""}
+	okCases := []string{"month", "day", "host", ""}
 	for _, in := range okCases {
 		got, err := normalizeTUIGroupBy(in)
 		if err != nil {
@@ -247,6 +247,7 @@ func TestRebuildTreeGroupingModes(t *testing.T) {
 		expectGroupNodes bool
 	}{
 		{mode: "month", expectGroupNodes: true},
+		{mode: "day", expectGroupNodes: true},
 		{mode: "host", expectGroupNodes: true},
 	}
 	for _, tc := range tests {
@@ -368,6 +369,9 @@ func TestGroupKeyForSession(t *testing.T) {
 	}
 	if got := m.groupKeyForSession(s, "month"); got == "" || !strings.Contains(got, "2026-03") {
 		t.Fatalf("month group key unexpected: %q", got)
+	}
+	if got := m.groupKeyForSession(s, "day"); got == "" || !strings.Contains(got, "2026-03-05") {
+		t.Fatalf("day group key unexpected: %q", got)
 	}
 	if got := m.groupKeyForSession(s, "host"); got == "" || !strings.Contains(got, "~/work/project") {
 		t.Fatalf("host group key unexpected: %q", got)
