@@ -25,7 +25,7 @@ func (m tuiModel) View() string {
 		Padding(0, 1)
 	renderKeysBar := func(outerW int) string {
 		innerW := max(1, outerW-keysPanelStyle.GetHorizontalFrameSize())
-		keysLine := fitStyledWidth(renderKeysLine(innerW, m.theme), innerW)
+		keysLine := fitStyledWidth(m.renderBottomLine(innerW), innerW)
 		bar := keysPanelStyle.Render(keysLine)
 		return lipgloss.NewStyle().Width(outerW).MaxWidth(outerW).Render(bar)
 	}
@@ -290,4 +290,25 @@ func fitStyledWidth(v string, width int) string {
 		return v
 	}
 	return v + strings.Repeat(" ", width-w)
+}
+
+func (m tuiModel) renderBottomLine(width int) string {
+	if m.pendingAction == "" {
+		return renderKeysLine(width, m.theme)
+	}
+	target := shortID(strings.TrimSpace(m.pendingID))
+	if target == "" {
+		target = "-"
+	}
+	action := strings.ToUpper(strings.TrimSpace(m.pendingAction))
+	plain := fmt.Sprintf("PENDING %s %s | Press Y to confirm, N to cancel", action, target)
+	padded := truncateDisplay(plain, width)
+	if w := lipgloss.Width(padded); w < width {
+		padded += strings.Repeat(" ", width-w)
+	}
+	return lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color(m.colorHex("bg"))).
+		Background(lipgloss.Color(m.colorHex("tag_error"))).
+		Render(padded)
 }

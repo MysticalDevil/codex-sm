@@ -518,6 +518,36 @@ func TestTUIViewKeysBarWidthMatchesMainArea(t *testing.T) {
 	}
 }
 
+func TestTUIViewShowsPendingConfirmInKeysBar(t *testing.T) {
+	workspace := testsupport.PrepareFixtureSandbox(t, "rich")
+	sessionsRoot := filepath.Join(workspace, "sessions")
+	sessions, err := session.ScanSessions(sessionsRoot)
+	if err != nil {
+		t.Fatalf("scan sessions: %v", err)
+	}
+	if len(sessions) == 0 {
+		t.Fatal("expected rich fixture sessions")
+	}
+	m := tuiModel{
+		sessions:      sessions,
+		width:         120,
+		height:        32,
+		previewCache:  make(map[string][]string),
+		groupBy:       "host",
+		focus:         focusTree,
+		pendingAction: "delete",
+		pendingID:     sessions[0].SessionID,
+	}
+	m.rebuildTree()
+	out := stripANSIForTest(m.View())
+	if !strings.Contains(out, "PENDING DELETE") {
+		t.Fatalf("expected pending banner in keys bar, got: %q", out)
+	}
+	if !strings.Contains(out, "Press Y to confirm, N to cancel") {
+		t.Fatalf("expected confirm hint in keys bar, got: %q", out)
+	}
+}
+
 func TestTUIUpdateAndDryRunPreview(t *testing.T) {
 	workspace := testsupport.PrepareFixtureSandbox(t, "rich")
 	sessionsRoot := filepath.Join(workspace, "sessions")
@@ -610,6 +640,46 @@ func TestTUIRequestDeletePendingAndConfirm(t *testing.T) {
 	}
 	if !strings.Contains(m.status, "delete: action=") {
 		t.Fatalf("unexpected status: %q", m.status)
+	}
+}
+
+func TestRemoveSelectedSessionKeepsCursorAndMovesToNext(t *testing.T) {
+	now := time.Now()
+	m := tuiModel{
+		groupBy: "host",
+		sessions: []session.Session{
+			{SessionID: "s1", UpdatedAt: now, HostDir: "/tmp/h"},
+			{SessionID: "s2", UpdatedAt: now.Add(-time.Minute), HostDir: "/tmp/h"},
+			{SessionID: "s3", UpdatedAt: now.Add(-2 * time.Minute), HostDir: "/tmp/h"},
+		},
+		previewCache: map[string][]string{},
+	}
+	m.rebuildTree()
+
+	findCursorByID := func(id string) int {
+		for i, item := range m.tree {
+			if item.kind != treeItemSession || item.index < 0 || item.index >= len(m.sessions) {
+				continue
+			}
+			if m.sessions[item.index].SessionID == id {
+				return i
+			}
+		}
+		return -1
+	}
+	cur := findCursorByID("s2")
+	if cur < 0 {
+		t.Fatal("failed to locate s2 in tree")
+	}
+	m.cursor = cur
+	m.removeSelectedSession()
+
+	got, ok := m.selectedSession()
+	if !ok {
+		t.Fatal("expected selected session after delete")
+	}
+	if got.SessionID != "s3" {
+		t.Fatalf("expected cursor to move to next session s3, got %q", got.SessionID)
 	}
 }
 
