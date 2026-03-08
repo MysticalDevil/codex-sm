@@ -42,3 +42,46 @@ func TestSelectorHasAnyFilter_WithContainsFilters(t *testing.T) {
 		t.Fatal("expected head filter to count as active selector")
 	}
 }
+
+func TestFilterSessions_MultilingualAndEmojiHeadContains(t *testing.T) {
+	now := time.Now()
+	sessions := []Session{
+		{SessionID: "zh", UpdatedAt: now.Add(-time.Minute), Head: "请帮我实现会话恢复功能"},
+		{SessionID: "en", UpdatedAt: now.Add(-2 * time.Minute), Head: "please implement retry logic"},
+		{SessionID: "es", UpdatedAt: now.Add(-3 * time.Minute), Head: "por favor implementar filtro de sesiones"},
+		{SessionID: "la", UpdatedAt: now.Add(-4 * time.Minute), Head: "salve quaeso sessiones refice"},
+		{SessionID: "ja", UpdatedAt: now.Add(-5 * time.Minute), Head: "日本語のセッション表示を改善してください"},
+		{SessionID: "ko", UpdatedAt: now.Add(-6 * time.Minute), Head: "세션 목록을 빠르게 개선해 주세요"},
+		{SessionID: "ar", UpdatedAt: now.Add(-7 * time.Minute), Head: "يرجى تحسين فحص الجلسات"},
+		{SessionID: "mix", UpdatedAt: now.Add(-8 * time.Minute), Head: "fix list command gracias 日本語 مرحبا 😄"},
+	}
+
+	cases := []struct {
+		name string
+		q    string
+		id   string
+	}{
+		{name: "chinese", q: "实现", id: "zh"},
+		{name: "english-fold", q: "RETRY LOGIC", id: "en"},
+		{name: "spanish-fold", q: "IMPLEMENTAR", id: "es"},
+		{name: "latin", q: "sessiones", id: "la"},
+		{name: "japanese", q: "表示を改善", id: "ja"},
+		{name: "korean", q: "세션", id: "ko"},
+		{name: "arabic", q: "الجلسات", id: "ar"},
+		{name: "emoji", q: "😄", id: "mix"},
+		{name: "multilingual-mixed", q: "gracias 日本語", id: "mix"},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			got := FilterSessions(sessions, Selector{HeadContains: tc.q}, now)
+			if len(got) != 1 {
+				t.Fatalf("expected one match for %q, got %d", tc.q, len(got))
+			}
+			if got[0].SessionID != tc.id {
+				t.Fatalf("unexpected id for %q: %s", tc.q, got[0].SessionID)
+			}
+		})
+	}
+}
