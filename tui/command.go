@@ -38,40 +38,41 @@ const (
 )
 
 type tuiModel struct {
-	sessions      []session.Session
-	tree          []treeItem
-	cursor        int
-	offset        int
-	previewOffset int
-	width         int
-	height        int
-	home          string
-	sessionsRoot  string
-	status        string
-	previewCache  map[string][]string
-	previewLRU    *list.List
-	previewNodes  map[string]*list.Element
-	previewCap    int
-	previewReqSeq uint64
-	previewReqID  uint64
-	previewWait   string
-	previewIndex  string
-	indexCap      int
-	lastPath      string
-	focus         tuiFocus
-	groupBy       string
-	source        string
-	theme         tuiTheme
-	trashRoot     string
-	logFile       string
-	dryRun        bool
-	confirm       bool
-	yes           bool
-	hardDelete    bool
-	maxBatch      int
-	pendingAction string
-	pendingID     string
-	pendingHost   string
+	sessions           []session.Session
+	tree               []treeItem
+	cursor             int
+	offset             int
+	previewOffset      int
+	width              int
+	height             int
+	home               string
+	sessionsRoot       string
+	status             string
+	previewCache       map[string][]string
+	previewLRU         *list.List
+	previewNodes       map[string]*list.Element
+	previewBytesBudget int64
+	previewBytesUsed   int64
+	previewReqSeq      uint64
+	previewReqID       uint64
+	previewWait        string
+	previewIndex       string
+	indexCap           int
+	lastPath           string
+	focus              tuiFocus
+	groupBy            string
+	source             string
+	theme              tuiTheme
+	trashRoot          string
+	logFile            string
+	dryRun             bool
+	confirm            bool
+	yes                bool
+	hardDelete         bool
+	maxBatch           int
+	pendingAction      string
+	pendingID          string
+	pendingHost        string
 }
 
 type CommandDeps struct {
@@ -203,26 +204,26 @@ func NewCommand(deps CommandDeps) *cobra.Command {
 				previewIndex = ""
 			}
 			m := tuiModel{
-				sessions:     items,
-				home:         home,
-				sessionsRoot: sessionsRoot,
-				status:       "Ready. Press q to quit.",
-				previewCache: make(map[string][]string),
-				previewNodes: make(map[string]*list.Element),
-				previewCap:   256,
-				focus:        focusTree,
-				groupBy:      mode,
-				source:       source,
-				theme:        theme,
-				previewIndex: previewIndex,
-				indexCap:     5000,
-				trashRoot:    trashRoot,
-				logFile:      logFile,
-				dryRun:       dryRun,
-				confirm:      confirm,
-				yes:          yes,
-				hardDelete:   hardDelete,
-				maxBatch:     maxBatch,
+				sessions:           items,
+				home:               home,
+				sessionsRoot:       sessionsRoot,
+				status:             "Ready. Press q to quit.",
+				previewCache:       make(map[string][]string),
+				previewNodes:       make(map[string]*list.Element),
+				previewBytesBudget: 8 << 20,
+				focus:              focusTree,
+				groupBy:            mode,
+				source:             source,
+				theme:              theme,
+				previewIndex:       previewIndex,
+				indexCap:           5000,
+				trashRoot:          trashRoot,
+				logFile:            logFile,
+				dryRun:             dryRun,
+				confirm:            confirm,
+				yes:                yes,
+				hardDelete:         hardDelete,
+				maxBatch:           maxBatch,
 			}
 			m.rebuildTree()
 			_, err = tea.NewProgram(m, tea.WithAltScreen()).Run()

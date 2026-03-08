@@ -24,8 +24,8 @@ func TestPreviewCacheKeyForSessionIncludesWidth(t *testing.T) {
 
 func TestPreviewCacheLRUEviction(t *testing.T) {
 	m := tuiModel{
-		previewCache: make(map[string][]string),
-		previewCap:   2,
+		previewCache:       make(map[string][]string),
+		previewBytesBudget: 2,
 	}
 
 	m.previewCachePut("k1", []string{"1"})
@@ -43,6 +43,21 @@ func TestPreviewCacheLRUEviction(t *testing.T) {
 	}
 	if _, ok := m.previewCachePeek("k3"); !ok {
 		t.Fatal("expected k3 to remain")
+	}
+}
+
+func TestPreviewCacheByteBudget(t *testing.T) {
+	m := tuiModel{
+		previewCache:       make(map[string][]string),
+		previewBytesBudget: 5,
+	}
+	m.previewCachePut("a", []string{"1234"})
+	m.previewCachePut("b", []string{"12"})
+	if _, ok := m.previewCachePeek("a"); ok {
+		t.Fatal("expected a evicted by byte budget")
+	}
+	if _, ok := m.previewCachePeek("b"); !ok {
+		t.Fatal("expected b present")
 	}
 }
 

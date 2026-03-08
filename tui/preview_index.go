@@ -4,16 +4,52 @@ import (
 	"bufio"
 	"encoding/json/v2"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
+	"time"
 )
 
 func loadPreviewIndexEntry(path, key string) ([]string, bool, error) {
+	entries, corrupted, err := readPreviewIndex(path)
+	if err != nil {
+		return nil, false, err
+	}
+	if corrupted {
+		// Best-effort corruption recovery: compact to valid entries only.
+		_ = rewritePreviewIndex(path, entries, maxInt(1, len(entries)))
+	}
+	rec, ok := entries[key]
+	if !ok {
+		return nil, false, nil
+	}
+	return append([]string(nil), rec.Lines...), true, nil
+}
+
+func upsertPreviewIndex(path string, cap int, record previewIndexRecord) error {
+	if cap <= 0 {
+		cap = 5000
+	}
+	lockPath := path + ".lock"
+	return withPreviewIndexLock(lockPath, 2*time.Second, func() error {
+		entries, _, err := readPreviewIndex(path)
+		if err != nil {
+			return err
+		}
+		if record.Key != "" {
+			entries[record.Key] = record
+		}
+		return rewritePreviewIndex(path, entries, cap)
+	})
+}
+
+func readPreviewIndex(path string) (map[string]previewIndexRecord, bool, error) {
+	out := make(map[string]previewIndexRecord)
 	f, err := os.Open(path)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			return nil, false, nil
+			return out, false, nil
 		}
 		return nil, false, err
 	}
@@ -21,9 +57,7 @@ func loadPreviewIndexEntry(path, key string) ([]string, bool, error) {
 
 	sc := bufio.NewScanner(f)
 	sc.Buffer(make([]byte, 0, 64*1024), 4*1024*1024)
-
-	var found previewIndexRecord
-	ok := false
+	corrupted := false
 	for sc.Scan() {
 		line := sc.Bytes()
 		if len(line) == 0 {
@@ -31,61 +65,28 @@ func loadPreviewIndexEntry(path, key string) ([]string, bool, error) {
 		}
 		var rec previewIndexRecord
 		if err := json.Unmarshal(line, &rec); err != nil {
+			corrupted = true
 			continue
 		}
-		if rec.Key != key {
+		if rec.Key == "" {
+			corrupted = true
 			continue
 		}
-		if !ok || rec.TouchedAtUnix >= found.TouchedAtUnix {
-			found = rec
-			ok = true
+		old, ok := out[rec.Key]
+		if !ok || rec.TouchedAtUnix >= old.TouchedAtUnix {
+			out[rec.Key] = rec
 		}
 	}
 	if err := sc.Err(); err != nil {
 		return nil, false, err
 	}
-	if !ok {
-		return nil, false, nil
-	}
-	return append([]string(nil), found.Lines...), true, nil
+	return out, corrupted, nil
 }
 
-func upsertPreviewIndex(path string, cap int, record previewIndexRecord) error {
+func rewritePreviewIndex(path string, entries map[string]previewIndexRecord, cap int) error {
 	if cap <= 0 {
 		cap = 5000
 	}
-	entries := make(map[string]previewIndexRecord, cap)
-
-	f, err := os.Open(path)
-	if err == nil {
-		sc := bufio.NewScanner(f)
-		sc.Buffer(make([]byte, 0, 64*1024), 4*1024*1024)
-		for sc.Scan() {
-			line := sc.Bytes()
-			if len(line) == 0 {
-				continue
-			}
-			var rec previewIndexRecord
-			if err := json.Unmarshal(line, &rec); err != nil {
-				continue
-			}
-			if rec.Key == "" {
-				continue
-			}
-			old, ok := entries[rec.Key]
-			if !ok || rec.TouchedAtUnix >= old.TouchedAtUnix {
-				entries[rec.Key] = rec
-			}
-		}
-		_ = f.Close()
-	} else if !errors.Is(err, os.ErrNotExist) {
-		return err
-	}
-
-	if record.Key != "" {
-		entries[record.Key] = record
-	}
-
 	list := make([]previewIndexRecord, 0, len(entries))
 	for _, rec := range entries {
 		list = append(list, rec)
@@ -138,4 +139,33 @@ func upsertPreviewIndex(path string, cap int, record previewIndexRecord) error {
 		return err
 	}
 	return nil
+}
+
+func withPreviewIndexLock(lockPath string, timeout time.Duration, fn func() error) error {
+	if err := os.MkdirAll(filepath.Dir(lockPath), 0o755); err != nil {
+		return err
+	}
+	deadline := time.Now().Add(timeout)
+	for {
+		lockFile, err := os.OpenFile(lockPath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o644)
+		if err == nil {
+			_ = lockFile.Close()
+			defer func() { _ = os.Remove(lockPath) }()
+			return fn()
+		}
+		if !errors.Is(err, os.ErrExist) {
+			return err
+		}
+		if time.Now().After(deadline) {
+			return fmt.Errorf("timeout waiting preview index lock: %s", lockPath)
+		}
+		time.Sleep(15 * time.Millisecond)
+	}
+}
+
+func maxInt(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
 }

@@ -47,6 +47,11 @@ type previewIndexPersistedMsg struct {
 	Err string
 }
 
+type previewLRUEntry struct {
+	Key  string
+	Size int64
+}
+
 func previewCacheKeyForSession(s session.Session, width int) string {
 	return fmt.Sprintf("%s|w:%d|sz:%d|mt:%d", s.Path, width, s.SizeBytes, s.UpdatedAt.UnixNano())
 }
@@ -126,8 +131,8 @@ func (m *tuiModel) previewCachePeek(key string) ([]string, bool) {
 }
 
 func (m *tuiModel) previewCachePut(key string, lines []string) {
-	if m.previewCap <= 0 {
-		m.previewCap = 256
+	if m.previewBytesBudget <= 0 {
+		m.previewBytesBudget = 8 << 20
 	}
 	if m.previewCache == nil {
 		m.previewCache = make(map[string][]string)
@@ -139,21 +144,44 @@ func (m *tuiModel) previewCachePut(key string, lines []string) {
 		m.previewLRU = list.New()
 	}
 
-	m.previewCache[key] = append([]string(nil), lines...)
+	copied := append([]string(nil), lines...)
+	newSize := previewLinesBytes(copied)
+	oldSize := int64(0)
+	if old, ok := m.previewCache[key]; ok {
+		oldSize = previewLinesBytes(old)
+	}
+	m.previewCache[key] = copied
+	m.previewBytesUsed += newSize - oldSize
+
 	if n, ok := m.previewNodes[key]; ok && n != nil {
+		if ent, ok := n.Value.(previewLRUEntry); ok {
+			ent.Size = newSize
+			n.Value = ent
+		}
 		m.previewLRU.MoveToBack(n)
 	} else {
-		m.previewNodes[key] = m.previewLRU.PushBack(key)
+		m.previewNodes[key] = m.previewLRU.PushBack(previewLRUEntry{Key: key, Size: newSize})
 	}
-	for len(m.previewCache) > m.previewCap {
+	for m.previewBytesUsed > m.previewBytesBudget && m.previewLRU.Len() > 0 {
 		front := m.previewLRU.Front()
 		if front == nil {
 			break
 		}
-		k, _ := front.Value.(string)
+		ent, ok := front.Value.(previewLRUEntry)
+		if !ok {
+			m.previewLRU.Remove(front)
+			continue
+		}
+		k := ent.Key
 		m.previewLRU.Remove(front)
 		delete(m.previewNodes, k)
+		if old, ok := m.previewCache[k]; ok {
+			m.previewBytesUsed -= previewLinesBytes(old)
+		}
 		delete(m.previewCache, k)
+	}
+	if m.previewBytesUsed < 0 {
+		m.previewBytesUsed = 0
 	}
 }
 
@@ -210,4 +238,12 @@ func persistPreviewIndexCmd(indexPath string, cap int, record previewIndexRecord
 		}
 		return previewIndexPersistedMsg{}
 	}
+}
+
+func previewLinesBytes(lines []string) int64 {
+	total := int64(0)
+	for _, line := range lines {
+		total += int64(len(line))
+	}
+	return total
 }
