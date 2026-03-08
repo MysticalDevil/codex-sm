@@ -94,7 +94,8 @@ func (m *tuiModel) currentPreviewRequestDims() (int, int) {
 	rightBase := lipgloss.NewStyle().Border(lipgloss.NormalBorder()).Padding(0, 1)
 	rightW := max(12, metrics.RightOuterW-rightBase.GetHorizontalFrameSize())
 	previewInnerH := max(2, metrics.PreviewOuterH-rightBase.GetVerticalFrameSize())
-	previewContentHeight := max(2, previewInnerH-4)
+	// Keep in sync with appendSelectedSessionPreview fixed-row budget.
+	previewContentHeight := max(1, previewInnerH-5)
 	previewTextWidth := max(8, rightW-8)
 	return previewTextWidth, previewContentHeight
 }

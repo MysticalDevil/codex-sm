@@ -228,7 +228,8 @@ func (m *tuiModel) appendSelectedSessionPreview(previewLines, infoLines *[]strin
 	previewOuterH := layout.Compute(m.width, m.height).PreviewOuterH
 	rightBase := lipgloss.NewStyle().Border(lipgloss.NormalBorder()).Padding(0, 1)
 	previewInnerH := max(2, previewOuterH-rightBase.GetVerticalFrameSize())
-	previewContentHeight := max(2, previewInnerH-4)
+	// PREVIEW pane reserves 5 fixed rows: title/status/risk/scroll/bar.
+	previewContentHeight := max(1, previewInnerH-5)
 	previewTextWidth := max(8, rightW-8)
 
 	key := previewCacheKeyForSession(selected, previewTextWidth)
