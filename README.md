@@ -76,6 +76,8 @@ codexsm restore --id-prefix 019ca9
 - Session listing and grouping (`list`, `group`)
 - Interactive browser (`tui`) with theme support
 - Safe delete/restore workflow (`dry-run` by default)
+- TUI pending-action confirmation shown in bottom keybar (`Y/N`) with stronger visibility
+- TUI delete keeps navigation continuity by advancing selection to the next session
 - Batch rollback via `restore --batch-id`
 - Diagnostics and configuration (`doctor`, `config`)
 

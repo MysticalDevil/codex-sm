@@ -6,8 +6,12 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 
 ## [Unreleased]
 
+## [v0.2.3] - 2026-03-09
+
 ### Changed
 
+- Improved TUI preview layout stability by correcting preview content height budgeting for large sessions, reducing visual drift/misalignment.
+- Fixed TUI keybar width alignment so bottom `KEYS` container width matches the main area consistently.
 - Improved TUI delete flow: after deleting a session, selection now advances to the next item (or nearest valid neighbor) instead of jumping back to the head.
 - Improved TUI delete confirmation visibility by replacing the bottom `KEYS` row content with a prominent in-place `Y/N` confirm prompt while an action is pending.
 

@@ -80,6 +80,9 @@ TUI keys (default):
 
 > [!TIP]
 > Use `t` / `p` (or `1` / `2`) to explicitly focus tree/preview panes.
+>
+> When a destructive action is pending, the bottom `KEYS` row is replaced by a high-visibility one-line confirm prompt (`Y` continue / `N` cancel).
+> After a delete succeeds, selection advances to the next available session instead of jumping back to the top.
 
 ## Delete And Restore
 
