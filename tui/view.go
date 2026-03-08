@@ -23,11 +23,12 @@ func (m tuiModel) View() string {
 		Foreground(lipgloss.Color(fgColor)).
 		Background(lipgloss.Color(bgColor)).
 		Padding(0, 1)
-	keysInnerW := max(20, metrics.TotalW-keysPanelStyle.GetHorizontalFrameSize())
-	keybar := keysPanelStyle.
-		Width(keysInnerW).
-		Bold(true).
-		Render(renderKeysLine(keysInnerW, m.theme))
+	renderKeysBar := func(outerW int) string {
+		innerW := max(1, outerW-keysPanelStyle.GetHorizontalFrameSize())
+		keysLine := fitStyledWidth(renderKeysLine(innerW, m.theme), innerW)
+		bar := keysPanelStyle.Render(keysLine)
+		return lipgloss.NewStyle().Width(outerW).MaxWidth(outerW).Render(bar)
+	}
 
 	if layout.IsTooSmall(m.width, m.height) {
 		msg := fmt.Sprintf(
@@ -43,7 +44,9 @@ func (m tuiModel) View() string {
 			Background(lipgloss.Color(bgColor)).
 			Padding(1, 2).
 			Render(msg)
-		return strings.Join([]string{warn, keybar}, "\n")
+		warnW := lipgloss.Width(warn)
+		warn = lipgloss.NewStyle().Width(warnW).MaxWidth(warnW).Render(warn)
+		return strings.Join([]string{warn, renderKeysBar(warnW)}, "\n")
 	}
 
 	if len(m.sessions) == 0 || len(m.tree) == 0 {
@@ -58,7 +61,9 @@ func (m tuiModel) View() string {
 			Background(lipgloss.Color(bgColor)).
 			Padding(0, 1).
 			Render(empty + "\n" + m.status)
-		return strings.Join([]string{keybar, emptyPane}, "\n")
+		emptyW := lipgloss.Width(emptyPane)
+		emptyPane = lipgloss.NewStyle().Width(emptyW).MaxWidth(emptyW).Render(emptyPane)
+		return strings.Join([]string{emptyPane, renderKeysBar(emptyW)}, "\n")
 	}
 
 	leftBase := lipgloss.NewStyle().
@@ -126,7 +131,16 @@ func (m tuiModel) View() string {
 
 	rightBlock := lipgloss.JoinVertical(lipgloss.Left, infoPane, previewPane)
 	mainArea := lipgloss.JoinHorizontal(lipgloss.Top, leftPane, strings.Repeat(" ", metrics.GapW), rightBlock)
-	return strings.Join([]string{mainArea, keybar}, "\n")
+	mainOuterW := lipgloss.Width(mainArea)
+	mainArea = lipgloss.NewStyle().Width(mainOuterW).MaxWidth(mainOuterW).Render(mainArea)
+	keybar := renderKeysBar(mainOuterW)
+	mainContainer := lipgloss.NewStyle().
+		Width(mainOuterW).
+		MaxWidth(mainOuterW).
+		Foreground(lipgloss.Color(fgColor)).
+		Background(lipgloss.Color(bgColor)).
+		Render(lipgloss.JoinVertical(lipgloss.Left, mainArea, keybar))
+	return mainContainer
 }
 
 func (m tuiModel) buildPanelLines(rightW int, statusColor string) ([]string, []string, []string) {
@@ -265,4 +279,15 @@ func (m *tuiModel) appendSelectedSessionPreview(previewLines, infoLines *[]strin
 	h, v := m.detailRows(selected)
 	*infoLines = append(*infoLines, lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(m.colorHex("info_header"))).Render(h))
 	*infoLines = append(*infoLines, v)
+}
+
+func fitStyledWidth(v string, width int) string {
+	if width <= 0 {
+		return ""
+	}
+	w := lipgloss.Width(v)
+	if w >= width {
+		return v
+	}
+	return v + strings.Repeat(" ", width-w)
 }

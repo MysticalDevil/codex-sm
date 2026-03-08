@@ -465,6 +465,59 @@ func TestTUIViewAndHelpersCoverage(t *testing.T) {
 	}
 }
 
+func TestTUIViewKeysBarWidthMatchesMainArea(t *testing.T) {
+	workspace := testsupport.PrepareFixtureSandbox(t, "rich")
+	sessionsRoot := filepath.Join(workspace, "sessions")
+	sessions, err := session.ScanSessions(sessionsRoot)
+	if err != nil {
+		t.Fatalf("load sessions: %v", err)
+	}
+	if len(sessions) == 0 {
+		t.Fatal("expected rich fixture sessions")
+	}
+
+	m := tuiModel{
+		sessions:     sessions,
+		width:        120,
+		height:       36,
+		home:         "/home/omega",
+		sessionsRoot: sessionsRoot,
+		previewCache: make(map[string][]string),
+		groupBy:      "host",
+		focus:        focusTree,
+	}
+	m.rebuildTree()
+	out := stripANSIForTest(m.View())
+	lines := strings.Split(out, "\n")
+
+	keysIdx := -1
+	for i := range lines {
+		if strings.Contains(lines[i], "[KEYS]") {
+			keysIdx = i
+			break
+		}
+	}
+	if keysIdx <= 1 || keysIdx+1 >= len(lines) {
+		t.Fatalf("keys bar lines not found in expected location, idx=%d total=%d", keysIdx, len(lines))
+	}
+
+	mainWidth := 0
+	for i := 0; i < keysIdx-1; i++ {
+		if w := runewidth.StringWidth(lines[i]); w > mainWidth {
+			mainWidth = w
+		}
+	}
+	keysTopW := runewidth.StringWidth(lines[keysIdx-1])
+	keysMidW := runewidth.StringWidth(lines[keysIdx])
+	keysBotW := runewidth.StringWidth(lines[keysIdx+1])
+	if keysTopW != keysMidW || keysMidW != keysBotW {
+		t.Fatalf("keys bar width mismatch: top=%d mid=%d bot=%d", keysTopW, keysMidW, keysBotW)
+	}
+	if keysMidW != mainWidth {
+		t.Fatalf("keys bar width (%d) must match main area width (%d)", keysMidW, mainWidth)
+	}
+}
+
 func TestTUIUpdateAndDryRunPreview(t *testing.T) {
 	workspace := testsupport.PrepareFixtureSandbox(t, "rich")
 	sessionsRoot := filepath.Join(workspace, "sessions")

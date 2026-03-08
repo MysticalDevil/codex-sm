@@ -11,7 +11,7 @@ func renderKeysLine(width int, theme tuiTheme) string {
 	if width <= 0 {
 		return plain
 	}
-	if width < 72 {
+	if lipgloss.Width(plain) > width {
 		return truncateDisplay(plain, width)
 	}
 	parts := []string{
