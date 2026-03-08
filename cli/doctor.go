@@ -59,7 +59,136 @@ func newDoctorCmd() *cobra.Command {
 		},
 	}
 	cmd.Flags().BoolVar(&strict, "strict", false, "treat warnings as failures")
+	cmd.AddCommand(newDoctorRiskCmd())
 	return cmd
+}
+
+func newDoctorRiskCmd() *cobra.Command {
+	var (
+		sessionsRoot string
+		sampleLimit  int
+	)
+	cmd := &cobra.Command{
+		Use:   "risk",
+		Short: "Scan sessions and report risk candidates",
+		Long: "Scan sessions and report RISK candidates.\n\n" +
+			"Current risk policy:\n" +
+			"  - high: health=corrupted\n" +
+			"  - medium: health=missing-meta\n" +
+			"  - extension point reserved for integrity checks",
+		Example: "  codexsm doctor risk\n" +
+			"  codexsm doctor risk --sessions-root ~/.codex/sessions\n" +
+			"  codexsm doctor risk --sample-limit 20",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			root := strings.TrimSpace(sessionsRoot)
+			if root == "" {
+				v, err := runtimeSessionsRoot()
+				if err != nil {
+					return WithExitCode(err, 2)
+				}
+				root = v
+			} else {
+				v, err := config.ResolvePath(root)
+				if err != nil {
+					return WithExitCode(err, 2)
+				}
+				root = v
+			}
+			items, err := session.ScanSessions(root)
+			if err != nil {
+				return WithExitCode(err, 2)
+			}
+
+			if sampleLimit <= 0 {
+				sampleLimit = 10
+			}
+			type riskyItem struct {
+				Session session.Session
+				Risk    session.Risk
+			}
+			risky := make([]riskyItem, 0, len(items))
+			highCount := 0
+			mediumCount := 0
+			for _, s := range items {
+				r := session.EvaluateRisk(s, nil)
+				if r.Level == session.RiskNone {
+					continue
+				}
+				risky = append(risky, riskyItem{Session: s, Risk: r})
+				switch r.Level {
+				case session.RiskHigh:
+					highCount++
+				case session.RiskMedium:
+					mediumCount++
+				}
+			}
+			sort.SliceStable(risky, func(i, j int) bool {
+				ri := risky[i].Risk.Level
+				rj := risky[j].Risk.Level
+				if ri != rj {
+					return riskRank(ri) > riskRank(rj)
+				}
+				c := risky[j].Session.UpdatedAt.Compare(risky[i].Session.UpdatedAt)
+				if c != 0 {
+					return c < 0
+				}
+				return risky[i].Session.SessionID < risky[j].Session.SessionID
+			})
+
+			rate := 0.0
+			if len(items) > 0 {
+				rate = float64(len(risky)) / float64(len(items)) * 100
+			}
+			var buf bytes.Buffer
+			_, _ = fmt.Fprintf(&buf, "RISK SUMMARY\n")
+			_, _ = fmt.Fprintf(&buf, "sessions_total=%d risk_total=%d risk_rate=%.1f%% high=%d medium=%d\n", len(items), len(risky), rate, highCount, mediumCount)
+			if len(risky) == 0 {
+				_, _ = fmt.Fprintln(&buf, "no risky sessions found")
+				if _, err := fmt.Fprint(cmd.OutOrStdout(), buf.String()); err != nil {
+					return err
+				}
+				return nil
+			}
+
+			_, _ = fmt.Fprintf(&buf, "samples(limit=%d)\n", sampleLimit)
+			_, _ = fmt.Fprintln(&buf, "LEVEL   HEALTH        SESSION_ID    PATH")
+			for i, item := range risky {
+				if i >= sampleLimit {
+					break
+				}
+				sid := item.Session.SessionID
+				if len(sid) > 12 {
+					sid = sid[:12]
+				}
+				_, _ = fmt.Fprintf(
+					&buf,
+					"%-6s  %-12s  %-12s  %s\n",
+					strings.ToUpper(string(item.Risk.Level)),
+					string(item.Session.Health),
+					sid,
+					compactDoctorPath(item.Session.Path, 72),
+				)
+			}
+			if _, err := fmt.Fprint(cmd.OutOrStdout(), buf.String()); err != nil {
+				return err
+			}
+			return WithExitCode(fmt.Errorf("risk sessions detected: %d", len(risky)), 1)
+		},
+	}
+	cmd.Flags().StringVar(&sessionsRoot, "sessions-root", "", "sessions root directory")
+	cmd.Flags().IntVar(&sampleLimit, "sample-limit", 10, "max risky sessions to print")
+	return cmd
+}
+
+func riskRank(level session.RiskLevel) int {
+	switch level {
+	case session.RiskHigh:
+		return 2
+	case session.RiskMedium:
+		return 1
+	default:
+		return 0
+	}
 }
 
 func runDoctorChecks() []doctorCheck {

@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -47,6 +48,47 @@ func TestDoctorCommandStrictFailsOnWarn(t *testing.T) {
 
 	if err := cmd.Execute(); err == nil {
 		t.Fatal("expected strict doctor failure")
+	}
+}
+
+func TestDoctorRiskCommandReturnsFailureWhenRiskFound(t *testing.T) {
+	workspace := testsupport.PrepareFixtureSandbox(t, "rich")
+	root := filepath.Join(workspace, "sessions")
+	cmd := NewRootCmd()
+	stdout := &bytes.Buffer{}
+	cmd.SetOut(stdout)
+	cmd.SetErr(&bytes.Buffer{})
+	cmd.SetArgs([]string{"doctor", "risk", "--sessions-root", root, "--sample-limit", "5"})
+
+	err := cmd.Execute()
+	if err == nil {
+		t.Fatal("expected risk command to fail when risky sessions exist")
+	}
+	var ex *ExitError
+	if !errors.As(err, &ex) || ex.ExitCode() != 1 {
+		t.Fatalf("expected exit code 1, got err=%v", err)
+	}
+	out := stdout.String()
+	if !strings.Contains(out, "RISK SUMMARY") || !strings.Contains(out, "risk_total=") {
+		t.Fatalf("unexpected risk output: %q", out)
+	}
+}
+
+func TestDoctorRiskCommandPassesWhenNoRiskFound(t *testing.T) {
+	sessionsRoot := t.TempDir()
+	writeDoctorSessionFixture(t, sessionsRoot, "ok1", t.TempDir())
+	writeDoctorSessionFixture(t, sessionsRoot, "ok2", t.TempDir())
+
+	cmd := NewRootCmd()
+	stdout := &bytes.Buffer{}
+	cmd.SetOut(stdout)
+	cmd.SetErr(&bytes.Buffer{})
+	cmd.SetArgs([]string{"doctor", "risk", "--sessions-root", sessionsRoot})
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("doctor risk execute: %v", err)
+	}
+	if !strings.Contains(stdout.String(), "no risky sessions found") {
+		t.Fatalf("expected no-risk output, got: %q", stdout.String())
 	}
 }
 

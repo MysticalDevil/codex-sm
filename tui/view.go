@@ -115,14 +115,14 @@ func (m tuiModel) View() string {
 		infoBorder = borderFocusColor
 	}
 	infoInnerH := max(1, metrics.InfoOuterH-infoBase.GetVerticalFrameSize())
-	if infoInnerH > 2 {
-		infoInnerH = 2
+	if infoInnerH > 3 {
+		infoInnerH = 3
 	}
 	infoPane := infoBase.
 		Width(rightW).
 		Height(infoInnerH).
 		BorderForeground(lipgloss.Color(infoBorder)).
-		Render(strings.Join(infoLines[:minInt(len(infoLines), 2)], "\n"))
+		Render(strings.Join(infoLines[:minInt(len(infoLines), 3)], "\n"))
 
 	rightBlock := lipgloss.JoinVertical(lipgloss.Left, infoPane, previewPane)
 	mainArea := lipgloss.JoinHorizontal(lipgloss.Top, leftPane, strings.Repeat(" ", metrics.GapW), rightBlock)
@@ -149,6 +149,15 @@ func (m tuiModel) buildPanelLines(rightW int, statusColor string) ([]string, []s
 	leftLines = append(leftLines, leftTitle)
 	previewLines = append(previewLines, rightTitle)
 	previewLines = append(previewLines, lipgloss.NewStyle().Foreground(lipgloss.Color(statusColor)).Render(" "+truncateDisplay(m.status, max(8, rightW-2))))
+	highRisk, mediumRisk := riskCounts(m.sessions)
+	riskLine := fmt.Sprintf(" risk=%d (high=%d medium=%d) ", highRisk+mediumRisk, highRisk, mediumRisk)
+	riskColor := m.colorHex("tag_success")
+	if highRisk > 0 {
+		riskColor = m.colorHex("tag_error")
+	} else if mediumRisk > 0 {
+		riskColor = m.colorHex("tag_danger")
+	}
+	previewLines = append(previewLines, lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(riskColor)).Render(" "+truncateDisplay(riskLine, max(8, rightW-2))))
 	return leftLines, previewLines, infoLines
 }
 

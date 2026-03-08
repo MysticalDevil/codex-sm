@@ -58,6 +58,11 @@ func (m *tuiModel) clampOffset() {
 
 func sortTUISessions(items []session.Session) {
 	slices.SortStableFunc(items, func(a, b session.Session) int {
+		ra := session.EvaluateRisk(a, nil)
+		rb := session.EvaluateRisk(b, nil)
+		if c := riskLevelRank(rb.Level) - riskLevelRank(ra.Level); c != 0 {
+			return c
+		}
 		c := b.UpdatedAt.Compare(a.UpdatedAt)
 		if c != 0 {
 			return c
@@ -234,7 +239,16 @@ func (m *tuiModel) detailRows(selected session.Session) (header string, values s
 		}
 		valueParts = append(valueParts, cell)
 	}
-	return strings.Join(headerParts, "  "), strings.Join(valueParts, "  ")
+	risk := session.EvaluateRisk(selected, nil)
+	if risk.Level == session.RiskNone {
+		return strings.Join(headerParts, "  "), strings.Join(valueParts, "  ")
+	}
+	riskText := strings.ToUpper(string(risk.Level)) + ": " + strings.ReplaceAll(string(risk.Reason), "-", " ")
+	if strings.TrimSpace(risk.Detail) != "" {
+		riskText += " (" + strings.TrimSpace(risk.Detail) + ")"
+	}
+	return strings.Join(headerParts, "  "), strings.Join(valueParts, "  ") + "\n" +
+		lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(m.colorHex("tag_error"))).Render("RISK "+riskText)
 }
 
 func (m *tuiModel) healthColorHex(h session.Health) string {
@@ -264,6 +278,13 @@ func (m *tuiModel) healthSymbolAndColor(h session.Health) (string, string) {
 }
 
 func (m *tuiModel) treeHealthVisual(h session.Health, hostMissing bool) (string, string, bool) {
+	risk := session.EvaluateRisk(session.Session{Health: h}, nil)
+	if risk.Level == session.RiskHigh {
+		return "⚠", m.colorHex("tag_error"), true
+	}
+	if risk.Level == session.RiskMedium {
+		return "!", m.colorHex("tag_danger"), true
+	}
 	if h == session.HealthCorrupted {
 		return "✖", m.colorHex("tag_error"), true
 	}
@@ -272,6 +293,29 @@ func (m *tuiModel) treeHealthVisual(h session.Health, hostMissing bool) (string,
 	}
 	sym, color := m.healthSymbolAndColor(h)
 	return sym, color, false
+}
+
+func riskLevelRank(level session.RiskLevel) int {
+	switch level {
+	case session.RiskHigh:
+		return 2
+	case session.RiskMedium:
+		return 1
+	default:
+		return 0
+	}
+}
+
+func riskCounts(items []session.Session) (high, medium int) {
+	for _, s := range items {
+		switch session.EvaluateRisk(s, nil).Level {
+		case session.RiskHigh:
+			high++
+		case session.RiskMedium:
+			medium++
+		}
+	}
+	return high, medium
 }
 
 func (m *tuiModel) syncPreviewSelection() {

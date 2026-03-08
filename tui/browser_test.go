@@ -625,7 +625,7 @@ func TestRenderTreeLinesMarksHealthAndColorizedNames(t *testing.T) {
 	if !strings.Contains(joined, "! warn") {
 		t.Fatalf("expected unhealthy marker in tree lines: %q", joined)
 	}
-	if !strings.Contains(joined, "✖ err") {
+	if !strings.Contains(joined, "⚠ err") {
 		t.Fatalf("expected error marker in tree lines: %q", joined)
 	}
 
@@ -637,5 +637,24 @@ func TestRenderTreeLinesMarksHealthAndColorizedNames(t *testing.T) {
 	}
 	if sym, color, nonHealthy := m.treeHealthVisual(session.HealthOK, true); sym != "!" || color != m.colorHex("tag_danger") || !nonHealthy {
 		t.Fatalf("unexpected host-missing visual: sym=%q color=%q nonHealthy=%v", sym, color, nonHealthy)
+	}
+	if sym, color, nonHealthy := m.treeHealthVisual(session.HealthCorrupted, false); sym != "⚠" || color != m.colorHex("tag_error") || !nonHealthy {
+		t.Fatalf("unexpected corrupted risk visual: sym=%q color=%q nonHealthy=%v", sym, color, nonHealthy)
+	}
+}
+
+func TestSortTUISessions_PrioritizesRisk(t *testing.T) {
+	now := time.Now()
+	items := []session.Session{
+		{SessionID: "ok-new", UpdatedAt: now, Health: session.HealthOK},
+		{SessionID: "missing-old", UpdatedAt: now.Add(-2 * time.Hour), Health: session.HealthMissingMeta},
+		{SessionID: "corrupted-old", UpdatedAt: now.Add(-4 * time.Hour), Health: session.HealthCorrupted},
+	}
+	sortTUISessions(items)
+	if items[0].Health != session.HealthCorrupted {
+		t.Fatalf("expected corrupted first, got %#v", items)
+	}
+	if items[1].Health != session.HealthMissingMeta {
+		t.Fatalf("expected missing-meta second, got %#v", items)
 	}
 }
