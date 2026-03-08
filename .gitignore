@@ -30,3 +30,4 @@ TARGET.md
 
 # Test runtime sandbox
 /testdata/_sandbox/
+/testdata/_generated/

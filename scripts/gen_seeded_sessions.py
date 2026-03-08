@@ -5,7 +5,7 @@ Usage:
   python3 scripts/gen_seeded_sessions.py --seed 20260308 --count 50 \
     --time-range-start 2026-03-01T00:00:00Z \
     --time-range-end 2026-03-31T23:59:59Z \
-    --output-root ./tmp/sessions
+    --output-root ./testdata/_generated/sessions
 
 Output:
   Writes session files under <output-root>/YYYY/MM/DD/*.jsonl with session_meta and
@@ -101,7 +101,7 @@ ASSISTANT_PROMPTS = [
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Generate deterministic random Codex session files.")
-    parser.add_argument("--output-root", default="tmp/generated-sessions", help="output root directory")
+    parser.add_argument("--output-root", default="testdata/_generated/sessions", help="output root directory")
     parser.add_argument("--seed", type=int, required=True, help="RNG seed for deterministic output")
     parser.add_argument("--count", type=int, default=20, help="number of session files to generate")
     parser.add_argument("--min-turns", type=int, default=40, help="minimum conversation turns per session")

@@ -19,7 +19,7 @@ gen_min_turns := env_var_or_default("GEN_MIN_TURNS", "40")
 gen_max_turns := env_var_or_default("GEN_MAX_TURNS", "240")
 gen_time_range_start := env_var_or_default("GEN_TIME_RANGE_START", "2026-03-01T00:00:00Z")
 gen_time_range_end := env_var_or_default("GEN_TIME_RANGE_END", "2026-03-31T23:59:59Z")
-gen_output_root := env_var_or_default("GEN_OUTPUT_ROOT", "tmp/generated-sessions")
+gen_output_root := env_var_or_default("GEN_OUTPUT_ROOT", "testdata/_generated/sessions")
 
 # Show available targets
 default:
