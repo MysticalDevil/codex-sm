@@ -6,6 +6,8 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 
 ## [Unreleased]
 
+## [v0.2.2] - 2026-03-08
+
 ### Added
 
 - Added `docs/RELEASE.md` with preflight, quality-gate, risk-fixture validation, and tag/release checklist.
