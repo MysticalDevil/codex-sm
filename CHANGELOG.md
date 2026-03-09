@@ -6,6 +6,8 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 
 ## [Unreleased]
 
+## [v0.2.5] - 2026-03-09
+
 ### Added
 
 - Added an `extreme-static` fixture corpus covering long single-message sessions, oversize meta payloads, mixed corruption, Unicode-heavy previews, and no-final-newline files.
@@ -18,6 +20,13 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 - Expanded fixture/schema and `session`/`tui`/`cli doctor risk` tests to consume the new extreme dataset directly.
 - Expanded benchmark coverage across session scanning, TUI preview/index paths, and CLI table/JSON/risk rendering, while keeping new benchmark runs threshold-free for now.
 - Reworked CI orchestration into separate lint, test, smoke, and bench jobs so pull requests stay lighter while tag/release runs keep the full quality gate.
+- Improved CI/local smoke tooling by moving doctor-risk JSON validation into a dedicated Python script and shifting cache/state/runtime paths toward XDG-standard locations.
+
+### Fixed
+
+- Fixed session scanning against malformed inputs by bounding scanner line reads for oversized session metadata and conversation head lines.
+- Fixed TUI preview index persistence and loading to enforce a byte budget, reducing large transient memory spikes from oversized cached previews.
+- Fixed `tui --limit` behavior so the limit is applied during session scanning rather than only after fully loading all sessions.
 
 ## [v0.2.4] - 2026-03-09
 
