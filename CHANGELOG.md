@@ -6,6 +6,15 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 
 ## [Unreleased]
 
+### Added
+
+- Added an `extreme-static` fixture corpus covering long single-message sessions, oversize meta payloads, mixed corruption, Unicode-heavy previews, and no-final-newline files.
+- Added `gen-sessions-extreme` and `gen-sessions-large` workflows plus generator knobs for large files, oversize lines/messages, Unicode-heavy content, and no-final-newline outputs.
+
+### Changed
+
+- Expanded fixture/schema and `session`/`tui`/`cli doctor risk` tests to consume the new extreme dataset directly.
+
 ## [v0.2.4] - 2026-03-09
 
 ### Changed

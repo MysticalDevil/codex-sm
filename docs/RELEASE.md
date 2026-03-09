@@ -45,6 +45,27 @@ Expected behavior:
 - output is valid JSON
 - JSON includes non-zero `risk_total`
 
+Optional extreme-dataset smoke checks:
+
+```bash
+just gen-sessions-extreme
+codexsm doctor risk --sessions-root ./testdata/fixtures/extreme-static/sessions --format json --sample-limit 4
+```
+
+Expected behavior:
+
+- command completes without crashing on oversize/meta/no-newline samples
+- output remains valid JSON
+- risk report includes missing-meta/corrupted samples from the extreme corpus
+
+For larger manual stress validation, use:
+
+```bash
+just gen-sessions-large
+```
+
+This target is intended for local benchmarking and memory checks, not the default release gate.
+
 ## Documentation Updates
 
 Before tagging, update:
