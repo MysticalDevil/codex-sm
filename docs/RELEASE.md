@@ -22,6 +22,8 @@ Run all required gates locally:
 just check
 just cover-gate
 just bench-gate
+just bench-session
+just bench-cli
 ```
 
 Expected thresholds:
@@ -65,6 +67,16 @@ just gen-sessions-large
 ```
 
 This target is intended for local benchmarking and memory checks, not the default release gate.
+
+Additional lightweight benchmark sweeps:
+
+```bash
+just bench-session
+just bench-cli
+just bench-tui
+```
+
+These commands should run successfully in CI/local validation, but they do not yet enforce new numeric thresholds beyond the existing TUI sort gate.
 
 ## Documentation Updates
 

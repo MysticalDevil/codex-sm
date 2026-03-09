@@ -103,7 +103,18 @@ build:
 
 # Run TUI micro-benchmarks
 bench-tui:
-  {{go_with_experiment_cache}} test -run='^$' -bench='Benchmark(SortTUISessions_3k|SortTUISessions_10k|BuildPreviewLines_LargeSession)$' -benchmem ./tui
+  {{go_with_experiment_cache}} test -run='^$' -bench='Benchmark(SortTUISessions_3k|SortTUISessions_10k|BuildPreviewLines|PreviewIndex)' -benchmem ./tui
+
+# Run session scan/filter micro-benchmarks
+bench-session:
+  {{go_with_experiment_cache}} test -run='^$' -bench='Benchmark(ScanSessions|FilterSessions)' -benchmem ./session
+
+# Run CLI rendering and doctor-risk micro-benchmarks
+bench-cli:
+  {{go_with_experiment_cache}} test -run='^$' -bench='Benchmark(RenderTable|RenderJSON|DoctorRiskJSON)' -benchmem ./cli
+
+# Run all lightweight benchmark suites
+bench-all: bench-session bench-cli bench-tui
 
 # Enforce TUI benchmark latency guardrails (ns/op)
 bench-gate:
@@ -194,6 +205,23 @@ gen-sessions-large:
   GEN_LARGE_FILE_TARGET_BYTES=2097152 \
   GEN_PAYLOAD_SHAPE=log-heavy \
   just gen-sessions
+
+# Generate a large dataset and run list/doctor risk smoke checks locally
+stress-cli:
+  set -e; \
+  tmpdir="$(mktemp -d)"; \
+  trap 'rm -rf "$tmpdir"' EXIT; \
+  {{go_with_experiment_cache}} build -ldflags="-X main.version={{version}}" -o {{bin}} .; \
+  GEN_OUTPUT_ROOT="$tmpdir/sessions" just gen-sessions-large; \
+  ./codexsm list --sessions-root "$tmpdir/sessions" --limit 50 --format json >/tmp/codexsm-stress-list.json; \
+  rc=0; \
+  ./codexsm doctor risk --sessions-root "$tmpdir/sessions" --format json --sample-limit 5 >/tmp/codexsm-stress-risk.json || rc=$?; \
+  if [ "$rc" -ne 0 ] && [ "$rc" -ne 1 ]; then \
+    echo "doctor risk stress smoke failed with rc=$rc"; \
+    exit 1; \
+  fi; \
+  test -s /tmp/codexsm-stress-list.json; \
+  test -s /tmp/codexsm-stress-risk.json
 
 # Remove generated coverage files
 clean:

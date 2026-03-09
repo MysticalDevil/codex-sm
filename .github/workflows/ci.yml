@@ -66,9 +66,15 @@ jobs:
       - name: Build
         run: go build -ldflags="-X main.version=ci-${{ github.sha }}" -o codexsm .
 
+      - name: Session benchmarks
+        run: go test -run='^$' -bench='Benchmark(ScanSessions|FilterSessions)' ./session -count=1 -benchmem
+
+      - name: CLI benchmarks
+        run: go test -run='^$' -bench='Benchmark(RenderTable|RenderJSON|DoctorRiskJSON)' ./cli -count=1 -benchmem
+
       - name: TUI benchmark gate
         run: |
-          out=$(go test -run='^$' -bench='Benchmark(SortTUISessions_3k|SortTUISessions_10k)$' ./tui -count=1 2>&1)
+          out=$(go test -run='^$' -bench='Benchmark(SortTUISessions_3k|SortTUISessions_10k|BuildPreviewLines|PreviewIndex)' ./tui -count=1 -benchmem 2>&1)
           echo "$out"
           echo "$out" | awk -v max3="$BENCH_SORT_3K_NS_MAX" -v max10="$BENCH_SORT_10K_NS_MAX" '
             /BenchmarkSortTUISessions_3k/ { for (i = 1; i <= NF; i++) if ($i == "ns/op") { got3 = $(i-1); break } }

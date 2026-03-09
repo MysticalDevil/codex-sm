@@ -131,7 +131,12 @@ TUI note:
 just build
 just check
 just cover-gate
+just bench-session
+just bench-cli
 just bench-gate
+just bench-tui
+just bench-all
+just stress-cli
 codexsm doctor risk --sessions-root ./testdata/fixtures/risky-static/sessions --format json --sample-limit 5
 just gen-sessions-extreme
 just gen-sessions-large
@@ -144,6 +149,7 @@ Fixture note:
 - `testdata/fixtures/risky-static/` keeps deterministic risk-oriented samples for `doctor risk`.
 - `testdata/fixtures/extreme-static/` keeps a small extreme corpus for oversized meta lines, long single messages, no-final-newline files, mixed corruption, and Unicode-heavy previews.
 - Larger stress files are intentionally generated on demand via `just gen-sessions-extreme` or `just gen-sessions-large` instead of being committed as multi-megabyte fixtures.
+- Lightweight benchmark suites are available through `just bench-session`, `just bench-cli`, and `just bench-tui`; `just stress-cli` is the heavier local-only smoke path for generated large datasets.
 
 Release build example:
 
