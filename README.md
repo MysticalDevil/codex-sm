@@ -28,19 +28,19 @@ export GOEXPERIMENT=jsonv2
 ## Install
 
 ```bash
-GOEXPERIMENT=jsonv2 go install github.com/MysticalDevil/codexsm@v0.2.5
+GOEXPERIMENT=jsonv2 go install github.com/MysticalDevil/codexsm@v0.2.6
 ```
 
 Or with `mise`:
 
 ```bash
-GOEXPERIMENT=jsonv2 mise install go:github.com/MysticalDevil/codexsm@v0.2.5
+GOEXPERIMENT=jsonv2 mise install go:github.com/MysticalDevil/codexsm@v0.2.6
 ```
 
 Experimental branch for performance-oriented users:
 
 - branch: `exp/zig-incremental`
-- scope: opt-in `zsession` scan/risk/preview pipeline for users comfortable with experimental native integration
+- scope: opt-in `zsession` backend for scan, risk, preview, list, and group preparation paths
 - guide: <https://github.com/MysticalDevil/codexsm/tree/exp/zig-incremental/docs/INSTALL_ZIG_EXPERIMENT.md>
 
 ## Quick Start
@@ -146,7 +146,7 @@ just stress-cli
 codexsm doctor risk --sessions-root ./testdata/fixtures/risky-static/sessions --format json --sample-limit 5
 just gen-sessions-extreme
 just gen-sessions-large
-just check-release 0.2.5
+just check-release 0.2.6
 ```
 
 Fixture note:
@@ -160,7 +160,7 @@ Fixture note:
 Release build example:
 
 ```bash
-GOEXPERIMENT=jsonv2 go build -ldflags="-X main.version=0.2.5" -o codexsm .
+GOEXPERIMENT=jsonv2 go build -ldflags="-X main.version=0.2.6" -o codexsm .
 ```
 
 ## License
