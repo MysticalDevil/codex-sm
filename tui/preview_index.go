@@ -11,6 +11,8 @@ import (
 	"time"
 )
 
+const maxPreviewIndexBytes = 8 << 20
+
 func loadPreviewIndexEntry(path, key string) ([]string, bool, error) {
 	entries, corrupted, err := readPreviewIndex(path)
 	if err != nil {
@@ -18,7 +20,7 @@ func loadPreviewIndexEntry(path, key string) ([]string, bool, error) {
 	}
 	if corrupted {
 		// Best-effort corruption recovery: compact to valid entries only.
-		_ = rewritePreviewIndex(path, entries, maxInt(1, len(entries)))
+		_ = rewritePreviewIndex(path, entries, maxInt(1, len(entries)), maxPreviewIndexBytes)
 	}
 	rec, ok := entries[key]
 	if !ok {
@@ -40,12 +42,13 @@ func upsertPreviewIndex(path string, cap int, record previewIndexRecord) error {
 		if record.Key != "" {
 			entries[record.Key] = record
 		}
-		return rewritePreviewIndex(path, entries, cap)
+		return rewritePreviewIndex(path, entries, cap, maxPreviewIndexBytes)
 	})
 }
 
 func readPreviewIndex(path string) (map[string]previewIndexRecord, bool, error) {
 	out := make(map[string]previewIndexRecord)
+	totalBytes := int64(0)
 	f, err := os.Open(path)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
@@ -74,7 +77,12 @@ func readPreviewIndex(path string) (map[string]previewIndexRecord, bool, error) 
 		}
 		old, ok := out[rec.Key]
 		if !ok || rec.TouchedAtUnix >= old.TouchedAtUnix {
+			if ok {
+				totalBytes -= previewIndexRecordBytes(old)
+			}
 			out[rec.Key] = rec
+			totalBytes += previewIndexRecordBytes(rec)
+			totalBytes = trimPreviewIndexBytes(out, totalBytes, maxPreviewIndexBytes)
 		}
 	}
 	if err := sc.Err(); err != nil {
@@ -83,9 +91,12 @@ func readPreviewIndex(path string) (map[string]previewIndexRecord, bool, error) 
 	return out, corrupted, nil
 }
 
-func rewritePreviewIndex(path string, entries map[string]previewIndexRecord, cap int) error {
+func rewritePreviewIndex(path string, entries map[string]previewIndexRecord, cap int, maxBytes int64) error {
 	if cap <= 0 {
 		cap = 5000
+	}
+	if maxBytes <= 0 {
+		maxBytes = maxPreviewIndexBytes
 	}
 	list := make([]previewIndexRecord, 0, len(entries))
 	for _, rec := range entries {
@@ -100,6 +111,17 @@ func rewritePreviewIndex(path string, entries map[string]previewIndexRecord, cap
 	if len(list) > cap {
 		list = list[:cap]
 	}
+	totalBytes := int64(0)
+	trimmed := list[:0]
+	for _, rec := range list {
+		recBytes := previewIndexRecordBytes(rec)
+		if len(trimmed) > 0 && totalBytes+recBytes > maxBytes {
+			break
+		}
+		trimmed = append(trimmed, rec)
+		totalBytes += recBytes
+	}
+	list = trimmed
 
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return err
@@ -168,4 +190,37 @@ func maxInt(a, b int) int {
 		return a
 	}
 	return b
+}
+
+func previewIndexRecordBytes(rec previewIndexRecord) int64 {
+	total := int64(len(rec.Key) + len(rec.Path) + 64)
+	for _, line := range rec.Lines {
+		total += int64(len(line))
+	}
+	return total
+}
+
+func trimPreviewIndexBytes(entries map[string]previewIndexRecord, totalBytes, maxBytes int64) int64 {
+	if maxBytes <= 0 || totalBytes <= maxBytes {
+		return totalBytes
+	}
+	for totalBytes > maxBytes && len(entries) > 1 {
+		oldestKey := ""
+		var oldest previewIndexRecord
+		for k, rec := range entries {
+			if oldestKey == "" || rec.TouchedAtUnix < oldest.TouchedAtUnix || (rec.TouchedAtUnix == oldest.TouchedAtUnix && rec.Key < oldest.Key) {
+				oldestKey = k
+				oldest = rec
+			}
+		}
+		if oldestKey == "" {
+			break
+		}
+		delete(entries, oldestKey)
+		totalBytes -= previewIndexRecordBytes(oldest)
+	}
+	if totalBytes < 0 {
+		return 0
+	}
+	return totalBytes
 }

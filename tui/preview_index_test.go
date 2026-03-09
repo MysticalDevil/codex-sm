@@ -70,3 +70,45 @@ func TestUpsertPreviewIndex_WaitsForLock(t *testing.T) {
 		t.Fatalf("unexpected entry after lock wait: ok=%v lines=%#v", ok, lines)
 	}
 }
+
+func TestReadPreviewIndex_TrimsToByteBudget(t *testing.T) {
+	dir := t.TempDir()
+	indexPath := filepath.Join(dir, "preview.v1.jsonl")
+
+	entries := map[string]previewIndexRecord{
+		"old": {
+			Key:           "old",
+			Path:          "/tmp/old",
+			Width:         32,
+			SizeBytes:     1,
+			UpdatedAtUnix: 1,
+			TouchedAtUnix: 1,
+			Lines:         []string{strings.Repeat("a", maxPreviewIndexBytes)},
+		},
+		"new": {
+			Key:           "new",
+			Path:          "/tmp/new",
+			Width:         32,
+			SizeBytes:     1,
+			UpdatedAtUnix: 2,
+			TouchedAtUnix: 2,
+			Lines:         []string{"keep-me"},
+		},
+	}
+	if err := rewritePreviewIndex(indexPath, entries, 10, maxPreviewIndexBytes); err != nil {
+		t.Fatalf("rewritePreviewIndex: %v", err)
+	}
+
+	lines, ok, err := loadPreviewIndexEntry(indexPath, "new")
+	if err != nil {
+		t.Fatalf("loadPreviewIndexEntry(new): %v", err)
+	}
+	if !ok || len(lines) != 1 || lines[0] != "keep-me" {
+		t.Fatalf("unexpected retained entry ok=%v lines=%#v", ok, lines)
+	}
+	if _, ok, err := loadPreviewIndexEntry(indexPath, "old"); err != nil {
+		t.Fatalf("loadPreviewIndexEntry(old): %v", err)
+	} else if ok {
+		t.Fatal("expected oversized old entry to be trimmed from index")
+	}
+}
