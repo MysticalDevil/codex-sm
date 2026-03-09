@@ -60,7 +60,7 @@ func TestTUIHandleKeySwitchAndScroll(t *testing.T) {
 func TestTUIViewMinSizeWarning(t *testing.T) {
 	m := tuiModel{width: 80, height: 20}
 	out := m.View()
-	if !strings.Contains(out, "Required at least: 135x24") {
+	if !strings.Contains(out, "Required at least: 123x24") {
 		t.Fatalf("expected min-size warning, got: %q", out)
 	}
 	if strings.Contains(out, "q quit") {
@@ -366,6 +366,25 @@ func TestRenderKeysLine(t *testing.T) {
 	long := renderKeysLine(200, tuiTheme{Name: "tokyonight", Colors: cloneColorMap(builtinThemes["tokyonight"])})
 	if !strings.Contains(stripANSIForTest(long), "[KEYS]") {
 		t.Fatalf("expected KEYS header in long line, got: %q", long)
+	}
+}
+
+func TestRenderKeysLineUsesAdaptiveVariants(t *testing.T) {
+	theme := tuiTheme{Name: "tokyonight", Colors: cloneColorMap(builtinThemes["tokyonight"])}
+
+	compact := stripANSIForTest(renderKeysLine(52, theme))
+	if !strings.Contains(compact, "[KEYS]") || !strings.Contains(compact, "q quit") {
+		t.Fatalf("expected compact keys variant, got: %q", compact)
+	}
+	if strings.Contains(compact, "Ctrl+d/u preview") {
+		t.Fatalf("did not expect long keys variant in compact width, got: %q", compact)
+	}
+
+	for _, width := range []int{135, 136, 137, 138} {
+		line := stripANSIForTest(renderKeysLine(width, theme))
+		if got := runewidth.StringWidth(line); got > width {
+			t.Fatalf("adaptive keys overflow at width=%d: got=%d line=%q", width, got, line)
+		}
 	}
 }
 

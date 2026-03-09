@@ -3,11 +3,10 @@ package layout
 
 const (
 	// MinWidth is the minimal terminal width required by TUI.
-	// The current TUI needs more than the theoretical keybar width once
-	// border/padding, proportional pane split, and terminal-edge autowrap
-	// behavior are accounted for. Keep a small safety margin so boundary
-	// widths fall back to the min-size warning instead of partial rendering.
-	MinWidth = 134
+	// This is driven by the main panes, not the keybar. The keybar can degrade
+	// to shorter variants at narrower widths, so the minimum should reflect the
+	// actual split-pane layout requirement plus the terminal-edge safety margin.
+	MinWidth = 122
 	// MinHeight is the minimal terminal height required by TUI.
 	MinHeight = 24
 )
@@ -62,7 +61,7 @@ func Compute(width, height int) Metrics {
 	mainAreaH := max(8, totalH-keysOuterH)
 
 	gapW := 1
-	leftOuterW := int(float64(totalW) * 0.33)
+	leftOuterW := int(float64(totalW) * 0.28)
 	if leftOuterW < 28 {
 		leftOuterW = 28
 	}
