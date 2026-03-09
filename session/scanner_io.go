@@ -42,7 +42,6 @@ func readBoundedLine(r *bufio.Reader, maxBytes int) (line []byte, truncated bool
 			line = bytes.TrimSpace(out.Bytes())
 			return line, truncated, nil
 		case errors.Is(readErr, bufio.ErrBufferFull):
-			truncated = true
 			continue
 		case errors.Is(readErr, io.EOF):
 			line = bytes.TrimSpace(out.Bytes())
