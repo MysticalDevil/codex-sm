@@ -4,10 +4,13 @@ import "fmt"
 
 // ExitError carries a user-facing error plus an intended process exit code.
 type ExitError struct {
+	// Code is the process exit code that should be returned to the shell.
 	Code int
-	Err  error
+	// Err is the wrapped error exposed to callers and users.
+	Err error
 }
 
+// Error implements error.
 func (e *ExitError) Error() string {
 	if e == nil || e.Err == nil {
 		return ""
@@ -15,6 +18,7 @@ func (e *ExitError) Error() string {
 	return e.Err.Error()
 }
 
+// Unwrap returns the wrapped error.
 func (e *ExitError) Unwrap() error {
 	if e == nil {
 		return nil
@@ -22,6 +26,7 @@ func (e *ExitError) Unwrap() error {
 	return e.Err
 }
 
+// ExitCode returns Code, defaulting to 1 for nil or invalid values.
 func (e *ExitError) ExitCode() int {
 	if e == nil || e.Code <= 0 {
 		return 1
