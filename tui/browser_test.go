@@ -60,7 +60,7 @@ func TestTUIHandleKeySwitchAndScroll(t *testing.T) {
 func TestTUIViewMinSizeWarning(t *testing.T) {
 	m := tuiModel{width: 80, height: 20}
 	out := m.View()
-	if !strings.Contains(out, "Required at least: 123x24") {
+	if !strings.Contains(out, "Required at least: 119x24") {
 		t.Fatalf("expected min-size warning, got: %q", out)
 	}
 	if strings.Contains(out, "q quit") {
@@ -422,8 +422,8 @@ func TestDetailRowsColorsHealthValue(t *testing.T) {
 		HostDir:   okSession.HostDir,
 	}
 
-	_, okRow := m.detailRows(okSession)
-	_, badRow := m.detailRows(badSession)
+	_, okRow := m.detailRows(okSession, 96)
+	_, badRow := m.detailRows(badSession, 96)
 	if !strings.Contains(okRow, "OK") || !strings.Contains(badRow, "CORRUPTED") {
 		t.Fatalf("expected health text in rows, got ok=%q bad=%q", okRow, badRow)
 	}
@@ -432,6 +432,29 @@ func TestDetailRowsColorsHealthValue(t *testing.T) {
 	}
 	if got := m.healthColorHex(session.HealthCorrupted); got != m.colorHex("tag_error") {
 		t.Fatalf("healthColorHex(corrupted) mismatch: %q", got)
+	}
+}
+
+func TestDetailRowsUsesCompactColumnsWhenNarrow(t *testing.T) {
+	m := tuiModel{width: 120, home: "/home/omega"}
+	selected := session.Session{
+		SessionID: "ok-id",
+		UpdatedAt: time.Date(2026, 3, 8, 10, 0, 0, 0, time.Local),
+		Health:    session.HealthOK,
+		HostDir:   "/home/omega/work/project",
+	}
+
+	header, values := m.detailRows(selected, 52)
+	cleanHeader := stripANSIForTest(header)
+	cleanValues := stripANSIForTest(values)
+	if strings.Contains(cleanHeader, "UPDATED") || strings.Contains(cleanHeader, "SIZE") {
+		t.Fatalf("expected compact info header, got: %q", cleanHeader)
+	}
+	if !strings.Contains(cleanHeader, "ID") || !strings.Contains(cleanHeader, "HOST") {
+		t.Fatalf("expected ID/HOST in compact header, got: %q", cleanHeader)
+	}
+	if !strings.Contains(cleanValues, "ok-id") && !strings.Contains(cleanValues, "ok") {
+		t.Fatalf("expected compact values content, got: %q", cleanValues)
 	}
 }
 

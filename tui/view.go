@@ -277,7 +277,7 @@ func (m *tuiModel) appendSelectedSessionPreview(previewLines, infoLines *[]strin
 	*previewLines = append(*previewLines, barStyle.Render(" "+buildPreviewScrollBar(start, end, len(preview), max(10, previewTextWidth-2))))
 	*previewLines = append(*previewLines, preview[start:end]...)
 
-	h, v := m.detailRows(selected)
+	h, v := m.detailRows(selected, rightW)
 	*infoLines = append(*infoLines, lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(m.colorHex("info_header"))).Render(h))
 	*infoLines = append(*infoLines, v)
 }

@@ -200,7 +200,7 @@ func (m *tuiModel) sessionHostMissing(s session.Session) bool {
 	return errors.Is(err, os.ErrNotExist)
 }
 
-func (m *tuiModel) detailRows(selected session.Session) (header string, values string) {
+func (m *tuiModel) detailRows(selected session.Session, rightW int) (header string, values string) {
 	host := compactHomePath(selected.HostDir, m.home)
 	if strings.TrimSpace(host) == "" {
 		host = "-"
@@ -208,18 +208,34 @@ func (m *tuiModel) detailRows(selected session.Session) (header string, values s
 	if m.selectedSessionHostMissing() {
 		host += " (missing)"
 	}
-	contentWidth := max(40, m.width-4)
-	hostW := max(18, minInt(36, contentWidth/3))
-	cols := []struct {
+	contentWidth := max(24, rightW)
+	hostW := max(12, minInt(28, contentWidth/3))
+	type col struct {
 		name string
 		val  string
 		w    int
-	}{
+	}
+	cols := []col{
 		{name: "ID", val: shortID(selected.SessionID), w: 12},
 		{name: "UPDATED", val: formatDisplayTime(selected.UpdatedAt), w: 19},
 		{name: "SIZE", val: formatBytesIEC(selected.SizeBytes), w: 8},
 		{name: "HEALTH", val: strings.ToUpper(string(selected.Health)), w: 12},
 		{name: "HOST", val: previewHostPath(host, hostW), w: hostW},
+	}
+	if contentWidth < 88 {
+		hostW = max(16, contentWidth-12-12-4)
+		cols = []col{
+			{name: "ID", val: shortID(selected.SessionID), w: 12},
+			{name: "HEALTH", val: strings.ToUpper(string(selected.Health)), w: 12},
+			{name: "HOST", val: previewHostPath(host, hostW), w: hostW},
+		}
+	}
+	if contentWidth < 64 {
+		hostW = max(14, contentWidth-12-3)
+		cols = []col{
+			{name: "ID", val: shortID(selected.SessionID), w: 12},
+			{name: "HOST", val: previewHostPath(host, hostW), w: hostW},
+		}
 	}
 
 	var headerParts []string

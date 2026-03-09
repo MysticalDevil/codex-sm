@@ -27,13 +27,13 @@ func TestRenderWidth(t *testing.T) {
 }
 
 func TestIsTooSmall(t *testing.T) {
-	if IsTooSmall(122, 30) != true {
+	if IsTooSmall(118, 30) != true {
 		t.Fatal("width below minimum should be too small")
 	}
 	if IsTooSmall(120, 20) != true {
 		t.Fatal("height below minimum should be too small")
 	}
-	if IsTooSmall(123, 30) != false {
+	if IsTooSmall(119, 30) != false {
 		t.Fatal("expected enough terminal size")
 	}
 	// Unknown runtime size should not trigger warning path.
@@ -65,5 +65,12 @@ func TestComputeUsesTwentyEightPercentLeftPane(t *testing.T) {
 	m := Compute(140, 32)
 	if m.LeftOuterW != 38 {
 		t.Fatalf("expected ~28%% left pane, got %+v", m)
+	}
+}
+
+func TestComputeDropsGapAtNarrowWidths(t *testing.T) {
+	m := Compute(128, 32)
+	if m.GapW != 0 {
+		t.Fatalf("expected narrow layout gap=0, got %+v", m)
 	}
 }
