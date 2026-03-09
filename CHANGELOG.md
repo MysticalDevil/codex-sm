@@ -6,6 +6,13 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 
 ## [Unreleased]
 
+## [v0.2.6] - 2026-03-10
+
+### Fixed
+
+- Fixed session scanning against real Codex CLI session files whose `session_meta` first line exceeds the default `bufio.Reader` chunk size but remains below the configured 1 MiB metadata limit. This restores correct `ID`, `HOST`, `HEALTH`, and TUI grouping for large sessions instead of incorrectly marking them as `CORRUPTED`.
+- Fixed CI smoke and benchmark jobs to install `just` before invoking shared `justfile` entrypoints on GitHub-hosted Ubuntu runners.
+
 ## [v0.2.5] - 2026-03-09
 
 ### Added
