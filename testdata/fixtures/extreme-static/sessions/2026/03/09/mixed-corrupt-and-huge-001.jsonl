@@ -1,0 +1,2 @@
+{"timestamp":"2026-03-09T09:40:00Z","type":"session_meta","payload":{"id":"eeeeeeee-1111-2222-3333-444444444444","timestamp":"2026-03-09T09:40:00Z","cwd":"/workspace/extreme-static/mixed-corrupt"
+{"timestamp":"2026-03-09T09:40:09Z","type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"mixed corruption fixture stays intentionally invalid from the first line"}]}}

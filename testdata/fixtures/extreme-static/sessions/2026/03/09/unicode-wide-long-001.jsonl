@@ -1,0 +1,2 @@
+{"timestamp":"2026-03-09T09:50:00Z","type":"session_meta","payload":{"id":"eeeeeeee-1111-2222-3333-444444444445","timestamp":"2026-03-09T09:50:00Z","cwd":"/workspace/extreme-static/unicode"}}
+{"timestamp":"2026-03-09T09:50:07Z","type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"请处理这个超长宽字符会话：全角ＡＢＣ１２３，emoji family 👨‍👩‍👧‍👦，rocket 🚀，Arabic مرحبا بالعالم،Hebrew שלום，Japanese セッション復元，日本語とEnglish mixed，Korean 한글 테스트，repeat repeat repeat repeat repeat repeat repeat repeat repeat repeat。"}]}}

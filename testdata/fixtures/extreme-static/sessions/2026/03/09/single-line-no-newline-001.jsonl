@@ -1,0 +1,1 @@
+{"timestamp":"2026-03-09T10:00:00Z","type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"single line no newline fixture keeps EOF handling stable while staying missing-meta"}]}}

@@ -123,3 +123,37 @@ func TestScanSessionsLimitedKeepsTopNByComparator(t *testing.T) {
 		t.Fatalf("expected descending updated order, got %+v", items)
 	}
 }
+
+func TestScanSessionsExtremeStaticFixtureHealth(t *testing.T) {
+	workspace := testsupport.PrepareFixtureSandbox(t, "extreme-static")
+	root := filepath.Join(workspace, "sessions")
+
+	list, err := ScanSessions(root)
+	if err != nil {
+		t.Fatalf("ScanSessions: %v", err)
+	}
+	if len(list) != 6 {
+		t.Fatalf("expected 6 sessions, got %d", len(list))
+	}
+
+	byBase := make(map[string]Session, len(list))
+	for _, item := range list {
+		byBase[filepath.Base(item.Path)] = item
+	}
+
+	if got := byBase["mixed-corrupt-and-huge-001.jsonl"].Health; got != HealthCorrupted {
+		t.Fatalf("mixed-corrupt health=%s", got)
+	}
+	if got := byBase["single-line-no-newline-001.jsonl"].Health; got != HealthMissingMeta {
+		t.Fatalf("single-line-no-newline health=%s", got)
+	}
+	if got := byBase["oversize-meta-line-001.jsonl"].Health; got != HealthOK {
+		t.Fatalf("oversize-meta health=%s", got)
+	}
+	if head := byBase["unicode-wide-long-001.jsonl"].Head; !strings.Contains(head, "超长宽字符会话") {
+		t.Fatalf("unexpected unicode head: %q", head)
+	}
+	if head := byBase["oversize-user-message-001.jsonl"].Head; !strings.Contains(head, "U-LONG-START") {
+		t.Fatalf("unexpected oversize user head: %q", head)
+	}
+}

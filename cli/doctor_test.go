@@ -157,6 +157,40 @@ func TestDoctorRiskCommandIntegrityMismatchIsRisk(t *testing.T) {
 	}
 }
 
+func TestDoctorRiskCommandExtremeStaticJSON(t *testing.T) {
+	workspace := testsupport.PrepareFixtureSandbox(t, "extreme-static")
+	root := filepath.Join(workspace, "sessions")
+
+	cmd := NewRootCmd()
+	stdout := &bytes.Buffer{}
+	cmd.SetOut(stdout)
+	cmd.SetErr(&bytes.Buffer{})
+	cmd.SetArgs([]string{"doctor", "risk", "--sessions-root", root, "--format", "json", "--sample-limit", "4"})
+
+	err := cmd.Execute()
+	if err == nil {
+		t.Fatal("expected non-zero when risky sessions exist")
+	}
+
+	var payload struct {
+		SessionsTotal int `json:"sessions_total"`
+		RiskTotal     int `json:"risk_total"`
+		SampleLimit   int `json:"sample_limit"`
+	}
+	if unmarshalErr := json.Unmarshal(stdout.Bytes(), &payload); unmarshalErr != nil {
+		t.Fatalf("json unmarshal: %v output=%q", unmarshalErr, stdout.String())
+	}
+	if payload.SessionsTotal != 6 {
+		t.Fatalf("expected 6 sessions, got %+v", payload)
+	}
+	if payload.RiskTotal == 0 {
+		t.Fatalf("expected non-zero risk total, got %+v", payload)
+	}
+	if payload.SampleLimit != 4 {
+		t.Fatalf("expected sample limit=4, got %+v", payload)
+	}
+}
+
 func TestCheckSessionHostPathsWarnsWhenHostMissing(t *testing.T) {
 	sessionsRoot := t.TempDir()
 	existingHost := t.TempDir()

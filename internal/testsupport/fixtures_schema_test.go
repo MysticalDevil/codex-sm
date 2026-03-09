@@ -11,7 +11,16 @@ import (
 )
 
 func TestRichFixtureJSONLShape(t *testing.T) {
-	fixtureRoot := filepath.Join(TestdataRoot(), "fixtures", "rich")
+	runFixtureJSONLShape(t, "rich", 20)
+}
+
+func TestExtremeStaticFixtureJSONLShape(t *testing.T) {
+	runFixtureJSONLShape(t, "extreme-static", 6)
+}
+
+func runFixtureJSONLShape(t *testing.T, fixtureName string, minFiles int) {
+	t.Helper()
+	fixtureRoot := filepath.Join(TestdataRoot(), "fixtures", fixtureName)
 	var jsonlFiles []string
 
 	if err := filepath.WalkDir(fixtureRoot, func(path string, d os.DirEntry, err error) error {
@@ -29,8 +38,8 @@ func TestRichFixtureJSONLShape(t *testing.T) {
 		t.Fatalf("walk fixture root: %v", err)
 	}
 
-	if len(jsonlFiles) < 20 {
-		t.Fatalf("expected rich fixture set, got only %d jsonl files", len(jsonlFiles))
+	if len(jsonlFiles) < minFiles {
+		t.Fatalf("expected %s fixture set, got only %d jsonl files", fixtureName, len(jsonlFiles))
 	}
 
 	for _, p := range jsonlFiles {
@@ -49,7 +58,9 @@ func checkFixtureFile(t *testing.T, path string) {
 	}
 	defer func() { _ = f.Close() }()
 
-	isExpectedCorrupted := strings.HasSuffix(path, string(filepath.Separator)+"bad.jsonl")
+	base := filepath.Base(path)
+	isExpectedCorrupted := strings.HasSuffix(path, string(filepath.Separator)+"bad.jsonl") ||
+		strings.Contains(base, "mixed-corrupt")
 	scanner := bufio.NewScanner(f)
 	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
 
@@ -74,7 +85,7 @@ func checkFixtureFile(t *testing.T, path string) {
 			t.Fatalf("invalid json at line %d", lineNo)
 		}
 
-		if lineNo == 1 && strings.Contains(filepath.Base(path), "rollout-") {
+		if lineNo == 1 && (strings.Contains(base, "rollout-") || strings.Contains(base, "oversize-") || strings.Contains(base, "unicode-")) {
 			var meta struct {
 				Type    string `json:"type"`
 				Payload struct {
