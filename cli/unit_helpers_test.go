@@ -147,6 +147,12 @@ func TestErrorAndLoggingHelpers(t *testing.T) {
 	if WithExitCode(nil, 1) != nil {
 		t.Fatal("WithExitCode(nil) should be nil")
 	}
+	if (&ExitError{}).ExitCode() != 1 {
+		t.Fatal("zero ExitError should default to code 1")
+	}
+	if (&ExitError{Code: -2, Err: base}).ExitCode() != 1 {
+		t.Fatal("negative ExitError code should default to 1")
+	}
 
 	if _, err := parseLogLevel("bad"); err == nil {
 		t.Fatal("expected parseLogLevel error")
@@ -162,7 +168,8 @@ func TestErrorAndLoggingHelpers(t *testing.T) {
 func TestDeleteRestoreHelperPaths(t *testing.T) {
 	cmd := &cobra.Command{}
 	cmd.SetIn(bytes.NewBufferString("yes\n"))
-	cmd.SetErr(&bytes.Buffer{})
+	errBuf := &bytes.Buffer{}
+	cmd.SetErr(errBuf)
 	if ok, err := interactiveConfirmDelete(cmd, 1, false); err == nil || ok {
 		t.Fatalf("expected non-interactive delete confirm error, got ok=%v err=%v", ok, err)
 	}
@@ -188,6 +195,69 @@ func TestDeleteRestoreHelperPaths(t *testing.T) {
 	if restoreActionName(true) != "restore-dry-run" || restoreActionName(false) != "restore" {
 		t.Fatal("unexpected restoreActionName")
 	}
+}
+
+func TestDeleteRestorePreviewHelpersEdgeCases(t *testing.T) {
+	items := []session.Session{
+		{SessionID: "s1", Path: "/tmp/a", SizeBytes: 5},
+		{SessionID: "s2", Path: "/tmp/b", SizeBytes: 7},
+	}
+
+	t.Run("delete preview full ignores negative limit", func(t *testing.T) {
+		cmd := &cobra.Command{}
+		errBuf := &bytes.Buffer{}
+		cmd.SetErr(errBuf)
+		printDeletePreview(cmd, items, true, previewFull, -1)
+		got := errBuf.String()
+		if !strings.Contains(got, "preview action=hard-delete matched=2") {
+			t.Fatalf("unexpected delete preview header: %q", got)
+		}
+		if !strings.Contains(got, shortID("s1")) || !strings.Contains(got, shortID("s2")) {
+			t.Fatalf("expected all preview rows in full mode, got: %q", got)
+		}
+	})
+
+	t.Run("delete preview sample clamps negative limit", func(t *testing.T) {
+		cmd := &cobra.Command{}
+		errBuf := &bytes.Buffer{}
+		cmd.SetErr(errBuf)
+		printDeletePreview(cmd, items, false, previewSample, -3)
+		got := errBuf.String()
+		if strings.Contains(got, shortID("s1")) || strings.Contains(got, shortID("s2")) {
+			t.Fatalf("did not expect item rows with negative sample limit, got: %q", got)
+		}
+		if !strings.Contains(got, "... and 2 more") {
+			t.Fatalf("expected remainder notice, got: %q", got)
+		}
+	})
+
+	t.Run("restore preview full ignores negative limit", func(t *testing.T) {
+		cmd := &cobra.Command{}
+		errBuf := &bytes.Buffer{}
+		cmd.SetErr(errBuf)
+		printRestorePreview(cmd, items, previewFull, -1)
+		got := errBuf.String()
+		if !strings.Contains(got, "preview action=restore matched=2") {
+			t.Fatalf("unexpected restore preview header: %q", got)
+		}
+		if !strings.Contains(got, shortID("s1")) || !strings.Contains(got, shortID("s2")) {
+			t.Fatalf("expected all restore preview rows in full mode, got: %q", got)
+		}
+	})
+
+	t.Run("restore preview sample clamps negative limit", func(t *testing.T) {
+		cmd := &cobra.Command{}
+		errBuf := &bytes.Buffer{}
+		cmd.SetErr(errBuf)
+		printRestorePreview(cmd, items, previewSample, -1)
+		got := errBuf.String()
+		if strings.Contains(got, shortID("s1")) || strings.Contains(got, shortID("s2")) {
+			t.Fatalf("did not expect restore item rows with negative sample limit, got: %q", got)
+		}
+		if !strings.Contains(got, "... and 2 more") {
+			t.Fatalf("expected restore remainder notice, got: %q", got)
+		}
+	})
 }
 
 func TestRestoreMoveFileAndCopy(t *testing.T) {

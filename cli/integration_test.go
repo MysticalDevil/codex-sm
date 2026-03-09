@@ -985,6 +985,35 @@ func TestRestore_BatchIDConflictsWithSelectors(t *testing.T) {
 	if !strings.Contains(err.Error(), "cannot be combined") {
 		t.Fatalf("unexpected error: %v", err)
 	}
+	var ex *ExitError
+	if !errors.As(err, &ex) || ex.ExitCode() != 1 {
+		t.Fatalf("expected exit code 1, got err=%v", err)
+	}
+}
+
+func TestRestore_RequiresSelectorOrBatchID(t *testing.T) {
+	_, root, trashRoot, logFile := fixtureRoots(t)
+
+	cmd := newIsolatedRootCmd(t, root)
+	cmd.SetOut(&bytes.Buffer{})
+	cmd.SetErr(&bytes.Buffer{})
+	cmd.SetArgs([]string{
+		"restore",
+		"--sessions-root", root,
+		"--trash-root", trashRoot,
+		"--log-file", logFile,
+	})
+	err := cmd.Execute()
+	if err == nil {
+		t.Fatal("expected missing selector error")
+	}
+	if !strings.Contains(err.Error(), "requires at least one selector") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	var ex *ExitError
+	if !errors.As(err, &ex) || ex.ExitCode() != 1 {
+		t.Fatalf("expected exit code 1, got err=%v", err)
+	}
 }
 
 func TestRestore_RealPreviewNoneSuppressesOutput(t *testing.T) {
