@@ -3,6 +3,7 @@
 This directory contains project-level documentation for `codexsm`.
 
 - [Architecture Notes](./ARCHITECTURE.md): layering, module boundaries, and design constraints.
+- [Benchmark Baselines](./BENCHMARKS.md): lightweight performance snapshot and comparison commands.
 - [Command Guide](./COMMANDS.md): practical command usage, safety rules, and release commands.
 - [Release Checklist](./RELEASE.md): preflight, quality gates, and tagging workflow.
 - [Changelog](../CHANGELOG.md): released and unreleased changes.

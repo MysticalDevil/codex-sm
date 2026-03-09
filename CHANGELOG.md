@@ -11,6 +11,7 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 - Added an `extreme-static` fixture corpus covering long single-message sessions, oversize meta payloads, mixed corruption, Unicode-heavy previews, and no-final-newline files.
 - Added `gen-sessions-extreme` and `gen-sessions-large` workflows plus generator knobs for large files, oversize lines/messages, Unicode-heavy content, and no-final-newline outputs.
 - Added local `just` workflows for `bench-session`, `bench-cli`, `bench-all`, and `stress-cli` to exercise lightweight benchmark sweeps and generated large-dataset smoke checks.
+- Added `docs/BENCHMARKS.md` to record the first lightweight benchmark baseline snapshot and rerun commands.
 
 ### Changed
 
