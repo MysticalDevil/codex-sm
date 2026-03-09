@@ -116,6 +116,29 @@ bench-cli:
 # Run all lightweight benchmark suites
 bench-all: bench-session bench-cli bench-tui
 
+# Run CI smoke checks against built binary and risk fixture dataset
+ci-smoke:
+  set -e; \
+  {{go_with_experiment_cache}} build -ldflags="-X main.version={{version}}" -o {{bin}} .; \
+  ./{{bin}} restore --help | grep -q -- "--batch-id"; \
+  ./{{bin}} delete --help | grep -q -- "--preview"; \
+  ./{{bin}} config --help | grep -q -- "show"; \
+  ./{{bin}} config --help | grep -q -- "validate"; \
+  CSM_CONFIG=/tmp/codexsm-ci-config.json ./{{bin}} config init --dry-run | grep -q -- "\"sessions_root\""; \
+  if ./{{bin}} restore --batch-id b-test --id deadbeef >/tmp/codexsm-restore-conflict.log 2>&1; then \
+    echo "expected restore conflict to fail"; \
+    exit 1; \
+  fi; \
+  grep -q "cannot be combined" /tmp/codexsm-restore-conflict.log; \
+  ./{{bin}} doctor >/tmp/codexsm-doctor.txt; \
+  rc=0; \
+  ./{{bin}} doctor risk --sessions-root ./testdata/fixtures/risky-static/sessions --format json --sample-limit 3 >/tmp/codexsm-risk.json || rc=$?; \
+  if [ "$rc" -ne 1 ]; then \
+    echo "expected doctor risk fixture check to exit 1, got $rc"; \
+    exit 1; \
+  fi; \
+  python3 -c 'import json; from pathlib import Path; payload = json.loads(Path("/tmp/codexsm-risk.json").read_text(encoding="utf-8")); assert payload["sessions_total"] >= payload["risk_total"] > 0; assert payload["high"] >= 1; assert payload["sample_limit"] == 3; print("doctor risk json payload validated")'
+
 # Enforce TUI benchmark latency guardrails (ns/op)
 bench-gate:
   if ! out="$({{go_with_experiment_cache}} test -run='^$' -bench='Benchmark(SortTUISessions_3k|SortTUISessions_10k)$' ./tui -count=1 2>&1)"; then \

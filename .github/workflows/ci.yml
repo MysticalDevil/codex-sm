@@ -8,15 +8,16 @@ on:
   release:
     types: [published]
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  verify:
+  lint:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     env:
       GOEXPERIMENT: jsonv2
-      UNIT_COVERAGE_MIN: "60"
-      INTEGRATION_COVERAGE_MIN: "72"
-      BENCH_SORT_3K_NS_MAX: "15000000"
-      BENCH_SORT_10K_NS_MAX: "50000000"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -50,6 +51,26 @@ jobs:
       - name: Vet
         run: go vet ./...
 
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      GOEXPERIMENT: jsonv2
+      UNIT_COVERAGE_MIN: "60"
+      INTEGRATION_COVERAGE_MIN: "72"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.x"
+          cache: true
+
+      - name: Download modules
+        run: go mod download
+
       - name: Test (unit)
         run: go test -count=1 ./... -coverprofile=coverage_unit.out
 
@@ -66,68 +87,59 @@ jobs:
       - name: Build
         run: go build -ldflags="-X main.version=ci-${{ github.sha }}" -o codexsm .
 
+  smoke:
+    if: github.event_name != 'pull_request'
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GOEXPERIMENT: jsonv2
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.x"
+          cache: true
+
+      - name: Download modules
+        run: go mod download
+
+      - name: Smoke checks
+        run: just ci-smoke
+
+  bench:
+    if: github.event_name != 'pull_request'
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GOEXPERIMENT: jsonv2
+      BENCH_SORT_3K_NS_MAX: "15000000"
+      BENCH_SORT_10K_NS_MAX: "50000000"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.x"
+          cache: true
+
+      - name: Download modules
+        run: go mod download
+
       - name: Session benchmarks
-        run: go test -run='^$' -bench='Benchmark(ScanSessions|FilterSessions)' ./session -count=1 -benchmem
+        run: just bench-session
 
       - name: CLI benchmarks
-        run: go test -run='^$' -bench='Benchmark(RenderTable|RenderJSON|DoctorRiskJSON)' ./cli -count=1 -benchmem
+        run: just bench-cli
 
       - name: TUI benchmark gate
-        run: |
-          out=$(go test -run='^$' -bench='Benchmark(SortTUISessions_3k|SortTUISessions_10k|BuildPreviewLines|PreviewIndex)' ./tui -count=1 -benchmem 2>&1)
-          echo "$out"
-          echo "$out" | awk -v max3="$BENCH_SORT_3K_NS_MAX" -v max10="$BENCH_SORT_10K_NS_MAX" '
-            /BenchmarkSortTUISessions_3k/ { for (i = 1; i <= NF; i++) if ($i == "ns/op") { got3 = $(i-1); break } }
-            /BenchmarkSortTUISessions_10k/ { for (i = 1; i <= NF; i++) if ($i == "ns/op") { got10 = $(i-1); break } }
-            END {
-              if (got3 == "" || got10 == "") {
-                print "benchmark output missing required rows"
-                exit 1
-              }
-              if (got3 + 0 > max3 + 0) {
-                printf("bench sort 3k %.0f ns/op > %.0f ns/op\n", got3 + 0, max3 + 0)
-                fail = 1
-              } else {
-                printf("bench sort 3k %.0f ns/op <= %.0f ns/op\n", got3 + 0, max3 + 0)
-              }
-              if (got10 + 0 > max10 + 0) {
-                printf("bench sort 10k %.0f ns/op > %.0f ns/op\n", got10 + 0, max10 + 0)
-                fail = 1
-              } else {
-                printf("bench sort 10k %.0f ns/op <= %.0f ns/op\n", got10 + 0, max10 + 0)
-              }
-              if (fail) exit 1
-            }'
+        run: just bench-gate
 
-      - name: CLI batch rollback guards (smoke)
-        run: |
-          ./codexsm restore --help | grep -q -- "--batch-id"
-          ./codexsm delete --help | grep -q -- "--preview"
-          ./codexsm config --help | grep -q -- "show"
-          ./codexsm config --help | grep -q -- "validate"
-          CSM_CONFIG=/tmp/codexsm-ci-config.json ./codexsm config init --dry-run | grep -q -- "\"sessions_root\""
-          if ./codexsm restore --batch-id b-test --id deadbeef >/tmp/codexsm-restore-conflict.log 2>&1; then
-            echo "expected restore conflict to fail"
-            exit 1
-          fi
-          grep -q "cannot be combined" /tmp/codexsm-restore-conflict.log
-
-      - name: Doctor (sanity)
-        run: ./codexsm doctor
-
-      - name: Doctor risk JSON (fixture)
-        run: |
-          set +e
-          ./codexsm doctor risk --sessions-root ./testdata/fixtures/risky-static/sessions --format json --sample-limit 3 >/tmp/codexsm-risk.json
-          rc=$?
-          set -e
-          [ "$rc" -eq 1 ] || { echo "expected exit code 1 when risk exists, got $rc"; exit 1; }
-          python3 - <<'PY'
-          import json
-          from pathlib import Path
-          payload = json.loads(Path("/tmp/codexsm-risk.json").read_text(encoding="utf-8"))
-          assert payload["sessions_total"] >= payload["risk_total"] > 0
-          assert payload["high"] >= 1
-          assert payload["sample_limit"] == 3
-          print("doctor risk json payload validated")
-          PY
+      - name: TUI benchmark sweep
+        run: just bench-tui

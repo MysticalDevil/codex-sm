@@ -21,6 +21,7 @@ Run all required gates locally:
 ```bash
 just check
 just cover-gate
+just ci-smoke
 just bench-gate
 just bench-session
 just bench-cli
@@ -77,6 +78,12 @@ just bench-tui
 ```
 
 These commands should run successfully in CI/local validation, but they do not yet enforce new numeric thresholds beyond the existing TUI sort gate.
+
+CI orchestration note:
+
+- pull requests run the lighter `lint` + `test` jobs
+- tag pushes and published releases additionally run `smoke` + `bench`
+- `just ci-smoke` is the shared local/CI entrypoint for rollback, doctor, and risk-fixture smoke checks
 
 ## Documentation Updates
 

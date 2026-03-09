@@ -17,6 +17,7 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 
 - Expanded fixture/schema and `session`/`tui`/`cli doctor risk` tests to consume the new extreme dataset directly.
 - Expanded benchmark coverage across session scanning, TUI preview/index paths, and CLI table/JSON/risk rendering, while keeping new benchmark runs threshold-free for now.
+- Reworked CI orchestration into separate lint, test, smoke, and bench jobs so pull requests stay lighter while tag/release runs keep the full quality gate.
 
 ## [v0.2.4] - 2026-03-09
 
