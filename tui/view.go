@@ -35,7 +35,7 @@ func (m tuiModel) View() string {
 		)
 		warn := lipgloss.NewStyle().
 			Width(max(32, metrics.TotalW-2)).
-			Height(max(4, metrics.MainAreaH-2)).
+			Height(max(4, metrics.TotalH-2)).
 			Border(lipgloss.RoundedBorder()).
 			BorderForeground(lipgloss.Color(borderColor)).
 			Foreground(lipgloss.Color(fgColor)).
