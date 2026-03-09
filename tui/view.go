@@ -31,7 +31,7 @@ func (m tuiModel) View() string {
 	if layout.IsTooSmall(m.width, m.height) {
 		msg := fmt.Sprintf(
 			"Terminal too small.\nRequired at least: %dx%d\nCurrent: %dx%d\nResize terminal and try again.\nPress q to quit.",
-			layout.MinWidth, layout.MinHeight, m.width, m.height,
+			layout.MinWidth+1, layout.MinHeight, m.width, m.height,
 		)
 		warn := lipgloss.NewStyle().
 			Width(max(32, metrics.TotalW-2)).

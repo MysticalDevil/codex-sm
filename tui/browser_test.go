@@ -60,7 +60,7 @@ func TestTUIHandleKeySwitchAndScroll(t *testing.T) {
 func TestTUIViewMinSizeWarning(t *testing.T) {
 	m := tuiModel{width: 80, height: 20}
 	out := m.View()
-	if !strings.Contains(out, "Required at least: 134x24") {
+	if !strings.Contains(out, "Required at least: 135x24") {
 		t.Fatalf("expected min-size warning, got: %q", out)
 	}
 	if strings.Contains(out, "q quit") {
