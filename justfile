@@ -23,6 +23,17 @@ gen_min_turns := env_var_or_default("GEN_MIN_TURNS", "12")
 gen_max_turns := env_var_or_default("GEN_MAX_TURNS", "48")
 gen_risk_missing_meta_count := env_var_or_default("GEN_RISK_MISSING_META_COUNT", "3")
 gen_risk_corrupted_count := env_var_or_default("GEN_RISK_CORRUPTED_COUNT", "3")
+gen_large_file_count := env_var_or_default("GEN_LARGE_FILE_COUNT", "0")
+gen_oversize_meta_count := env_var_or_default("GEN_OVERSIZE_META_COUNT", "0")
+gen_oversize_user_count := env_var_or_default("GEN_OVERSIZE_USER_COUNT", "0")
+gen_oversize_assistant_count := env_var_or_default("GEN_OVERSIZE_ASSISTANT_COUNT", "0")
+gen_no_newline_count := env_var_or_default("GEN_NO_NEWLINE_COUNT", "0")
+gen_mixed_corrupt_huge_count := env_var_or_default("GEN_MIXED_CORRUPT_HUGE_COUNT", "0")
+gen_unicode_wide_count := env_var_or_default("GEN_UNICODE_WIDE_COUNT", "0")
+gen_long_message_bytes := env_var_or_default("GEN_LONG_MESSAGE_BYTES", "131072")
+gen_meta_line_bytes := env_var_or_default("GEN_META_LINE_BYTES", "98304")
+gen_large_file_target_bytes := env_var_or_default("GEN_LARGE_FILE_TARGET_BYTES", "1048576")
+gen_payload_shape := env_var_or_default("GEN_PAYLOAD_SHAPE", "mixed")
 gen_time_range_start := env_var_or_default("GEN_TIME_RANGE_START", "2026-03-01T00:00:00Z")
 gen_time_range_end := env_var_or_default("GEN_TIME_RANGE_END", "2026-03-31T23:59:59Z")
 gen_output_root := env_var_or_default("GEN_OUTPUT_ROOT", "testdata/_generated/sessions")
@@ -133,9 +144,56 @@ gen-sessions:
     --max-turns {{gen_max_turns}} \
     --risk-missing-meta-count {{gen_risk_missing_meta_count}} \
     --risk-corrupted-count {{gen_risk_corrupted_count}} \
+    --large-file-count {{gen_large_file_count}} \
+    --oversize-meta-count {{gen_oversize_meta_count}} \
+    --oversize-user-count {{gen_oversize_user_count}} \
+    --oversize-assistant-count {{gen_oversize_assistant_count}} \
+    --no-newline-count {{gen_no_newline_count}} \
+    --mixed-corrupt-huge-count {{gen_mixed_corrupt_huge_count}} \
+    --unicode-wide-count {{gen_unicode_wide_count}} \
+    --long-message-bytes {{gen_long_message_bytes}} \
+    --meta-line-bytes {{gen_meta_line_bytes}} \
+    --large-file-target-bytes {{gen_large_file_target_bytes}} \
+    --payload-shape {{gen_payload_shape}} \
     --time-range-start {{gen_time_range_start}} \
     --time-range-end {{gen_time_range_end}} \
     --output-root {{gen_output_root}}
+
+# Generate a compact extreme dataset for local regression checks
+gen-sessions-extreme:
+  GEN_COUNT=0 \
+  GEN_RISK_MISSING_META_COUNT=1 \
+  GEN_RISK_CORRUPTED_COUNT=1 \
+  GEN_LARGE_FILE_COUNT=1 \
+  GEN_OVERSIZE_META_COUNT=1 \
+  GEN_OVERSIZE_USER_COUNT=1 \
+  GEN_OVERSIZE_ASSISTANT_COUNT=1 \
+  GEN_NO_NEWLINE_COUNT=1 \
+  GEN_MIXED_CORRUPT_HUGE_COUNT=1 \
+  GEN_UNICODE_WIDE_COUNT=1 \
+  GEN_LONG_MESSAGE_BYTES=65536 \
+  GEN_META_LINE_BYTES=32768 \
+  GEN_LARGE_FILE_TARGET_BYTES=262144 \
+  GEN_PAYLOAD_SHAPE=mixed \
+  just gen-sessions
+
+# Generate a larger stress dataset for manual benchmarking and memory checks
+gen-sessions-large:
+  GEN_COUNT=200 \
+  GEN_RISK_MISSING_META_COUNT=3 \
+  GEN_RISK_CORRUPTED_COUNT=3 \
+  GEN_LARGE_FILE_COUNT=6 \
+  GEN_OVERSIZE_META_COUNT=4 \
+  GEN_OVERSIZE_USER_COUNT=6 \
+  GEN_OVERSIZE_ASSISTANT_COUNT=6 \
+  GEN_NO_NEWLINE_COUNT=4 \
+  GEN_MIXED_CORRUPT_HUGE_COUNT=4 \
+  GEN_UNICODE_WIDE_COUNT=4 \
+  GEN_LONG_MESSAGE_BYTES=262144 \
+  GEN_META_LINE_BYTES=131072 \
+  GEN_LARGE_FILE_TARGET_BYTES=2097152 \
+  GEN_PAYLOAD_SHAPE=log-heavy \
+  just gen-sessions
 
 # Remove generated coverage files
 clean:
