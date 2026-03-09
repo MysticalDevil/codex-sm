@@ -59,11 +59,11 @@ func TestTUIHandleKeySwitchAndScroll(t *testing.T) {
 func TestTUIViewMinSizeWarning(t *testing.T) {
 	m := tuiModel{width: 80, height: 20}
 	out := m.View()
-	if !strings.Contains(out, "Required at least: 125x24") {
+	if !strings.Contains(out, "Required at least: 134x24") {
 		t.Fatalf("expected min-size warning, got: %q", out)
 	}
-	if !strings.Contains(out, "KEYS") {
-		t.Fatalf("expected KEYS bar, got: %q", out)
+	if strings.Contains(out, "q quit") {
+		t.Fatalf("did not expect extra bottom quit hint, got: %q", out)
 	}
 }
 
@@ -430,7 +430,7 @@ func TestTUIViewAndHelpersCoverage(t *testing.T) {
 				Path:      p,
 			},
 		},
-		width:        128,
+		width:        136,
 		height:       36,
 		home:         "/home/omega",
 		sessionsRoot: filepath.Join(workspace, "sessions"),
@@ -478,7 +478,7 @@ func TestTUIViewKeysBarWidthMatchesMainArea(t *testing.T) {
 
 	m := tuiModel{
 		sessions:     sessions,
-		width:        128,
+		width:        136,
 		height:       36,
 		home:         "/home/omega",
 		sessionsRoot: sessionsRoot,
@@ -530,7 +530,7 @@ func TestTUIViewShowsPendingConfirmInKeysBar(t *testing.T) {
 	}
 	m := tuiModel{
 		sessions:      sessions,
-		width:         128,
+		width:         136,
 		height:        32,
 		previewCache:  make(map[string][]string),
 		groupBy:       "host",

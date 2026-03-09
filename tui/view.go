@@ -30,7 +30,7 @@ func (m tuiModel) View() string {
 
 	if layout.IsTooSmall(m.width, m.height) {
 		msg := fmt.Sprintf(
-			"Terminal too small.\nRequired at least: %dx%d\nCurrent: %dx%d\nResize terminal and try again. Press q to quit.",
+			"Terminal too small.\nRequired at least: %dx%d\nCurrent: %dx%d\nResize terminal and try again.\nPress q to quit.",
 			layout.MinWidth, layout.MinHeight, m.width, m.height,
 		)
 		warn := lipgloss.NewStyle().
@@ -43,7 +43,11 @@ func (m tuiModel) View() string {
 			Render(msg)
 		warnW := lipgloss.Width(warn)
 		warn = lipgloss.NewStyle().Width(warnW).MaxWidth(warnW).Render(warn)
-		return strings.Join([]string{warn, renderKeysBar(warnW)}, "\n")
+		return lipgloss.NewStyle().
+			Width(metrics.TotalW).
+			MaxWidth(metrics.TotalW).
+			AlignHorizontal(lipgloss.Center).
+			Render(warn)
 	}
 
 	if len(m.sessions) == 0 || len(m.tree) == 0 {
@@ -59,7 +63,11 @@ func (m tuiModel) View() string {
 			Render(empty + "\n" + m.status)
 		emptyW := lipgloss.Width(emptyPane)
 		emptyPane = lipgloss.NewStyle().Width(emptyW).MaxWidth(emptyW).Render(emptyPane)
-		return strings.Join([]string{emptyPane, renderKeysBar(emptyW)}, "\n")
+		return lipgloss.NewStyle().
+			Width(metrics.TotalW).
+			MaxWidth(metrics.TotalW).
+			AlignHorizontal(lipgloss.Center).
+			Render(strings.Join([]string{emptyPane, renderKeysBar(emptyW)}, "\n"))
 	}
 
 	leftBase := lipgloss.NewStyle().
@@ -128,8 +136,9 @@ func (m tuiModel) View() string {
 	mainArea = lipgloss.NewStyle().Width(mainOuterW).MaxWidth(mainOuterW).Render(mainArea)
 	keybar := renderKeysBar(mainOuterW)
 	mainContainer := lipgloss.NewStyle().
-		Width(mainOuterW).
-		MaxWidth(mainOuterW).
+		Width(metrics.TotalW).
+		MaxWidth(metrics.TotalW).
+		AlignHorizontal(lipgloss.Center).
 		Foreground(lipgloss.Color(fgColor)).
 		Render(lipgloss.JoinVertical(lipgloss.Left, mainArea, keybar))
 	return mainContainer

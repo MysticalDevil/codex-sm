@@ -27,13 +27,13 @@ func TestRenderWidth(t *testing.T) {
 }
 
 func TestIsTooSmall(t *testing.T) {
-	if IsTooSmall(125, 30) != true {
+	if IsTooSmall(134, 30) != true {
 		t.Fatal("width below minimum should be too small")
 	}
 	if IsTooSmall(120, 20) != true {
 		t.Fatal("height below minimum should be too small")
 	}
-	if IsTooSmall(126, 30) != false {
+	if IsTooSmall(135, 30) != false {
 		t.Fatal("expected enough terminal size")
 	}
 	// Unknown runtime size should not trigger warning path.

@@ -3,10 +3,11 @@ package layout
 
 const (
 	// MinWidth is the minimal terminal width required by TUI.
-	// The current TUI needs 121 columns for the full keybar text plus
-	// border/padding. Rendering also reserves one safety column to avoid
-	// terminal-edge autowrap in environments such as Windows Terminal.
-	MinWidth = 125
+	// The current TUI needs more than the theoretical keybar width once
+	// border/padding, proportional pane split, and terminal-edge autowrap
+	// behavior are accounted for. Keep a small safety margin so boundary
+	// widths fall back to the min-size warning instead of partial rendering.
+	MinWidth = 134
 	// MinHeight is the minimal terminal height required by TUI.
 	MinHeight = 24
 )
