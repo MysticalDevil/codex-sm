@@ -85,6 +85,76 @@ func TestSessionMigrateDryRunAndRealExecution(t *testing.T) {
 	}
 }
 
+func TestSessionMigrateFileDryRun(t *testing.T) {
+	root := t.TempDir()
+	sessionsRoot := filepath.Join(root, "sessions")
+	srcRollout := filepath.Join(sessionsRoot, "2026", "03", "10", "rollout-2026-03-10-old-id.jsonl")
+	if err := os.MkdirAll(filepath.Dir(srcRollout), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	content := strings.Join([]string{
+		`{"type":"session_meta","payload":{"id":"old-id","timestamp":"2026-03-10T01:00:00Z","cwd":"/old"}}`,
+		`{"type":"turn_context","payload":{"cwd":"/old"}}`,
+	}, "\n") + "\n"
+	if err := os.WriteFile(srcRollout, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	dbPath := filepath.Join(root, "state.sqlite")
+	createCLIMigrationDB(t, dbPath)
+	insertCLIMigrationRow(t, dbPath, "old-id", srcRollout, "/old", "main")
+	filePath := filepath.Join(root, "migrate.toml")
+	fileContent := `
+[[mapping]]
+from = "/old"
+to = "` + filepath.Join(root, "new-main") + `"
+
+[[mapping]]
+from = "/missing"
+to = "` + filepath.Join(root, "missing-main") + `"
+`
+	if err := os.WriteFile(filePath, []byte(fileContent), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	cmd := NewRootCmd()
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	cmd.SetOut(stdout)
+	cmd.SetErr(stderr)
+	cmd.SetArgs([]string{
+		"session", "migrate",
+		"--file", filePath,
+		"--sessions-root", sessionsRoot,
+		"--codex-state-db", dbPath,
+	})
+	err := cmd.Execute()
+	if err == nil {
+		t.Fatal("expected dry-run batch error")
+	}
+	if !strings.Contains(stdout.String(), "session-migrate-batch: action=dry-run mappings=2 succeeded=1 failed=1") {
+		t.Fatalf("unexpected batch output: %s", stdout.String())
+	}
+	if !strings.Contains(err.Error(), "1 migration mapping(s) failed") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestSessionMigrateRejectsMixedFileAndDirectFlags(t *testing.T) {
+	cmd := NewRootCmd()
+	cmd.SetOut(&bytes.Buffer{})
+	cmd.SetErr(&bytes.Buffer{})
+	cmd.SetArgs([]string{
+		"session", "migrate",
+		"--file", "migrate.toml",
+		"--from", "/old",
+		"--to", "/new",
+	})
+	err := cmd.Execute()
+	if err == nil || !strings.Contains(err.Error(), "--file cannot be combined with --from or --to") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
 func createCLIMigrationDB(t *testing.T, path string) {
 	t.Helper()
 	db, err := sql.Open("sqlite", path)

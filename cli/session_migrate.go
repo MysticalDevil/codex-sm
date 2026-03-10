@@ -13,6 +13,7 @@ func newSessionMigrateCmd() *cobra.Command {
 	var (
 		fromPath     string
 		toPath       string
+		filePath     string
 		branch       string
 		sessionsRoot string
 		stateDB      string
@@ -31,6 +32,7 @@ func newSessionMigrateCmd() *cobra.Command {
 			"By default it runs in dry-run mode and prints the migration plan without writing.",
 		Example: "  codexsm session migrate --from /home/omega/Project/codexsm --to /home/omega/Worktrees/codexsm/main\n" +
 			"  codexsm session migrate --from /old/path --to /new/path --dry-run=false --confirm\n" +
+			"  codexsm session migrate --file ./migrate.toml\n" +
 			"  codexsm session migrate --from /old/path --to /new/path --branch main --since 2026-03-10",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var err error
@@ -46,7 +48,36 @@ func newSessionMigrateCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			opts := session.MigrateOptions{
+			filePath = strings.TrimSpace(filePath)
+			fromPath = strings.TrimSpace(fromPath)
+			toPath = strings.TrimSpace(toPath)
+			switch {
+			case filePath != "" && (fromPath != "" || toPath != ""):
+				return WithExitCode(fmt.Errorf("--file cannot be combined with --from or --to"), 1)
+			case filePath == "" && (fromPath == "" || toPath == ""):
+				return WithExitCode(fmt.Errorf("either --file or both --from and --to are required"), 1)
+			}
+
+			if filePath != "" {
+				result, err := session.MigrateSessionsBatch(session.MigrateBatchOptions{
+					FilePath:     filePath,
+					SessionsRoot: sessionsRoot,
+					StateDBPath:  stateDB,
+					Limit:        limit,
+					Since:        since,
+					HasSince:     hasSince,
+					DryRun:       dryRun,
+					Confirm:      confirm,
+					PrintCreated: printCreated,
+				})
+				printSessionMigrateBatchResult(cmd, result)
+				if err != nil {
+					return WithExitCode(err, 1)
+				}
+				return nil
+			}
+
+			result, err := session.MigrateSessions(session.MigrateOptions{
 				FromCWD:      fromPath,
 				ToCWD:        toPath,
 				Branch:       branch,
@@ -58,8 +89,7 @@ func newSessionMigrateCmd() *cobra.Command {
 				DryRun:       dryRun,
 				Confirm:      confirm,
 				PrintCreated: printCreated,
-			}
-			result, err := session.MigrateSessions(opts)
+			})
 			if err != nil {
 				return WithExitCode(err, 1)
 			}
@@ -70,6 +100,7 @@ func newSessionMigrateCmd() *cobra.Command {
 
 	cmd.Flags().StringVar(&fromPath, "from", "", "source cwd to match in existing sessions")
 	cmd.Flags().StringVar(&toPath, "to", "", "destination cwd to write into copied sessions")
+	cmd.Flags().StringVar(&filePath, "file", "", "TOML file containing [[mapping]] entries for batch migration")
 	cmd.Flags().StringVar(&branch, "branch", "", "override git branch recorded in cloned thread rows")
 	cmd.Flags().StringVar(&sessionsRoot, "sessions-root", "", "sessions root directory")
 	cmd.Flags().StringVar(&stateDB, "codex-state-db", "", "Codex local sqlite state database")
@@ -78,8 +109,6 @@ func newSessionMigrateCmd() *cobra.Command {
 	cmd.Flags().BoolVar(&dryRun, "dry-run", true, "simulate migration without writing files or sqlite rows")
 	cmd.Flags().BoolVar(&confirm, "confirm", false, "required for real migration")
 	cmd.Flags().BoolVar(&printCreated, "print-created", false, "print source id to destination id mappings")
-	_ = cmd.MarkFlagRequired("from")
-	_ = cmd.MarkFlagRequired("to")
 	return cmd
 }
 
@@ -119,6 +148,43 @@ func printSessionMigrateResult(cmd *cobra.Command, result session.MigrateResult)
 		_, _ = fmt.Fprintln(out, "warnings:")
 		for _, warning := range result.Warnings {
 			_, _ = fmt.Fprintf(out, "- %s\n", warning)
+		}
+	}
+}
+
+func printSessionMigrateBatchResult(cmd *cobra.Command, result session.MigrateBatchResult) {
+	out := cmd.OutOrStdout()
+	action := "dry-run"
+	if !result.DryRun {
+		action = "migrate"
+	}
+	_, _ = fmt.Fprintf(out, "session-migrate-batch: action=%s mappings=%d succeeded=%d failed=%d matched=%d created=%d skipped=%d\n",
+		action, result.TotalMappings, result.Succeeded, result.Failed, result.Matched, result.Created, result.Skipped)
+	for i, item := range result.Items {
+		status := "ok"
+		if item.Err != nil {
+			status = "error"
+		}
+		_, _ = fmt.Fprintf(out, "mapping[%d]: status=%s from=%s to=%s matched=%d created=%d skipped=%d\n",
+			i+1, status, item.Mapping.FromCWD, item.Mapping.ToCWD, item.Result.Matched, item.Result.Created, item.Result.Skipped)
+		if item.Mapping.Branch != "" {
+			_, _ = fmt.Fprintf(out, "branch=%s\n", item.Mapping.Branch)
+		}
+		if item.Err != nil {
+			_, _ = fmt.Fprintf(out, "error=%s\n", item.Err)
+			continue
+		}
+		if result.PrintCreated && len(item.Result.Planned) > 0 {
+			_, _ = fmt.Fprintln(out, "mappings:")
+			for _, p := range item.Result.Planned {
+				_, _ = fmt.Fprintf(out, "- %s -> %s %s\n", p.SourceID, p.DestID, p.DestRollout)
+			}
+		}
+		if len(item.Result.Warnings) > 0 {
+			_, _ = fmt.Fprintln(out, "warnings:")
+			for _, warning := range item.Result.Warnings {
+				_, _ = fmt.Fprintf(out, "- %s\n", warning)
+			}
 		}
 	}
 }
