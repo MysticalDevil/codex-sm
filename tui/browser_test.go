@@ -152,6 +152,33 @@ func TestPreviewForShowsRolePerMessage(t *testing.T) {
 	}
 }
 
+func TestPreviewForShowsFriendlyOversizeWarning(t *testing.T) {
+	workspace := testsupport.PrepareFixtureSandbox(t, "rich")
+	root := filepath.Join(workspace, "tmp")
+	if err := os.MkdirAll(root, 0o755); err != nil {
+		t.Fatalf("mkdir tmp: %v", err)
+	}
+	path := filepath.Join(root, "oversize-warning.jsonl")
+	longText := strings.Repeat("x", 1024*1024+128)
+	content := `{"type":"session_meta","payload":{"id":"x","timestamp":"2026-03-02T09:44:00.024Z"}}` + "\n" +
+		`{"type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"` + longText + `"}]}}` + "\n"
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatalf("write preview fixture: %v", err)
+	}
+
+	m := tuiModel{
+		previewCache: make(map[string][]string),
+	}
+	out := m.previewFor(path, 64, 20)
+	joined := strings.Join(out, "\n")
+	if !strings.Contains(stripANSIForTest(joined), "preview unavailable: a session entry exceeds the safe preview limit") {
+		t.Fatalf("expected friendly oversize warning, got: %q", joined)
+	}
+	if strings.Contains(stripANSIForTest(joined), "token too long") {
+		t.Fatalf("did not expect raw scanner error, got: %q", joined)
+	}
+}
+
 func TestPreviewForLineWidthBound(t *testing.T) {
 	tests := []struct {
 		name string

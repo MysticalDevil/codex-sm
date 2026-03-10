@@ -110,7 +110,10 @@ func buildPreviewLines(path string, width, lines int, theme tuiTheme) []string {
 		}
 	}
 	if err := sc.Err(); err != nil {
-		out = append(out, " preview read error: "+err.Error())
+		out = append(out, lipgloss.NewStyle().
+			Bold(true).
+			Foreground(lipgloss.Color(previewColorHex(theme, "tag_danger"))).
+			Render(" preview unavailable: a session entry exceeds the safe preview limit"))
 	}
 	if len(out) == 0 {
 		out = append(out, " no dialogue preview available")
