@@ -6,6 +6,21 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 
 ## [Unreleased]
 
+## [v0.2.7] - 2026-03-10
+
+### Changed
+
+- Improved narrow-width TUI layout behavior by shrinking the tree pane, compacting the bottom keybar into adaptive variants, and compacting the top info pane before falling back to the min-size warning.
+- Reduced the effective TUI minimum width requirement after decoupling keybar and info-panel width needs from the main split-pane layout.
+- Updated the main README install examples and experimental-branch notes to point at `v0.2.6` and the current `zsession` backend scope.
+
+### Fixed
+
+- Fixed TUI keybar wrapping in borderline terminal widths by switching the `KEYS` row to width-aware compact variants instead of relying on a single long line.
+- Fixed narrow-width TUI layout waste by dropping the inter-pane gap at smaller widths and rebalancing the left tree pane width.
+- Fixed the preview oversize warning text to use a clearer user-facing message instead of exposing the raw `bufio.Scanner` `token too long` error.
+- Fixed CI duplication after releases by stopping the main CI workflow from re-triggering on GitHub release publication when tag CI has already run.
+
 ## [v0.2.6] - 2026-03-10
 
 ### Fixed
