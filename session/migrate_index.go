@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"fmt"
 	"path/filepath"
-	"strings"
 	"time"
 
 	_ "modernc.org/sqlite"
@@ -57,7 +56,7 @@ func openMigrationDB(path string) (*sql.DB, error) {
 }
 
 func verifyThreadsSchema(db *sql.DB) error {
-	rows, err := db.Query(`PRAGMA table_info(threads)`)
+	rows, err := db.Query(sqlThreadsTableInfo)
 	if err != nil {
 		return fmt.Errorf("inspect threads schema: %w", err)
 	}
@@ -93,15 +92,7 @@ func listThreadRowsByCWD(dbPath, cwd string) ([]threadRow, error) {
 		return nil, err
 	}
 	defer db.Close()
-	rows, err := db.Query(`
-		SELECT id, rollout_path, created_at, updated_at, source, model_provider, cwd, title,
-		       sandbox_policy, approval_mode, tokens_used, has_user_event, archived, archived_at,
-		       git_sha, git_branch, git_origin_url, cli_version, first_user_message,
-		       agent_nickname, agent_role, memory_mode
-		FROM threads
-		WHERE cwd = ?
-		ORDER BY updated_at DESC, id DESC
-	`, cwd)
+	rows, err := db.Query(sqlListThreadsByCWD, cwd)
 	if err != nil {
 		return nil, err
 	}
@@ -136,14 +127,7 @@ func insertMigratedThreads(dbPath string, migrations []executedMigration) error 
 		return err
 	}
 	defer tx.Rollback()
-	stmt, err := tx.Prepare(`
-		INSERT INTO threads (
-			id, rollout_path, created_at, updated_at, source, model_provider, cwd, title,
-			sandbox_policy, approval_mode, tokens_used, has_user_event, archived, archived_at,
-			git_sha, git_branch, git_origin_url, cli_version, first_user_message,
-			agent_nickname, agent_role, memory_mode
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`)
+	stmt, err := tx.Prepare(sqlInsertThread)
 	if err != nil {
 		return err
 	}
@@ -176,5 +160,3 @@ func nullableInt64(v sql.NullInt64) any {
 	}
 	return nil
 }
-
-func _trim(s string) string { return strings.TrimSpace(s) }
