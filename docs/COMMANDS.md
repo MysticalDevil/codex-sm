@@ -11,6 +11,7 @@
 | `restore` | restore from trash | `--dry-run=true` |
 | `doctor` | environment/config checks | read-only |
 | `config` | inspect/init/validate config | read-only except `init` |
+| `session migrate` | copy sessions to new cwd/worktrees | dry-run |
 
 ## Common Commands
 
@@ -23,6 +24,7 @@ codexsm help delete
 codexsm help restore
 codexsm help doctor
 codexsm help config
+codexsm help session migrate
 ```
 
 ## Shell Completion
@@ -142,6 +144,33 @@ codexsm config validate
 codexsm config init
 ```
 
+## Session Migration
+
+```bash
+# Dry-run one source -> target migration
+codexsm session migrate --from /old/path --to /new/path
+
+# Real one-shot migration
+codexsm session migrate --from /old/path --to /new/path --dry-run=false --confirm
+
+# Dry-run batch migration from TOML mappings
+codexsm session migrate --file ./migrate.toml
+```
+
+Batch file shape:
+
+```toml
+[[mapping]]
+from = "/path/to/source/project"
+to = "/path/to/worktrees/main"
+branch = "main"
+
+[[mapping]]
+from = "/path/to/source/project"
+to = "/path/to/worktrees/feature"
+branch = "feature-branch"
+```
+
 ## Development And Release
 
 ```bash
@@ -155,5 +184,5 @@ just cover-gate
 just bench-tui
 just bench-gate
 just check
-just check-release 0.2.7
+just check-release 0.3.0
 ```

@@ -27,13 +27,13 @@ export GOEXPERIMENT=jsonv2
 ## Install
 
 ```bash
-GOEXPERIMENT=jsonv2 go install github.com/MysticalDevil/codexsm@v0.2.7
+GOEXPERIMENT=jsonv2 go install github.com/MysticalDevil/codexsm@v0.3.0
 ```
 
 Or with `mise`:
 
 ```bash
-GOEXPERIMENT=jsonv2 mise install go:github.com/MysticalDevil/codexsm@v0.2.7
+GOEXPERIMENT=jsonv2 mise install go:github.com/MysticalDevil/codexsm@v0.3.0
 ```
 
 Experimental branch for performance-oriented users:
@@ -57,6 +57,12 @@ codexsm tui --group-by host
 # Run health checks
 codexsm doctor
 
+# Dry-run single session migration to a new cwd
+codexsm session migrate --from /old/path --to /new/path
+
+# Dry-run batch migration from TOML mappings
+codexsm session migrate --file ./migrate.toml
+
 # Dry-run delete
 codexsm delete --id-prefix 019ca9
 
@@ -74,6 +80,7 @@ codexsm restore --id-prefix 019ca9
 | Browse | `list`, `group`, and `tui` for session discovery |
 | Safety | `dry-run` by default, explicit `--confirm` for real actions |
 | Recovery | `batch_id`-based rollback with `restore --batch-id` |
+| Migration | `session migrate` for Resume-compatible cwd/worktree moves |
 | Diagnostics | `doctor` and `config` validation tooling |
 
 ## Core Features
@@ -81,6 +88,7 @@ codexsm restore --id-prefix 019ca9
 - Session listing and grouping (`list`, `group`)
 - Interactive browser (`tui`) with theme support
 - Safe delete/restore workflow (`dry-run` by default)
+- Resume-compatible session migration (`session migrate`)
 - TUI pending-action confirmation shown in bottom keybar (`Y/N`) with stronger visibility
 - TUI delete keeps navigation continuity by advancing selection to the next session
 - Batch rollback via `restore --batch-id`
@@ -145,7 +153,7 @@ just stress-cli
 codexsm doctor risk --sessions-root ./testdata/fixtures/risky-static/sessions --format json --sample-limit 5
 just gen-sessions-extreme
 just gen-sessions-large
-just check-release 0.2.7
+just check-release 0.3.0
 ```
 
 Fixture note:
@@ -159,7 +167,7 @@ Fixture note:
 Release build example:
 
 ```bash
-GOEXPERIMENT=jsonv2 go build -ldflags="-X main.version=0.2.7" -o codexsm .
+GOEXPERIMENT=jsonv2 go build -ldflags="-X main.version=0.3.0" -o codexsm .
 ```
 
 ## License

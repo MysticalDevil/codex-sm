@@ -6,6 +6,19 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 
 ## [Unreleased]
 
+## [v0.3.0] - 2026-03-10
+
+### Added
+
+- Added `session migrate` for copying Codex sessions from one `cwd` to another while keeping Resume compatibility by cloning both rollout files and matching `threads` rows from Codex's local SQLite state.
+- Added batch migration support via `codexsm session migrate --file <migrate.toml>`, with ordered `[[mapping]]` entries, dry-run aggregation, and stop-on-first-failure real execution.
+
+### Changed
+
+- Refactored migration SQLite statements into dedicated constants to keep migration index logic smaller and easier to review.
+- Expanded mainline architecture and benchmark documentation to reflect current module boundaries and refreshed baseline measurements.
+- Removed the redundant docs index page and kept the README as the primary documentation entrypoint.
+
 ## [v0.2.7] - 2026-03-10
 
 ### Changed
