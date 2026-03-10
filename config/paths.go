@@ -48,6 +48,11 @@ func DefaultLogFile() (string, error) {
 	return ResolvePath("~/.codex/codexsm/logs/actions.log")
 }
 
+// DefaultCodexStateDB returns the default Codex local SQLite state database path.
+func DefaultCodexStateDB() (string, error) {
+	return ResolvePath("~/.codex/state_5.sqlite")
+}
+
 // EnsureDirForFile creates parent directories for the given file path.
 func EnsureDirForFile(filePath string) error {
 	dir := filepath.Dir(filePath)

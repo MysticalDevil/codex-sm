@@ -30,6 +30,7 @@ func NewRootCmd() *cobra.Command {
 			"  codexsm group --by day\n" +
 			"  codexsm config show --resolved\n" +
 			"  codexsm delete --id <session_id>\n" +
+			"  codexsm session migrate --from /old/path --to /new/path\n" +
 			"  codexsm doctor\n" +
 			"  codexsm doctor risk --format json\n" +
 			"  codexsm version --short\n" +
@@ -51,6 +52,7 @@ func NewRootCmd() *cobra.Command {
 	cmd.AddCommand(newGroupCmd())
 	cmd.AddCommand(newDeleteCmd())
 	cmd.AddCommand(newRestoreCmd())
+	cmd.AddCommand(newSessionCmd())
 	cmd.AddCommand(newConfigCmd())
 	cmd.AddCommand(newTUICmd())
 	cmd.AddCommand(newCompletionCmd())
