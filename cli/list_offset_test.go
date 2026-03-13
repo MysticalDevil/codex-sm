@@ -8,13 +8,14 @@ import (
 	"testing"
 
 	"github.com/MysticalDevil/codexsm/internal/testsupport"
+	"github.com/MysticalDevil/codexsm/session"
 )
 
 func TestListOffsetAndLimit(t *testing.T) {
 	workspace := testsupport.PrepareFixtureSandbox(t, "rich")
 	root := filepath.Join(workspace, "sessions")
 
-	run := func(offset int) []map[string]any {
+	run := func(offset int) []session.Session {
 		t.Helper()
 		cmd := NewRootCmd()
 		stdout := &bytes.Buffer{}
@@ -30,7 +31,7 @@ func TestListOffsetAndLimit(t *testing.T) {
 		if err := cmd.Execute(); err != nil {
 			t.Fatalf("list execute offset=%d: %v", offset, err)
 		}
-		var rows []map[string]any
+		var rows []session.Session
 		if err := json.Unmarshal(stdout.Bytes(), &rows); err != nil {
 			t.Fatalf("unmarshal list json offset=%d: %v output=%q", offset, err, stdout.String())
 		}
@@ -42,8 +43,8 @@ func TestListOffsetAndLimit(t *testing.T) {
 	if len(first) != 1 || len(second) != 1 {
 		t.Fatalf("expected one row for each offset, got first=%d second=%d", len(first), len(second))
 	}
-	if first[0]["session_id"] == second[0]["session_id"] {
-		t.Fatalf("expected different session_id across offsets, got=%v", first[0]["session_id"])
+	if first[0].SessionID == second[0].SessionID {
+		t.Fatalf("expected different session_id across offsets, got=%v", first[0].SessionID)
 	}
 }
 
