@@ -47,6 +47,7 @@ func newListCmd() *cobra.Command {
 		headWidth    int
 		sortBy       string
 		order        string
+		offset       int
 	)
 
 	cmd := &cobra.Command{
@@ -79,25 +80,23 @@ func newListCmd() *cobra.Command {
 				return err
 			}
 
+			if pager && !cmd.Flags().Changed("limit") {
+				limit = 0
+			}
+
 			result, err := usecase.ListSessions(usecase.ListInput{
 				SessionsRoot: sessionsRoot,
 				Selector:     sel,
 				SortBy:       sortBy,
 				Order:        order,
+				Offset:       offset,
+				Limit:        limit,
 			})
 			if err != nil {
 				return err
 			}
-			filteredAll := result.Items
+			filtered := result.Items
 			total := result.Total
-
-			if pager && !cmd.Flags().Changed("limit") {
-				limit = 0
-			}
-			filtered := filteredAll
-			if limit > 0 && len(filtered) > limit {
-				filtered = filtered[:limit]
-			}
 
 			formatMode := strings.ToLower(strings.TrimSpace(format))
 			if formatMode == "" {
@@ -165,6 +164,7 @@ func newListCmd() *cobra.Command {
 	cmd.Flags().IntVar(&headWidth, "head-width", 36, "max HEAD width in table format (0 means no truncation)")
 	cmd.Flags().StringVarP(&sortBy, "sort", "s", "updated_at", "sort field: updated_at|created_at|size|health|id|session_id")
 	cmd.Flags().StringVar(&order, "order", "desc", "sort order: asc|desc")
+	cmd.Flags().IntVar(&offset, "offset", 0, "skip first N rows before printing")
 
 	return cmd
 }

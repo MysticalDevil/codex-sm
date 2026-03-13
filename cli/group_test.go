@@ -115,3 +115,45 @@ func TestGroupInvalidSortReturnsError(t *testing.T) {
 		t.Fatal("expected invalid sort error")
 	}
 }
+
+func TestGroupOffsetAndLimit(t *testing.T) {
+	root := fixtureSessionsRoot(t)
+
+	cmd := NewRootCmd()
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	cmd.SetOut(stdout)
+	cmd.SetErr(stderr)
+	cmd.SetArgs([]string{
+		"group",
+		"--sessions-root", root,
+		"--by", "day",
+		"--sort", "group",
+		"--order", "asc",
+		"--offset", "1",
+		"--limit", "1",
+		"--format", "json",
+	})
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("group execute: %v", err)
+	}
+
+	var got []groupStat
+	if err := json.Unmarshal(stdout.Bytes(), &got); err != nil {
+		t.Fatalf("unmarshal output: %v", err)
+	}
+	if len(got) > 1 {
+		t.Fatalf("expected at most one row, got %d", len(got))
+	}
+}
+
+func TestGroupOffsetNegativeReturnsError(t *testing.T) {
+	root := fixtureSessionsRoot(t)
+	cmd := NewRootCmd()
+	cmd.SetOut(&bytes.Buffer{})
+	cmd.SetErr(&bytes.Buffer{})
+	cmd.SetArgs([]string{"group", "--sessions-root", root, "--offset", "-1"})
+	if err := cmd.Execute(); err == nil {
+		t.Fatal("expected negative offset error")
+	}
+}

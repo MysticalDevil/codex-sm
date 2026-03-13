@@ -29,6 +29,7 @@ func newGroupCmd() *cobra.Command {
 		by           string
 		sortBy       string
 		order        string
+		offset       int
 		limit        int
 		format       string
 		pager        bool
@@ -62,6 +63,7 @@ func newGroupCmd() *cobra.Command {
 				By:           by,
 				SortBy:       sortBy,
 				Order:        order,
+				Offset:       offset,
 				Limit:        limit,
 			})
 			if err != nil {
@@ -105,6 +107,7 @@ func newGroupCmd() *cobra.Command {
 	cmd.Flags().StringVarP(&by, "by", "b", "day", "group key: day|health")
 	cmd.Flags().StringVarP(&sortBy, "sort", "s", "auto", "sort by: auto|group|count|size|latest")
 	cmd.Flags().StringVar(&order, "order", "desc", "sort order: asc|desc")
+	cmd.Flags().IntVar(&offset, "offset", 0, "skip first N groups before printing")
 	cmd.Flags().IntVarP(&limit, "limit", "l", 0, "max groups to print (0 means unlimited)")
 	cmd.Flags().StringVarP(&format, "format", "f", "table", "output format: table|json|csv|tsv")
 	cmd.Flags().BoolVar(&pager, "pager", false, "enable interactive pager")
