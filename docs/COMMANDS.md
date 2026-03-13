@@ -11,7 +11,7 @@
 | `restore` | restore from trash | `--dry-run=true` |
 | `doctor` | environment/config checks | read-only |
 | `config` | inspect/init/validate config | read-only except `init` |
-| `session migrate` | copy sessions to new cwd/worktrees | dry-run |
+| `session migrate` | copy sessions to a new cwd/path | dry-run |
 
 ## Common Commands
 
@@ -162,12 +162,12 @@ Batch file shape:
 ```toml
 [[mapping]]
 from = "/path/to/source/project"
-to = "/path/to/worktrees/main"
+to = "/path/to/new/main"
 branch = "main"
 
 [[mapping]]
 from = "/path/to/source/project"
-to = "/path/to/worktrees/feature"
+to = "/path/to/new/feature"
 branch = "feature-branch"
 ```
 

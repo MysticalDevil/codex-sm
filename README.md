@@ -36,12 +36,6 @@ Or with `mise`:
 GOEXPERIMENT=jsonv2 mise install go:github.com/MysticalDevil/codexsm@v0.3.0
 ```
 
-Experimental branch for performance-oriented users:
-
-- branch: `exp/zig-incremental`
-- scope: opt-in `zsession` backend for scan, risk, preview, list, and group preparation paths
-- guide: <https://github.com/MysticalDevil/codexsm/tree/exp/zig-incremental/docs/INSTALL_ZIG_EXPERIMENT.md>
-
 ## Quick Start
 
 ```bash
@@ -80,7 +74,7 @@ codexsm restore --id-prefix 019ca9
 | Browse | `list`, `group`, and `tui` for session discovery |
 | Safety | `dry-run` by default, explicit `--confirm` for real actions |
 | Recovery | `batch_id`-based rollback with `restore --batch-id` |
-| Migration | `session migrate` for Resume-compatible cwd/worktree moves |
+| Migration | `session migrate` for Resume-compatible cwd/path moves |
 | Diagnostics | `doctor` and `config` validation tooling |
 
 ## Core Features
