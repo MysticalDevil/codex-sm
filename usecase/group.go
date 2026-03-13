@@ -17,6 +17,7 @@ type GroupInput struct {
 	By           string
 	SortBy       string
 	Order        string
+	Offset       int
 	Limit        int
 	Repository   core.SessionRepository
 }
@@ -29,22 +30,25 @@ type GroupStat struct {
 }
 
 func GroupSessions(in GroupInput) ([]GroupStat, error) {
-	repo := in.Repository
-	if repo == nil {
-		repo = core.ScannerRepository{}
+	if in.Offset < 0 {
+		return nil, fmt.Errorf("invalid --offset value %d", in.Offset)
 	}
-	items, err := repo.ScanSessions(in.SessionsRoot)
+	q, err := core.QuerySessions(in.Repository, in.SessionsRoot, core.QuerySpec{
+		Selector: in.Selector,
+		Now:      in.Now,
+	})
 	if err != nil {
 		return nil, err
 	}
-	now := in.Now
-	if now.IsZero() {
-		now = time.Now()
-	}
-	filtered := session.FilterSessions(items, in.Selector, now)
-	stats, err := BuildGroupStats(filtered, in.By, in.SortBy, in.Order)
+	stats, err := BuildGroupStats(q.Items, in.By, in.SortBy, in.Order)
 	if err != nil {
 		return nil, err
+	}
+	if in.Offset > 0 {
+		if in.Offset >= len(stats) {
+			return []GroupStat{}, nil
+		}
+		stats = stats[in.Offset:]
 	}
 	if in.Limit > 0 && len(stats) > in.Limit {
 		stats = stats[:in.Limit]

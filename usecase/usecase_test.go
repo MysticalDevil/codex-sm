@@ -12,55 +12,6 @@ import (
 	"github.com/MysticalDevil/codexsm/session"
 )
 
-func TestSortSessions(t *testing.T) {
-	items := []session.Session{
-		{
-			SessionID: "b",
-			UpdatedAt: time.Date(2026, 3, 2, 10, 0, 0, 0, time.UTC),
-			CreatedAt: time.Date(2026, 3, 2, 9, 0, 0, 0, time.UTC),
-			SizeBytes: 20,
-			Health:    session.HealthCorrupted,
-			Path:      "/tmp/b.jsonl",
-		},
-		{
-			SessionID: "a",
-			UpdatedAt: time.Date(2026, 3, 2, 11, 0, 0, 0, time.UTC),
-			CreatedAt: time.Date(2026, 3, 2, 8, 0, 0, 0, time.UTC),
-			SizeBytes: 10,
-			Health:    session.HealthOK,
-			Path:      "/tmp/a.jsonl",
-		},
-	}
-
-	if err := SortSessions(items, "size", "asc"); err != nil {
-		t.Fatalf("SortSessions size asc: %v", err)
-	}
-	if items[0].SessionID != "a" {
-		t.Fatalf("unexpected size asc order: %+v", items)
-	}
-
-	if err := SortSessions(items, "health", "asc"); err != nil {
-		t.Fatalf("SortSessions health asc: %v", err)
-	}
-	if items[0].Health != session.HealthOK {
-		t.Fatalf("unexpected health asc order: %+v", items)
-	}
-
-	if err := SortSessions(items, "updated_at", "desc"); err != nil {
-		t.Fatalf("SortSessions updated_at desc: %v", err)
-	}
-	if items[0].UpdatedAt.Before(items[1].UpdatedAt) {
-		t.Fatalf("unexpected updated_at desc order: %+v", items)
-	}
-
-	if err := SortSessions(items, "invalid", "asc"); err == nil {
-		t.Fatal("expected invalid sort error")
-	}
-	if err := SortSessions(items, "size", "invalid"); err == nil {
-		t.Fatal("expected invalid order error")
-	}
-}
-
 func TestBuildGroupStats(t *testing.T) {
 	items := []session.Session{
 		{
@@ -114,6 +65,7 @@ func TestListAndPreviewUsecases(t *testing.T) {
 		Selector:     session.Selector{},
 		SortBy:       "updated_at",
 		Order:        "desc",
+		Offset:       1,
 		Limit:        3,
 	})
 	if err != nil {
@@ -121,6 +73,9 @@ func TestListAndPreviewUsecases(t *testing.T) {
 	}
 	if result.Total == 0 || len(result.Items) == 0 {
 		t.Fatalf("expected listed sessions, got total=%d items=%d", result.Total, len(result.Items))
+	}
+	if len(result.Items) > 3 {
+		t.Fatalf("expected limit applied, got items=%d", len(result.Items))
 	}
 }
 

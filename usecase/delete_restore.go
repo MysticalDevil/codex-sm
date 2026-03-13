@@ -32,7 +32,7 @@ func SelectDeleteCandidates(in DeleteCandidatesInput) (DeleteCandidatesResult, e
 	if !in.Selector.HasAnyFilter() {
 		return DeleteCandidatesResult{}, errors.New("delete requires at least one selector (--id/--id-prefix/--host-contains/--path-contains/--head-contains/--older-than/--health)")
 	}
-	items, err := core.QuerySessions(in.Repository, in.SessionsRoot, core.QuerySpec{
+	q, err := core.QuerySessions(in.Repository, in.SessionsRoot, core.QuerySpec{
 		Selector: in.Selector,
 		Now:      in.Now,
 	})
@@ -40,11 +40,11 @@ func SelectDeleteCandidates(in DeleteCandidatesInput) (DeleteCandidatesResult, e
 		return DeleteCandidatesResult{}, err
 	}
 	var affected int64
-	for _, s := range items {
+	for _, s := range q.Items {
 		affected += s.SizeBytes
 	}
 	return DeleteCandidatesResult{
-		Candidates:    items,
+		Candidates:    q.Items,
 		AffectedBytes: affected,
 	}, nil
 }
@@ -83,15 +83,15 @@ func SelectRestoreCandidates(in RestoreCandidatesInput) (RestoreCandidatesResult
 		for _, id := range ids {
 			idSet[id] = struct{}{}
 		}
-		all, err := core.QuerySessions(in.Repository, in.TrashSessionsRoot, core.QuerySpec{
+		q, err := core.QuerySessions(in.Repository, in.TrashSessionsRoot, core.QuerySpec{
 			Now: in.Now,
 		})
 		if err != nil {
 			return RestoreCandidatesResult{}, err
 		}
-		candidates := make([]session.Session, 0, len(all))
+		candidates := make([]session.Session, 0, len(q.Items))
 		var affected int64
-		for _, s := range all {
+		for _, s := range q.Items {
 			if _, ok := idSet[s.SessionID]; !ok {
 				continue
 			}
@@ -107,7 +107,7 @@ func SelectRestoreCandidates(in RestoreCandidatesInput) (RestoreCandidatesResult
 	if !in.Selector.HasAnyFilter() {
 		return RestoreCandidatesResult{}, errors.New("restore requires at least one selector (--id/--id-prefix/--host-contains/--path-contains/--head-contains/--older-than/--health or --batch-id)")
 	}
-	items, err := core.QuerySessions(in.Repository, in.TrashSessionsRoot, core.QuerySpec{
+	q, err := core.QuerySessions(in.Repository, in.TrashSessionsRoot, core.QuerySpec{
 		Selector: in.Selector,
 		Now:      in.Now,
 	})
@@ -115,11 +115,11 @@ func SelectRestoreCandidates(in RestoreCandidatesInput) (RestoreCandidatesResult
 		return RestoreCandidatesResult{}, err
 	}
 	var affected int64
-	for _, s := range items {
+	for _, s := range q.Items {
 		affected += s.SizeBytes
 	}
 	return RestoreCandidatesResult{
-		Candidates:    items,
+		Candidates:    q.Items,
 		AffectedBytes: affected,
 	}, nil
 }
