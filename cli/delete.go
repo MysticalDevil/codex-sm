@@ -11,6 +11,7 @@ import (
 	"github.com/MysticalDevil/codexsm/internal/deleteexec"
 	"github.com/MysticalDevil/codexsm/internal/ops"
 	"github.com/MysticalDevil/codexsm/session"
+	"github.com/MysticalDevil/codexsm/usecase"
 
 	"github.com/spf13/cobra"
 )
@@ -73,11 +74,15 @@ func newDeleteCmd() *cobra.Command {
 				return err
 			}
 
-			sessions, err := session.ScanSessions(sessionsRoot)
+			selected, err := usecase.SelectDeleteCandidates(usecase.DeleteCandidatesInput{
+				SessionsRoot: sessionsRoot,
+				Selector:     sel,
+				Now:          time.Now(),
+			})
 			if err != nil {
-				return err
+				return WithExitCode(err, 1)
 			}
-			candidates := session.FilterSessions(sessions, sel, time.Now())
+			candidates := selected.Candidates
 			lg.Info("matched delete candidates", "count", len(candidates), "dry_run", dryRun, "hard", hard)
 			if !dryRun {
 				printDeletePreview(cmd, candidates, hard, mode, previewLimit)
@@ -101,12 +106,13 @@ func newDeleteCmd() *cobra.Command {
 				yes = true
 			}
 
+			effectiveMaxBatch := usecase.EffectiveMaxBatch(cmd.Flags().Changed("max-batch"), maxBatch, dryRun)
 			opts := deleteexec.Options{
 				DryRun:       dryRun,
 				Confirm:      confirm,
 				Yes:          yes,
 				Hard:         hard,
-				MaxBatch:     maxBatch,
+				MaxBatch:     effectiveMaxBatch,
 				TrashRoot:    trashRoot,
 				SessionsRoot: sessionsRoot,
 			}

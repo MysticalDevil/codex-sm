@@ -12,6 +12,7 @@ import (
 	"github.com/MysticalDevil/codexsm/internal/ops"
 	"github.com/MysticalDevil/codexsm/internal/restoreexec"
 	"github.com/MysticalDevil/codexsm/session"
+	"github.com/MysticalDevil/codexsm/usecase"
 
 	"github.com/spf13/cobra"
 )
@@ -75,40 +76,19 @@ func newRestoreCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			batchID = strings.TrimSpace(batchID)
-			if batchID != "" && sel.HasAnyFilter() {
-				return WithExitCode(errors.New("restore --batch-id cannot be combined with selector flags"), 1)
-			}
-
 			trashSessionsRoot := filepath.Join(trashRoot, "sessions")
-			sessions, err := session.ScanSessions(trashSessionsRoot)
+			batchID = strings.TrimSpace(batchID)
+			selected, err := usecase.SelectRestoreCandidates(usecase.RestoreCandidatesInput{
+				TrashSessionsRoot: trashSessionsRoot,
+				Selector:          sel,
+				BatchID:           batchID,
+				LogFile:           logFile,
+				Now:               time.Now(),
+			})
 			if err != nil {
-				return err
+				return WithExitCode(err, 1)
 			}
-			candidates := make([]session.Session, 0, len(sessions))
-			if batchID != "" {
-				ids, err := audit.SessionIDsForBatchRollback(logFile, batchID)
-				if err != nil {
-					return WithExitCode(err, 1)
-				}
-				idSet := make(map[string]struct{}, len(ids))
-				for _, id := range ids {
-					idSet[id] = struct{}{}
-				}
-				for _, s := range sessions {
-					if _, ok := idSet[s.SessionID]; ok {
-						candidates = append(candidates, s)
-					}
-				}
-				if len(candidates) == 0 {
-					return WithExitCode(fmt.Errorf("batch id %q has no sessions currently restorable from trash", batchID), 1)
-				}
-			} else {
-				if !sel.HasAnyFilter() {
-					return WithExitCode(errors.New("restore requires at least one selector (--id/--id-prefix/--host-contains/--path-contains/--head-contains/--older-than/--health or --batch-id)"), 1)
-				}
-				candidates = session.FilterSessions(sessions, sel, time.Now())
-			}
+			candidates := selected.Candidates
 			lg.Info("matched restore candidates", "count", len(candidates), "dry_run", dryRun)
 			if !dryRun {
 				printRestorePreview(cmd, candidates, mode, previewLimit)
@@ -132,12 +112,13 @@ func newRestoreCmd() *cobra.Command {
 				yes = true
 			}
 
+			effectiveMaxBatch := usecase.EffectiveMaxBatch(cmd.Flags().Changed("max-batch"), maxBatch, dryRun)
 			summary, runErr := restoreSessions(candidates, sel, restoreOptions{
 				DryRun:             dryRun,
 				Confirm:            confirm,
 				Yes:                yes,
 				AllowEmptySelector: batchID != "",
-				MaxBatch:           maxBatch,
+				MaxBatch:           effectiveMaxBatch,
 				SessionsRoot:       sessionsRoot,
 				TrashSessionsRoot:  trashSessionsRoot,
 			})
