@@ -11,6 +11,7 @@ import (
 
 	"github.com/MysticalDevil/codexsm/config"
 	"github.com/MysticalDevil/codexsm/session"
+	"github.com/MysticalDevil/codexsm/usecase"
 )
 
 type treeItemKind int
@@ -98,7 +99,8 @@ func NewCommand(deps CommandDeps) *cobra.Command {
 		sessionsRoot string
 		trashRoot    string
 		logFile      string
-		limit        int
+		scanLimit    int
+		viewLimit    int
 		groupBy      string
 		source       string
 		themeName    string
@@ -174,26 +176,26 @@ func NewCommand(deps CommandDeps) *cobra.Command {
 			if source != "sessions" && source != "trash" {
 				return fmt.Errorf("invalid --source %q (allowed: sessions, trash)", source)
 			}
+			if scanLimit < 0 {
+				return fmt.Errorf("invalid --scan-limit value %d", scanLimit)
+			}
+			if viewLimit < 0 {
+				return fmt.Errorf("invalid --view-limit value %d", viewLimit)
+			}
 			scanRoot := sessionsRoot
 			if source == "trash" {
 				scanRoot = filepath.Join(trashRoot, "sessions")
 			}
 
-			items, err := session.ScanSessionsLimited(scanRoot, limit, func(a, b session.Session) bool {
-				ra := session.EvaluateRisk(a, nil)
-				rb := session.EvaluateRisk(b, nil)
-				if c := riskLevelRank(rb.Level) - riskLevelRank(ra.Level); c != 0 {
-					return c < 0
-				}
-				if c := b.UpdatedAt.Compare(a.UpdatedAt); c != 0 {
-					return c < 0
-				}
-				return strings.Compare(a.SessionID, b.SessionID) < 0
+			result, err := usecase.LoadTUISessions(usecase.LoadTUISessionsInput{
+				SessionsRoot: scanRoot,
+				ScanLimit:    scanLimit,
+				ViewLimit:    viewLimit,
 			})
 			if err != nil {
 				return err
 			}
-			sortTUISessions(items)
+			items := result.Items
 
 			home, _ := config.ResolvePath("~")
 			if strings.TrimSpace(groupBy) == "" {
@@ -243,7 +245,8 @@ func NewCommand(deps CommandDeps) *cobra.Command {
 	cmd.Flags().StringVar(&sessionsRoot, "sessions-root", "", "sessions root directory")
 	cmd.Flags().StringVar(&trashRoot, "trash-root", "", "trash root directory")
 	cmd.Flags().StringVar(&logFile, "log-file", "", "action log file")
-	cmd.Flags().IntVarP(&limit, "limit", "l", 100, "max sessions retained for TUI ordering and rendering (0 means unlimited)")
+	cmd.Flags().IntVar(&scanLimit, "scan-limit", 2000, "max sessions scanned then sorted for TUI (0 means unlimited)")
+	cmd.Flags().IntVarP(&viewLimit, "view-limit", "l", 100, "max sessions rendered in TUI after sorting (0 means unlimited)")
 	cmd.Flags().StringVar(&groupBy, "group-by", "", "tree group key: host|day|month")
 	cmd.Flags().StringVar(&source, "source", "", "session source: sessions|trash")
 	cmd.Flags().StringVar(&themeName, "theme", "", "TUI theme: tokyonight|catppuccin|gruvbox|onedark|nord|dracula")

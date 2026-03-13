@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"slices"
 	"strings"
 
 	"github.com/MysticalDevil/codexsm/session"
@@ -54,21 +53,6 @@ func (m *tuiModel) clampOffset() {
 	if m.offset > maxOffset {
 		m.offset = maxOffset
 	}
-}
-
-func sortTUISessions(items []session.Session) {
-	slices.SortStableFunc(items, func(a, b session.Session) int {
-		ra := session.EvaluateRisk(a, nil)
-		rb := session.EvaluateRisk(b, nil)
-		if c := riskLevelRank(rb.Level) - riskLevelRank(ra.Level); c != 0 {
-			return c
-		}
-		c := b.UpdatedAt.Compare(a.UpdatedAt)
-		if c != 0 {
-			return c
-		}
-		return strings.Compare(a.SessionID, b.SessionID)
-	})
 }
 
 func (m *tuiModel) rebuildTree() {
@@ -309,17 +293,6 @@ func (m *tuiModel) treeHealthVisual(h session.Health, hostMissing bool) (string,
 	}
 	sym, color := m.healthSymbolAndColor(h)
 	return sym, color, false
-}
-
-func riskLevelRank(level session.RiskLevel) int {
-	switch level {
-	case session.RiskHigh:
-		return 2
-	case session.RiskMedium:
-		return 1
-	default:
-		return 0
-	}
 }
 
 func riskCounts(items []session.Session) (high, medium int) {
