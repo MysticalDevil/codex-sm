@@ -118,21 +118,17 @@ func newDeleteCmd() *cobra.Command {
 			}
 			summary, deleteErr := deleteexec.Execute(candidates, sel, opts)
 
-			rec := audit.ActionRecord{
-				BatchID:       batchID,
-				Timestamp:     time.Now().UTC(),
-				Action:        summary.Action,
-				Simulation:    summary.Simulation,
-				Selector:      sel,
-				MatchedCount:  summary.MatchedCount,
-				AffectedBytes: summary.AffectedBytes,
-				Results:       summary.Results,
-				ErrorSummary:  summary.ErrorSummary,
-			}
-			rec.Sessions = make([]audit.SessionRef, 0, len(candidates))
-			for _, s := range candidates {
-				rec.Sessions = append(rec.Sessions, audit.SessionRef{SessionID: s.SessionID, Path: s.Path})
-			}
+			rec := audit.BuildActionRecord(
+				batchID,
+				time.Now().UTC(),
+				summary.Action,
+				summary.Simulation,
+				sel,
+				candidates,
+				summary.AffectedBytes,
+				summary.Results,
+				summary.ErrorSummary,
+			)
 			logErr := audit.WriteActionLog(logFile, rec)
 			if logErr != nil {
 				lg.Error("failed to write action log", "error", logErr, "log_file", logFile)

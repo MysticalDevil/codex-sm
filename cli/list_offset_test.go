@@ -43,8 +43,8 @@ func TestListOffsetAndLimit(t *testing.T) {
 	if len(first) != 1 || len(second) != 1 {
 		t.Fatalf("expected one row for each offset, got first=%d second=%d", len(first), len(second))
 	}
-	if first[0].SessionID == second[0].SessionID {
-		t.Fatalf("expected different session_id across offsets, got=%v", first[0].SessionID)
+	if first[0].Path == second[0].Path {
+		t.Fatalf("expected different row across offsets, got same path=%v", first[0].Path)
 	}
 }
 

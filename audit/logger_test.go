@@ -129,3 +129,31 @@ func TestNewBatchID(t *testing.T) {
 		t.Fatalf("batch ids should differ: %q", a)
 	}
 }
+
+func TestBuildActionRecord(t *testing.T) {
+	ts := time.Date(2026, 3, 9, 10, 20, 30, 0, time.UTC)
+	sel := session.Selector{ID: "s1"}
+	items := []session.Session{{SessionID: "s1", Path: "/tmp/s1.jsonl"}}
+	results := []session.DeleteResult{{SessionID: "s1", Path: "/tmp/s1.jsonl", Status: "simulated"}}
+
+	rec := BuildActionRecord(
+		"b-1",
+		ts,
+		"dry-run",
+		true,
+		sel,
+		items,
+		123,
+		results,
+		"",
+	)
+	if rec.BatchID != "b-1" || rec.Timestamp != ts || rec.Action != "dry-run" {
+		t.Fatalf("unexpected basic fields: %+v", rec)
+	}
+	if rec.MatchedCount != 1 || len(rec.Sessions) != 1 || rec.Sessions[0].SessionID != "s1" {
+		t.Fatalf("unexpected session fields: %+v", rec)
+	}
+	if rec.AffectedBytes != 123 || len(rec.Results) != 1 {
+		t.Fatalf("unexpected payload fields: %+v", rec)
+	}
+}
