@@ -991,7 +991,7 @@ func TestSortTUISessions_PrioritizesRisk(t *testing.T) {
 		{SessionID: "missing-old", UpdatedAt: now.Add(-2 * time.Hour), Health: session.HealthMissingMeta},
 		{SessionID: "corrupted-old", UpdatedAt: now.Add(-4 * time.Hour), Health: session.HealthCorrupted},
 	}
-	sortTUISessions(items)
+	usecase.SortTUISessionsByRisk(items, nil)
 	if items[0].Health != session.HealthCorrupted {
 		t.Fatalf("expected corrupted first, got %#v", items)
 	}

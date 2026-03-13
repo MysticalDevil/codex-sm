@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/MysticalDevil/codexsm/session"
+	"github.com/MysticalDevil/codexsm/usecase"
 )
 
 func makeBenchSessions(n int) []session.Session {
@@ -39,7 +40,7 @@ func BenchmarkSortTUISessions_3k(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		items := append([]session.Session(nil), source...)
-		sortTUISessions(items)
+		usecase.SortTUISessionsByRisk(items, nil)
 	}
 }
 
@@ -49,7 +50,7 @@ func BenchmarkSortTUISessions_10k(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		items := append([]session.Session(nil), source...)
-		sortTUISessions(items)
+		usecase.SortTUISessionsByRisk(items, nil)
 	}
 }
 
