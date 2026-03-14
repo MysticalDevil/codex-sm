@@ -43,8 +43,19 @@ jobs:
 
       - name: Docs consistency
         run: |
+          test -f README.md
+          test -f CHANGELOG.md
           test -f docs/ARCHITECTURE.md
+          test -f docs/COMMANDS.md
+          test -f docs/RELEASE.md
           grep -q "docs/ARCHITECTURE.md" README.md
+          grep -q "docs/COMMANDS.md" README.md
+          grep -q "docs/RELEASE.md" README.md
+          grep -q "CHANGELOG.md" README.md
+          if rg -n "internal/tui/layout|internal/fileutil|internal/restoreexec|internal/deleteexec|session/scanner_head.go|session/migrate.go" docs README.md; then
+            echo "docs still reference removed/legacy paths"
+            exit 1
+          fi
 
       - name: Vet
         run: go vet ./...

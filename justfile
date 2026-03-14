@@ -59,6 +59,22 @@ fmt:
 lint:
   {{go_with_experiment}} vet ./...
 
+# Validate documentation links and release-version examples
+docs-check:
+  test -f README.md
+  test -f CHANGELOG.md
+  test -f docs/ARCHITECTURE.md
+  test -f docs/COMMANDS.md
+  test -f docs/RELEASE.md
+  rg -q "docs/ARCHITECTURE.md" README.md
+  rg -q "docs/COMMANDS.md" README.md
+  rg -q "docs/RELEASE.md" README.md
+  rg -q "CHANGELOG.md" README.md
+  if rg -n "internal/tui/layout|internal/fileutil|internal/restoreexec|internal/deleteexec|session/scanner_head.go|session/migrate.go" docs README.md; then \
+    echo "docs still reference removed/legacy paths"; \
+    exit 1; \
+  fi
+
 # Run unit test suite
 test:
   {{go_with_experiment}} test ./...
@@ -258,4 +274,4 @@ clean:
   rm -f coverage_unit.out coverage_integration.out
 
 # Run the smallest full quality gate
-check: fmt lint test-all build
+check: fmt lint docs-check test-all build

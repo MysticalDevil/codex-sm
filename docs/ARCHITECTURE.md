@@ -7,8 +7,8 @@ Current codebase is acceptable for the current release scope and does not requir
 Known hot spots:
 
 - `cli/delete.go` and `cli/restore.go` still mix orchestration, output, and guard logic and should continue converging toward thinner wrappers.
-- `session/*` has been split into more focused scanner, message, and risk helpers, but scan and preview hot paths still need to be tuned with benchmark feedback.
-- `tui/*` rendering is now more modular, but narrow-width behavior still depends on coordinated changes across layout metrics, keybar rendering, and info-row formatting.
+- `session/scanner/*` and `session/migrate/*` are now split subpackages, but scan and migration hot paths still need to be tuned with benchmark feedback.
+- `tui/*` rendering is more modular, but narrow-width behavior still depends on coordinated changes across layout metrics, keybar rendering, and info-row formatting.
 
 ## Architecture Design
 
@@ -48,17 +48,21 @@ External/runtime:
                   |
                   v
         +-------------------+
-        | session/*         |
-        | scan/filter/risk  |
+        | usecase/*         |
+        | list/group/action |
+        | preview/doctor    |
         +---------+---------+
                   |
-                  +------------------------------------------> Go std + jsonv2
-                  |
                   v
-        +-------------------+
-        | internal/*        |
-        | ops/fileutil/...  |
-        +-------------------+
+        +-------------------+     +-------------------+
+        | session/*         | --> | session/scanner/* |
+        | model/risk/select |     | scan/head/parse   |
+        | delete/restore    |     +-------------------+
+        +---------+---------+
+                  |
+                  +-----------------------> session/migrate/* (exec/index/rollout/sql/batch)
+                  |
+                  +-----------------------> Go std + jsonv2
 ```
 
 1. Entry and command wiring:
@@ -83,18 +87,21 @@ External/runtime:
 - `tui/state.go`
 - `tui/actions.go`
 - `tui/preview.go`
+- `tui/preview/*`
 - `tui/render.go`
 - `tui/theme.go`
 - `tui/text.go`
-- `tui/helpers.go`
+- `tui/layout.go`
 
 4. Domain and storage logic:
-- `session/*` for scanning/filtering/delete operations
+- `session/*` for model/filter/risk/delete/restore operations
+- `session/scanner/*` for scanning and head extraction
+- `session/migrate/*` for migration batch/index/rollout execution
+- `usecase/*` for command-level orchestration shared by CLI/TUI
 - `audit/*` for action logs
 - `config/*` for path and app config resolution
 - `internal/ops/*` for shared operation helpers (`preview mode`, interactive confirms)
 - `util/file.go` for move/copy file helpers
-- `tui/layout.go` for TUI layout metrics
 
 5. Test support:
 - `internal/testsupport/*` fixture sandbox helpers
@@ -115,11 +122,10 @@ Boundary intent:
 
 Shared session-processing boundaries:
 
-- `session/message_parse.go` and `session/message_rules.go` normalize transcript messages and scoring rules used by both scanner/head extraction and preview extraction.
-- `session/scanner_head.go` builds the session head used by list/group/TUI tree flows.
-- `session/preview_entries.go` and friends build normalized preview entries for TUI preview rendering.
-- `session/risk.go`, `session/risk_scan.go`, and `session/integrity.go` separate base health risk detection from optional integrity verification.
-- `session/listing.go` and `session/grouping.go` now own most list/group data preparation so CLI wrappers mainly handle argument parsing and rendering.
+- `session/scanner/head.go` and `session/scanner/parse.go` build conversation heads used by list/group/TUI tree flows.
+- `usecase/preview.go` extracts normalized preview messages; `tui/preview/*` renders/stores preview lines and index records.
+- `session/risk.go` and `session/integrity.go` separate base health risk detection from optional integrity verification.
+- `usecase/list.go` and `usecase/group.go` own most list/group data preparation so CLI wrappers mainly handle arguments and rendering.
 
 Rollback flow:
 
@@ -133,14 +139,13 @@ The current hot paths that deserve benchmark attention are:
 
 - session tree scanning and selector filtering:
   - `session/bench_test.go`
-  - `session/scanner*.go`
+  - `session/scanner/*.go`
 - CLI table/JSON/risk rendering:
   - `cli/list_bench_test.go`
   - `cli/doctor*.go`
 - TUI preview construction and preview index persistence:
   - `tui/bench_test.go`
-  - `tui/preview.go`
-  - `tui/preview_index.go`
+  - `tui/preview/*.go`
 
 Current baselines and rerun commands are tracked in [docs/BENCHMARKS.md](./BENCHMARKS.md).
 

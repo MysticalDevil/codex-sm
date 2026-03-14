@@ -6,6 +6,17 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 
 ## [Unreleased]
 
+## [v0.3.1] - 2026-03-14
+
+### Changed
+
+- Refactored session internals into explicit subpackages: `session/scanner/*` (scan/head/parse/io) and `session/migrate/*` (exec/batch/index/rollout/sql), and updated CLI/core call sites accordingly.
+- Moved TUI preview core logic into `tui/preview/*` and kept thin adapters in `tui/preview.go` and `tui/preview_index.go` for compatibility with existing TUI flow.
+- Consolidated file move/copy helpers under `util/file.go` and removed now-empty legacy internal bridge package paths.
+- Moved restore execution into `session` and removed the extra restore execution bridge layer so usecase/action flow is more direct.
+- Updated architecture, command, release, and README documentation to match the current module layout and the `v0.3.1` release examples.
+- Tightened local/CI docs checks (`just docs-check`, CI docs consistency step) to reject stale references to removed internal paths.
+
 ## [v0.3.0] - 2026-03-10
 
 ### Added
