@@ -51,6 +51,9 @@ codexsm tui --group-by host
 # Run health checks
 codexsm doctor
 
+# Explain AGENTS.md rule sources and effective rules
+codexsm agents explain
+
 # Dry-run single session migration to a new cwd
 codexsm session migrate --from /old/path --to /new/path
 
@@ -76,6 +79,7 @@ codexsm restore --id-prefix 019ca9
 | Recovery | `batch_id`-based rollback with `restore --batch-id` |
 | Migration | `session migrate` for Resume-compatible cwd/path moves |
 | Diagnostics | `doctor` and `config` validation tooling |
+| Rules Visibility | `agents explain` for AGENTS.md source/effective-shadowed view |
 
 ## Core Features
 
@@ -87,6 +91,7 @@ codexsm restore --id-prefix 019ca9
 - TUI delete keeps navigation continuity by advancing selection to the next session
 - Batch rollback via `restore --batch-id`
 - Diagnostics and configuration (`doctor`, `config`)
+- AGENTS.md instruction visibility (`agents explain`)
 
 ## Safety Model
 

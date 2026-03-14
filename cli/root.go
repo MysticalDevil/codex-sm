@@ -53,6 +53,7 @@ func NewRootCmd() *cobra.Command {
 	cmd.AddCommand(newDeleteCmd())
 	cmd.AddCommand(newRestoreCmd())
 	cmd.AddCommand(newSessionCmd())
+	cmd.AddCommand(newAgentsCmd())
 	cmd.AddCommand(newConfigCmd())
 	cmd.AddCommand(newTUICmd())
 	cmd.AddCommand(newCompletionCmd())

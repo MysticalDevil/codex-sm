@@ -11,6 +11,7 @@
 | `restore` | restore from trash | `--dry-run=true` |
 | `doctor` | environment/config checks | read-only |
 | `config` | inspect/init/validate config | read-only except `init` |
+| `agents explain` | show AGENTS.md source chain and effective rules | read-only |
 | `session migrate` | copy sessions to a new cwd/path | dry-run |
 
 ## Common Commands
@@ -24,6 +25,7 @@ codexsm help delete
 codexsm help restore
 codexsm help doctor
 codexsm help config
+codexsm help agents
 codexsm help session migrate
 ```
 
@@ -142,6 +144,10 @@ codexsm config show
 codexsm config show --resolved
 codexsm config validate
 codexsm config init
+
+codexsm agents explain
+codexsm agents explain --show-shadowed
+codexsm agents explain --format json
 ```
 
 ## Session Migration
