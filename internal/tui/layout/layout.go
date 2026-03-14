@@ -102,10 +102,3 @@ func Compute(width, height int) Metrics {
 		PreviewOuterH: previewOuterH,
 	}
 }
-
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
-}
