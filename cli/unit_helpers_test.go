@@ -9,6 +9,10 @@ import (
 	"testing"
 	"time"
 
+	del "github.com/MysticalDevil/codexsm/cli/delete"
+	"github.com/MysticalDevil/codexsm/cli/list"
+	"github.com/MysticalDevil/codexsm/cli/restore"
+	cliutil "github.com/MysticalDevil/codexsm/cli/util"
 	"github.com/MysticalDevil/codexsm/internal/core"
 	"github.com/MysticalDevil/codexsm/internal/ops"
 	"github.com/MysticalDevil/codexsm/internal/testsupport"
@@ -19,7 +23,7 @@ import (
 )
 
 func TestListHelpers(t *testing.T) {
-	cols, err := parseListColumns("", false, "table")
+	cols, err := list.ParseColumns("", false, "table")
 	if err != nil {
 		t.Fatalf("parseListColumns default table: %v", err)
 	}
@@ -28,7 +32,7 @@ func TestListHelpers(t *testing.T) {
 		t.Fatalf("unexpected default columns: %+v", cols)
 	}
 
-	if _, err := parseListColumns("bad", false, "table"); err == nil {
+	if _, err := list.ParseColumns("bad", false, "table"); err == nil {
 		t.Fatal("expected invalid column error")
 	}
 
@@ -44,15 +48,15 @@ func TestListHelpers(t *testing.T) {
 		Health:    session.HealthOK,
 		Head:      "this is a long head line",
 	}
-	if got := listColumnValue("host", s, home, 8, true); got != "~/work" {
+	if got := list.ColumnValue("host", s, home, 8, true); got != "~/work" {
 		t.Fatalf("unexpected host value: %q", got)
 	}
 
-	if got := listColumnValue("head", s, home, 8, true); got != "this is ..." {
+	if got := list.ColumnValue("head", s, home, 8, true); got != "this is ..." {
 		t.Fatalf("unexpected truncated head: %q", got)
 	}
 
-	if got := truncateDisplayText("abc", 0); got != "abc" {
+	if got := list.TruncateDisplayText("abc", 0); got != "abc" {
 		t.Fatalf("truncate with 0 should keep full text, got: %q", got)
 	}
 
@@ -64,11 +68,11 @@ func TestListHelpers(t *testing.T) {
 		t.Fatalf("unexpected size: %q", got)
 	}
 
-	if !hasHealthColumn([]listColumn{{Key: "id"}, {Key: "health"}}) {
+	if !list.HasHealthColumn([]list.Column{{Key: "id"}, {Key: "health"}}) {
 		t.Fatal("expected hasHealthColumn=true")
 	}
 
-	if stripANSI("\x1b[31mred\x1b[0m") != "red" {
+	if cliutil.StripANSI("\x1b[31mred\x1b[0m") != "red" {
 		t.Fatal("stripANSI failed")
 	}
 }
@@ -84,9 +88,9 @@ func TestRenderAndDelimited(t *testing.T) {
 			HostDir:   "/var/tmp",
 		},
 	}
-	cols := []listColumn{{Key: "id", Header: "ID"}, {Key: "health", Header: "HEALTH"}, {Key: "host", Header: "HOST"}}
+	cols := []list.Column{{Key: "id", Header: "ID"}, {Key: "health", Header: "HEALTH"}, {Key: "host", Header: "HOST"}}
 
-	out, err := renderTable(sessions, 1, listRenderOptions{
+	out, err := list.RenderTable(sessions, 1, list.RenderOptions{
 		NoHeader:  false,
 		ColorMode: "never",
 		Out:       &bytes.Buffer{},
@@ -102,7 +106,7 @@ func TestRenderAndDelimited(t *testing.T) {
 	}
 
 	buf := &bytes.Buffer{}
-	if err := writeListDelimited(buf, sessions, ',', false, cols); err != nil {
+	if err := list.WriteDelimited(buf, sessions, ',', false, cols); err != nil {
 		t.Fatalf("writeListDelimited csv: %v", err)
 	}
 
@@ -120,15 +124,15 @@ func TestColorAndSelectorHelpers(t *testing.T) {
 		t.Fatal("never should disable color")
 	}
 
-	if _, err := buildSelector("", "", "", "", "", "bad", ""); err == nil {
+	if _, err := cliutil.BuildSelector("", "", "", "", "", "bad", ""); err == nil {
 		t.Fatal("expected older-than parse error")
 	}
 
-	if _, err := buildSelector("", "", "", "", "", "", "bad"); err == nil {
+	if _, err := cliutil.BuildSelector("", "", "", "", "", "", "bad"); err == nil {
 		t.Fatal("expected health parse error")
 	}
 
-	sel, err := buildSelector("id", "pre", " host ", " /sessions ", " fixture ", "1h", "ok")
+	sel, err := cliutil.BuildSelector("id", "pre", " host ", " /sessions ", " fixture ", "1h", "ok")
 	if err != nil {
 		t.Fatalf("buildSelector valid: %v", err)
 	}
@@ -137,7 +141,7 @@ func TestColorAndSelectorHelpers(t *testing.T) {
 		t.Fatalf("unexpected selector: %+v", sel)
 	}
 
-	if _, err := parseHealth("bad"); err == nil {
+	if _, err := cliutil.ParseHealth("bad"); err == nil {
 		t.Fatal("expected parseHealth error")
 	}
 
@@ -160,9 +164,9 @@ func TestColorAndSelectorHelpers(t *testing.T) {
 
 func TestErrorAndLoggingHelpers(t *testing.T) {
 	base := errors.New("x")
-	wrapped := WithExitCode(base, 9)
+	wrapped := cliutil.WithExitCode(base, 9)
 
-	var ex *ExitError
+	var ex *cliutil.ExitError
 	if !errors.As(wrapped, &ex) {
 		t.Fatal("expected ExitError")
 	}
@@ -171,15 +175,15 @@ func TestErrorAndLoggingHelpers(t *testing.T) {
 		t.Fatalf("unexpected exit code: %d", ex.ExitCode())
 	}
 
-	if WithExitCode(nil, 1) != nil {
+	if cliutil.WithExitCode(nil, 1) != nil {
 		t.Fatal("WithExitCode(nil) should be nil")
 	}
 
-	if (&ExitError{}).ExitCode() != 1 {
+	if (&cliutil.ExitError{}).ExitCode() != 1 {
 		t.Fatal("zero ExitError should default to code 1")
 	}
 
-	if (&ExitError{Code: -2, Err: base}).ExitCode() != 1 {
+	if (&cliutil.ExitError{Code: -2, Err: base}).ExitCode() != 1 {
 		t.Fatal("negative ExitError code should default to 1")
 	}
 
@@ -203,24 +207,24 @@ func TestDeleteRestoreHelperPaths(t *testing.T) {
 	errBuf := &bytes.Buffer{}
 	cmd.SetErr(errBuf)
 
-	if ok, err := interactiveConfirmDelete(cmd, 1, false); err == nil || ok {
+	if ok, err := del.InteractiveConfirmDelete(cmd, 1, false); err == nil || ok {
 		t.Fatalf("expected non-interactive delete confirm error, got ok=%v err=%v", ok, err)
 	}
 
-	if ok, err := interactiveConfirmRestore(cmd, 1); err == nil || ok {
+	if ok, err := restore.InteractiveConfirmRestore(cmd, 1); err == nil || ok {
 		t.Fatalf("expected non-interactive restore confirm error, got ok=%v err=%v", ok, err)
 	}
 
 	cmd.SetOut(&bytes.Buffer{})
-	printDeleteSummary(cmd, session.DeleteSummary{
+	del.PrintDeleteSummary(cmd, session.DeleteSummary{
 		Action:       "delete-dry-run",
 		Simulation:   true,
 		MatchedCount: 1,
 		Results:      []session.DeleteResult{{SessionID: "s1", Path: "/tmp/a", Status: "simulated"}},
 	})
-	printDeletePreview(cmd, []session.Session{{SessionID: "s1", Path: "/tmp/a", SizeBytes: 5}}, false, ops.PreviewSample, 1)
-	printRestorePreview(cmd, []session.Session{{SessionID: "s1", Path: "/tmp/a", SizeBytes: 5}}, ops.PreviewSample, 1)
-	printRestoreSummary(cmd, usecase.RestoreSummary{
+	del.PrintDeletePreview(cmd, []session.Session{{SessionID: "s1", Path: "/tmp/a", SizeBytes: 5}}, false, ops.PreviewSample, 1)
+	restore.PrintRestorePreview(cmd, []session.Session{{SessionID: "s1", Path: "/tmp/a", SizeBytes: 5}}, ops.PreviewSample, 1)
+	restore.PrintRestoreSummary(cmd, usecase.RestoreSummary{
 		Action:       "restore-dry-run",
 		Simulation:   true,
 		MatchedCount: 1,
@@ -238,7 +242,7 @@ func TestDeleteRestorePreviewHelpersEdgeCases(t *testing.T) {
 		cmd := &cobra.Command{}
 		errBuf := &bytes.Buffer{}
 		cmd.SetErr(errBuf)
-		printDeletePreview(cmd, items, true, ops.PreviewFull, -1)
+		del.PrintDeletePreview(cmd, items, true, ops.PreviewFull, -1)
 
 		got := errBuf.String()
 		if !strings.Contains(got, "preview action=hard-delete matched=2") {
@@ -254,7 +258,7 @@ func TestDeleteRestorePreviewHelpersEdgeCases(t *testing.T) {
 		cmd := &cobra.Command{}
 		errBuf := &bytes.Buffer{}
 		cmd.SetErr(errBuf)
-		printDeletePreview(cmd, items, false, ops.PreviewSample, -3)
+		del.PrintDeletePreview(cmd, items, false, ops.PreviewSample, -3)
 
 		got := errBuf.String()
 		if strings.Contains(got, core.ShortID("s1")) || strings.Contains(got, core.ShortID("s2")) {
@@ -270,7 +274,7 @@ func TestDeleteRestorePreviewHelpersEdgeCases(t *testing.T) {
 		cmd := &cobra.Command{}
 		errBuf := &bytes.Buffer{}
 		cmd.SetErr(errBuf)
-		printRestorePreview(cmd, items, ops.PreviewFull, -1)
+		restore.PrintRestorePreview(cmd, items, ops.PreviewFull, -1)
 
 		got := errBuf.String()
 		if !strings.Contains(got, "preview action=restore matched=2") {
@@ -286,7 +290,7 @@ func TestDeleteRestorePreviewHelpersEdgeCases(t *testing.T) {
 		cmd := &cobra.Command{}
 		errBuf := &bytes.Buffer{}
 		cmd.SetErr(errBuf)
-		printRestorePreview(cmd, items, ops.PreviewSample, -1)
+		restore.PrintRestorePreview(cmd, items, ops.PreviewSample, -1)
 
 		got := errBuf.String()
 		if strings.Contains(got, core.ShortID("s1")) || strings.Contains(got, core.ShortID("s2")) {
@@ -367,7 +371,7 @@ func TestAdditionalListAndResolveCoverage(t *testing.T) {
 	src := "line1\nline2\n"
 
 	out := &bytes.Buffer{}
-	if err := writeWithPager(out, src, false, 10, true); err != nil {
+	if err := list.WriteWithPager(out, src, false, 10, true); err != nil {
 		t.Fatalf("writeWithPager passthrough: %v", err)
 	}
 
@@ -376,13 +380,13 @@ func TestAdditionalListAndResolveCoverage(t *testing.T) {
 	}
 
 	// Cover colorized branch helper.
-	colorized := colorizeRenderedTable("H\nrow\nshowing 1 of 1\n", []session.Session{{Health: session.HealthOK}}, false, true)
+	colorized := list.ColorizeRenderedTable("H\nrow\nshowing 1 of 1\n", []session.Session{{Health: session.HealthOK}}, false, true)
 	if !strings.Contains(colorized, "\x1b[") {
 		t.Fatalf("expected colored table output: %q", colorized)
 	}
 
 	// resolveOrDefault should use explicit value and fallback branch.
-	got, err := resolveOrDefault("~/x", func() (string, error) { return "/unused", nil })
+	got, err := cliutil.ResolveOrDefault("~/x", func() (string, error) { return "/unused", nil })
 	if err != nil {
 		t.Fatalf("resolveOrDefault explicit: %v", err)
 	}
@@ -391,7 +395,7 @@ func TestAdditionalListAndResolveCoverage(t *testing.T) {
 		t.Fatalf("unexpected explicit resolved value: %q", got)
 	}
 
-	got, err = resolveOrDefault("", func() (string, error) { return "/fallback", nil })
+	got, err = cliutil.ResolveOrDefault("", func() (string, error) { return "/fallback", nil })
 	if err != nil || got != "/fallback" {
 		t.Fatalf("resolveOrDefault fallback got=%q err=%v", got, err)
 	}

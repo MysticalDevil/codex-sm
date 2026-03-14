@@ -11,7 +11,9 @@ import (
 	"testing"
 	"time"
 
+	cliutil "github.com/MysticalDevil/codexsm/cli/util"
 	"github.com/MysticalDevil/codexsm/internal/testsupport"
+	"github.com/MysticalDevil/codexsm/usecase"
 )
 
 func TestDoctorCommandNonStrict(t *testing.T) {
@@ -68,7 +70,7 @@ func TestDoctorRiskCommandReturnsFailureWhenRiskFound(t *testing.T) {
 		t.Fatal("expected risk command to fail when risky sessions exist")
 	}
 
-	var ex *ExitError
+	var ex *cliutil.ExitError
 	if !errors.As(err, &ex) || ex.ExitCode() != 1 {
 		t.Fatalf("expected exit code 1, got err=%v", err)
 	}
@@ -214,8 +216,12 @@ func TestCheckSessionHostPathsWarnsWhenHostMissing(t *testing.T) {
 	writeDoctorSessionFixture(t, sessionsRoot, "s1", existingHost)
 	writeDoctorSessionFixture(t, sessionsRoot, "s2", missingHost)
 
-	got := checkSessionHostPaths(sessionsRoot, nil)
-	if got.Level != doctorWarn {
+	got := usecase.CheckSessionHostPaths(usecase.DoctorHostPathInput{
+		SessionsRoot: sessionsRoot,
+		SessionsErr:  nil,
+		CompactPath:  compactDoctorPathForTest,
+	})
+	if got.Level != usecase.DoctorWarn {
 		t.Fatalf("expected warn, got %s detail=%q", got.Level, got.Detail)
 	}
 
@@ -236,8 +242,12 @@ func TestCheckSessionHostPathsPassWhenAllHostsExist(t *testing.T) {
 	writeDoctorSessionFixture(t, sessionsRoot, "s1", hostA)
 	writeDoctorSessionFixture(t, sessionsRoot, "s2", hostB)
 
-	got := checkSessionHostPaths(sessionsRoot, nil)
-	if got.Level != doctorPass {
+	got := usecase.CheckSessionHostPaths(usecase.DoctorHostPathInput{
+		SessionsRoot: sessionsRoot,
+		SessionsErr:  nil,
+		CompactPath:  compactDoctorPathForTest,
+	})
+	if got.Level != usecase.DoctorPass {
 		t.Fatalf("expected pass, got %s detail=%q", got.Level, got.Detail)
 	}
 
@@ -265,4 +275,13 @@ func writeDoctorSessionFixture(t *testing.T, sessionsRoot, id, host string) {
 	if err := os.WriteFile(path, []byte(line), 0o644); err != nil {
 		t.Fatalf("write session fixture: %v", err)
 	}
+}
+
+func compactDoctorPathForTest(path string, maxLen int) string {
+	p := strings.TrimSpace(path)
+	if p == "" || maxLen <= 0 || len(p) <= maxLen {
+		return p
+	}
+
+	return p[:maxLen]
 }

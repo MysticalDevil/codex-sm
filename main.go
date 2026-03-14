@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/MysticalDevil/codexsm/cli"
+	cliutil "github.com/MysticalDevil/codexsm/cli/util"
 )
 
 // version is injected at build time via -ldflags.
@@ -20,7 +21,7 @@ func main() {
 	if err := root.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 
-		var ex *cli.ExitError
+		var ex *cliutil.ExitError
 		if errors.As(err, &ex) {
 			os.Exit(ex.ExitCode())
 		}

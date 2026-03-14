@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	cliutil "github.com/MysticalDevil/codexsm/cli/util"
 	"github.com/MysticalDevil/codexsm/usecase"
 	"github.com/spf13/cobra"
 )
@@ -51,7 +52,7 @@ func newAgentsExplainCmd() *cobra.Command {
 			}
 
 			if mode == "json" {
-				b, err := marshalPrettyJSON(out)
+				b, err := cliutil.MarshalPrettyJSON(out)
 				if err != nil {
 					return err
 				}

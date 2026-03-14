@@ -1,4 +1,5 @@
-package cli
+// Package list provides the `codexsm list` command.
+package list
 
 import (
 	"bytes"
@@ -9,24 +10,25 @@ import (
 	"strings"
 	"text/tabwriter"
 
+	cliutil "github.com/MysticalDevil/codexsm/cli/util"
 	"github.com/MysticalDevil/codexsm/config"
 	"github.com/MysticalDevil/codexsm/session"
 	"github.com/MysticalDevil/codexsm/usecase"
-	"github.com/MysticalDevil/codexsm/util"
-
 	"github.com/spf13/cobra"
 )
 
-type listRenderOptions struct {
-	Detailed  bool
+type renderOptions struct {
 	NoHeader  bool
 	ColorMode string
 	Out       io.Writer
-	Columns   []listColumn
+	Columns   []Column
 	HeadWidth int
 }
 
-func newListCmd() *cobra.Command {
+type RenderOptions = renderOptions
+
+// NewCommand builds the list command.
+func NewCommand(resolveSessionsRoot func() (string, error)) *cobra.Command {
 	var (
 		sessionsRoot string
 		id           string
@@ -43,7 +45,7 @@ func newListCmd() *cobra.Command {
 		pageSize     int
 		colorMode    string
 		noHeader     bool
-		column       string
+		columnInput  string
 		headWidth    int
 		sortBy       string
 		order        string
@@ -64,7 +66,7 @@ func newListCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var err error
 			if strings.TrimSpace(sessionsRoot) == "" {
-				sessionsRoot, err = runtimeSessionsRoot()
+				sessionsRoot, err = resolveSessionsRoot()
 				if err != nil {
 					return err
 				}
@@ -75,7 +77,7 @@ func newListCmd() *cobra.Command {
 				}
 			}
 
-			sel, err := buildSelector(id, idPrefix, hostContains, pathContains, headContains, olderThan, health)
+			sel, err := cliutil.BuildSelector(id, idPrefix, hostContains, pathContains, headContains, olderThan, health)
 			if err != nil {
 				return err
 			}
@@ -104,11 +106,11 @@ func newListCmd() *cobra.Command {
 				formatMode = "table"
 			}
 
-			if formatMode == "json" && (noHeader || strings.TrimSpace(column) != "") {
+			if formatMode == "json" && (noHeader || strings.TrimSpace(columnInput) != "") {
 				return fmt.Errorf("--no-header and --column are only supported with table/csv/tsv")
 			}
 
-			columns, err := parseListColumns(column, detailed, formatMode)
+			columns, err := ParseColumns(columnInput, detailed, formatMode)
 			if err != nil {
 				return err
 			}
@@ -117,8 +119,7 @@ func newListCmd() *cobra.Command {
 			case "table":
 				out := cmd.OutOrStdout()
 
-				table, err := renderTable(filtered, total, listRenderOptions{
-					Detailed:  detailed,
+				table, err := RenderTable(filtered, total, renderOptions{
 					NoHeader:  noHeader,
 					ColorMode: colorMode,
 					Out:       out,
@@ -129,7 +130,7 @@ func newListCmd() *cobra.Command {
 					return err
 				}
 
-				return writeWithPager(out, table, pager, pageSize, !noHeader)
+				return WriteWithPager(out, table, pager, pageSize, !noHeader)
 			case "json":
 				b, err := json.Marshal(filtered)
 				if err != nil {
@@ -142,9 +143,9 @@ func newListCmd() *cobra.Command {
 
 				return nil
 			case "csv":
-				return writeListDelimited(cmd.OutOrStdout(), filtered, ',', noHeader, columns)
+				return WriteDelimited(cmd.OutOrStdout(), filtered, ',', noHeader, columns)
 			case "tsv":
-				return writeListDelimited(cmd.OutOrStdout(), filtered, '\t', noHeader, columns)
+				return WriteDelimited(cmd.OutOrStdout(), filtered, '\t', noHeader, columns)
 			default:
 				return fmt.Errorf("unsupported format %q", format)
 			}
@@ -166,7 +167,7 @@ func newListCmd() *cobra.Command {
 	cmd.Flags().IntVar(&pageSize, "page-size", 10, "rows per page when --pager is enabled")
 	cmd.Flags().StringVar(&colorMode, "color", "always", "color mode: auto|always|never")
 	cmd.Flags().BoolVar(&noHeader, "no-header", false, "hide header row for table/csv/tsv")
-	cmd.Flags().StringVar(&column, "column", "", "comma-separated columns (e.g. session_id,updated_at,size)")
+	cmd.Flags().StringVar(&columnInput, "column", "", "comma-separated columns (e.g. session_id,updated_at,size)")
 	cmd.Flags().IntVar(&headWidth, "head-width", 36, "max HEAD width in table format (0 means no truncation)")
 	cmd.Flags().StringVarP(&sortBy, "sort", "s", "updated_at", "sort field: updated_at|created_at|size|health|id|session_id")
 	cmd.Flags().StringVar(&order, "order", "desc", "sort order: asc|desc")
@@ -175,8 +176,8 @@ func newListCmd() *cobra.Command {
 	return cmd
 }
 
-func renderTable(sessions []session.Session, total int, opts listRenderOptions) (string, error) {
-	useColor := shouldUseColor(opts.ColorMode, opts.Out)
+func RenderTable(sessions []session.Session, total int, opts renderOptions) (string, error) {
+	useColor := cliutil.ShouldUseColor(opts.ColorMode, opts.Out)
 	home, _ := os.UserHomeDir()
 
 	var buf bytes.Buffer
@@ -195,7 +196,7 @@ func renderTable(sessions []session.Session, total int, opts listRenderOptions) 
 	for _, s := range sessions {
 		values := make([]string, 0, len(opts.Columns))
 		for _, c := range opts.Columns {
-			values = append(values, listColumnValue(c.Key, s, home, opts.HeadWidth, true))
+			values = append(values, ColumnValue(c.Key, s, home, opts.HeadWidth, true))
 		}
 
 		_, _ = fmt.Fprintln(w, strings.Join(values, "\t"))
@@ -205,10 +206,8 @@ func renderTable(sessions []session.Session, total int, opts listRenderOptions) 
 		return "", err
 	}
 
-	shown := len(sessions)
-
-	footer := fmt.Sprintf("showing %d of %d", shown, total)
-	if shown < total {
+	footer := fmt.Sprintf("showing %d of %d", len(sessions), total)
+	if len(sessions) < total {
 		footer += " (use --limit 0 for all)"
 	}
 
@@ -216,53 +215,8 @@ func renderTable(sessions []session.Session, total int, opts listRenderOptions) 
 
 	rendered := buf.String()
 	if useColor {
-		rendered = colorizeRenderedTable(rendered, sessions, opts.NoHeader, hasHealthColumn(opts.Columns))
+		rendered = ColorizeRenderedTable(rendered, sessions, opts.NoHeader, HasHealthColumn(opts.Columns))
 	}
 
 	return rendered, nil
-}
-
-func buildSelector(id, idPrefix, hostContains, pathContains, headContains, olderThan, health string) (session.Selector, error) {
-	sel := session.Selector{
-		ID:           strings.TrimSpace(id),
-		IDPrefix:     strings.TrimSpace(idPrefix),
-		HostContains: strings.TrimSpace(hostContains),
-		PathContains: strings.TrimSpace(pathContains),
-		HeadContains: strings.TrimSpace(headContains),
-	}
-
-	if strings.TrimSpace(olderThan) != "" {
-		d, err := util.ParseOlderThan(olderThan)
-		if err != nil {
-			return sel, err
-		}
-
-		sel.OlderThan = d
-		sel.HasOlderThan = true
-	}
-
-	if strings.TrimSpace(health) != "" {
-		h, err := parseHealth(health)
-		if err != nil {
-			return sel, err
-		}
-
-		sel.Health = h
-		sel.HasHealth = true
-	}
-
-	return sel, nil
-}
-
-func parseHealth(v string) (session.Health, error) {
-	switch strings.ToLower(strings.TrimSpace(v)) {
-	case string(session.HealthOK):
-		return session.HealthOK, nil
-	case string(session.HealthCorrupted):
-		return session.HealthCorrupted, nil
-	case string(session.HealthMissingMeta):
-		return session.HealthMissingMeta, nil
-	default:
-		return "", fmt.Errorf("invalid health %q", v)
-	}
 }

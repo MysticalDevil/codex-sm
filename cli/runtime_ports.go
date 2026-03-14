@@ -1,21 +1,9 @@
 package cli
 
 import (
-	"time"
-
 	"github.com/MysticalDevil/codexsm/audit"
 	"github.com/MysticalDevil/codexsm/usecase"
 )
-
-type clock interface {
-	Now() time.Time
-}
-
-type systemClock struct{}
-
-func (systemClock) Now() time.Time {
-	return time.Now()
-}
 
 type defaultAuditSink struct{}
 
@@ -28,6 +16,5 @@ func (defaultAuditSink) WriteActionLog(logFile string, rec audit.ActionRecord) e
 }
 
 var (
-	runtimeClock     clock             = systemClock{}
 	runtimeAuditSink usecase.AuditSink = defaultAuditSink{}
 )

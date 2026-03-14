@@ -8,7 +8,7 @@ import (
 )
 
 func TestDeleteRestoreDoNotDirectlyScanOrFilterSessions(t *testing.T) {
-	for _, name := range []string{"delete.go", "restore.go"} {
+	for _, name := range []string{"delete/command.go", "restore/command.go"} {
 		path := filepath.Join(".", name)
 
 		data, err := os.ReadFile(path)

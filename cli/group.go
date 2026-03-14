@@ -9,6 +9,7 @@ import (
 	"strings"
 	"text/tabwriter"
 
+	cliutil "github.com/MysticalDevil/codexsm/cli/util"
 	"github.com/MysticalDevil/codexsm/internal/core"
 	"github.com/MysticalDevil/codexsm/usecase"
 
@@ -49,12 +50,12 @@ func newGroupCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var err error
 
-			sessionsRoot, err = resolveOrDefault(sessionsRoot, runtimeSessionsRoot)
+			sessionsRoot, err = cliutil.ResolveOrDefault(sessionsRoot, runtimeSessionsRoot)
 			if err != nil {
 				return err
 			}
 
-			sel, err := buildSelector(id, idPrefix, hostContains, pathContains, headContains, olderThan, health)
+			sel, err := cliutil.BuildSelector(id, idPrefix, hostContains, pathContains, headContains, olderThan, health)
 			if err != nil {
 				return err
 			}
@@ -123,7 +124,7 @@ func newGroupCmd() *cobra.Command {
 }
 
 func renderGroupTable(stats []groupStat, by, colorMode string, out io.Writer) (string, error) {
-	useColor := shouldUseColor(colorMode, out)
+	useColor := cliutil.ShouldUseColor(colorMode, out)
 
 	var buf bytes.Buffer
 

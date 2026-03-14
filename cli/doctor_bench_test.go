@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	cliutil "github.com/MysticalDevil/codexsm/cli/util"
 )
 
 func BenchmarkDoctorRiskJSON(b *testing.B) {
@@ -29,7 +31,7 @@ func BenchmarkDoctorRiskJSON(b *testing.B) {
 			b.Fatal("expected exit code 1 when benchmark dataset contains risk")
 		}
 
-		var ex *ExitError
+		var ex *cliutil.ExitError
 		if !errors.As(err, &ex) || ex.ExitCode() != 1 {
 			b.Fatalf("unexpected error: %v", err)
 		}

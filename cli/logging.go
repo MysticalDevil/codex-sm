@@ -9,10 +9,6 @@ import (
 
 var appLogger = slog.New(slog.NewTextHandler(io.Discard, nil))
 
-func logger() *slog.Logger {
-	return appLogger
-}
-
 func configureLogger(format, level string, out io.Writer) error {
 	lv, err := parseLogLevel(level)
 	if err != nil {

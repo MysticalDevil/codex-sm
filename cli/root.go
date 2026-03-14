@@ -4,7 +4,14 @@ package cli
 import (
 	"fmt"
 	"strings"
+	"time"
 
+	cfg "github.com/MysticalDevil/codexsm/cli/config"
+	del "github.com/MysticalDevil/codexsm/cli/delete"
+	"github.com/MysticalDevil/codexsm/cli/doctor"
+	"github.com/MysticalDevil/codexsm/cli/list"
+	"github.com/MysticalDevil/codexsm/cli/restore"
+	"github.com/MysticalDevil/codexsm/tui"
 	"github.com/spf13/cobra"
 )
 
@@ -49,17 +56,22 @@ func NewRootCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVar(&logLevel, "log-level", "warn", "log level: debug|info|warn|error")
 	cmd.PersistentFlags().StringVar(&logFormat, "log-format", "text", "log format: text|json")
 
-	cmd.AddCommand(newListCmd())
+	cmd.AddCommand(list.NewCommand(runtimeSessionsRoot))
 	cmd.AddCommand(newGroupCmd())
-	cmd.AddCommand(newDeleteCmd())
-	cmd.AddCommand(newRestoreCmd())
+	cmd.AddCommand(del.NewCommand(runtimeSessionsRoot, runtimeTrashRoot, runtimeLogFile, runtimeAuditSink, time.Now))
+	cmd.AddCommand(restore.NewCommand(runtimeSessionsRoot, runtimeTrashRoot, runtimeLogFile, runtimeAuditSink, time.Now))
 	cmd.AddCommand(newSessionCmd())
 	cmd.AddCommand(newAgentsCmd())
-	cmd.AddCommand(newConfigCmd())
-	cmd.AddCommand(newTUICmd())
+	cmd.AddCommand(cfg.NewCommand(runtimeSessionsRoot, runtimeTrashRoot, runtimeLogFile))
+	cmd.AddCommand(tui.NewCommand(tui.CommandDeps{
+		ResolveSessionsRoot: runtimeSessionsRoot,
+		ResolveTrashRoot:    runtimeTrashRoot,
+		ResolveLogFile:      runtimeLogFile,
+		TUIConfig:           runtimeConfig.TUI,
+	}))
 	cmd.AddCommand(newCompletionCmd())
 	cmd.AddCommand(newVersionCmd())
-	cmd.AddCommand(newDoctorCmd())
+	cmd.AddCommand(doctor.NewCommand(runtimeSessionsRoot, runtimeTrashRoot, runtimeLogFile))
 	applyHelpStyles(cmd)
 
 	return cmd

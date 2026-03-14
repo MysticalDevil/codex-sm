@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	cliutil "github.com/MysticalDevil/codexsm/cli/util"
 	"github.com/MysticalDevil/codexsm/config"
 	sessionmigrate "github.com/MysticalDevil/codexsm/session/migrate"
 	"github.com/spf13/cobra"
@@ -38,12 +39,12 @@ func newSessionMigrateCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var err error
 
-			sessionsRoot, err = resolveOrDefault(sessionsRoot, runtimeSessionsRoot)
+			sessionsRoot, err = cliutil.ResolveOrDefault(sessionsRoot, runtimeSessionsRoot)
 			if err != nil {
 				return err
 			}
 
-			stateDB, err = resolveOrDefault(stateDB, config.DefaultCodexStateDB)
+			stateDB, err = cliutil.ResolveOrDefault(stateDB, config.DefaultCodexStateDB)
 			if err != nil {
 				return err
 			}
@@ -59,9 +60,9 @@ func newSessionMigrateCmd() *cobra.Command {
 			toPath = strings.TrimSpace(toPath)
 			switch {
 			case filePath != "" && (fromPath != "" || toPath != ""):
-				return WithExitCode(fmt.Errorf("--file cannot be combined with --from or --to"), 1)
+				return cliutil.WithExitCode(fmt.Errorf("--file cannot be combined with --from or --to"), 1)
 			case filePath == "" && (fromPath == "" || toPath == ""):
-				return WithExitCode(fmt.Errorf("either --file or both --from and --to are required"), 1)
+				return cliutil.WithExitCode(fmt.Errorf("either --file or both --from and --to are required"), 1)
 			}
 
 			if filePath != "" {
@@ -79,7 +80,7 @@ func newSessionMigrateCmd() *cobra.Command {
 				printSessionMigrateBatchResult(cmd, result)
 
 				if err != nil {
-					return WithExitCode(err, 1)
+					return cliutil.WithExitCode(err, 1)
 				}
 
 				return nil
@@ -99,7 +100,7 @@ func newSessionMigrateCmd() *cobra.Command {
 				PrintCreated: printCreated,
 			})
 			if err != nil {
-				return WithExitCode(err, 1)
+				return cliutil.WithExitCode(err, 1)
 			}
 
 			printSessionMigrateResult(cmd, result)

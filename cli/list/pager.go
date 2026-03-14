@@ -1,4 +1,4 @@
-package cli
+package list
 
 import (
 	"bufio"
@@ -10,8 +10,8 @@ import (
 	cliutil "github.com/MysticalDevil/codexsm/cli/util"
 )
 
-func writeWithPager(out io.Writer, text string, pager bool, pageSize int, hasHeader bool) error {
-	if !pager || pageSize <= 0 || !isTerminalWriter(out) {
+func WriteWithPager(out io.Writer, text string, pager bool, pageSize int, hasHeader bool) error {
+	if !pager || pageSize <= 0 || !cliutil.IsTerminalWriter(out) {
 		_, err := io.WriteString(out, text)
 		return err
 	}
@@ -53,7 +53,6 @@ func writeWithPager(out io.Writer, text string, pager bool, pageSize int, hasHea
 	in := bufio.NewReader(os.Stdin)
 
 	renderPage := func(page int) error {
-		// Redraw one terminal-sized page instead of appending pages.
 		if _, err := fmt.Fprint(out, "\x1b[H\x1b[2J"); err != nil {
 			return err
 		}
@@ -108,15 +107,14 @@ func writeWithPager(out io.Writer, text string, pager bool, pageSize int, hasHea
 			return err
 		}
 
-		nextPage, act := applyPagerChoice(page, pages, choice)
+		nextPage, act := ApplyPagerChoice(page, pages, choice)
 		page = nextPage
 
-		if act == pagerActionQuit {
+		if act == PagerActionQuit {
 			break
 		}
 
-		if act == pagerActionAll {
-			// Stream remaining rows continuously from the current position.
+		if act == PagerActionAll {
 			if _, err := fmt.Fprint(out, "\x1b[H\x1b[2J"); err != nil {
 				return err
 			}
@@ -155,51 +153,51 @@ func writeWithPager(out io.Writer, text string, pager bool, pageSize int, hasHea
 	return nil
 }
 
-type pagerAction int
+type PagerAction int
 
 const (
-	pagerActionContinue pagerAction = iota
-	pagerActionQuit
-	pagerActionAll
+	PagerActionContinue PagerAction = iota
+	PagerActionQuit
+	PagerActionAll
 )
 
-func applyPagerChoice(page, pages int, rawChoice string) (int, pagerAction) {
+func ApplyPagerChoice(page, pages int, rawChoice string) (int, PagerAction) {
 	if pages <= 0 {
-		return page, pagerActionQuit
+		return page, PagerActionQuit
 	}
 
 	last := pages - 1
 
 	clean := strings.TrimSpace(rawChoice)
 	if clean == "G" {
-		return last, pagerActionContinue
+		return last, PagerActionContinue
 	}
 
 	c := strings.ToLower(clean)
 	switch c {
 	case "q", "quit":
-		return page, pagerActionQuit
+		return page, PagerActionQuit
 	case "a", "all":
-		return page, pagerActionAll
+		return page, PagerActionAll
 	case "g", "first", "home":
-		return 0, pagerActionContinue
+		return 0, PagerActionContinue
 	case "b", "back", "p", "prev", "k":
 		if page > 0 {
-			return page - 1, pagerActionContinue
+			return page - 1, PagerActionContinue
 		}
 
-		return 0, pagerActionContinue
+		return 0, PagerActionContinue
 	case "", "j", "n", "next", " ":
 		if page < last {
-			return page + 1, pagerActionContinue
+			return page + 1, PagerActionContinue
 		}
 
-		return last, pagerActionContinue
+		return last, PagerActionContinue
 	default:
 		if page < last {
-			return page + 1, pagerActionContinue
+			return page + 1, PagerActionContinue
 		}
 
-		return last, pagerActionContinue
+		return last, PagerActionContinue
 	}
 }

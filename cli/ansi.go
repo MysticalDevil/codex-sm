@@ -3,17 +3,8 @@ package cli
 import (
 	"io"
 	"os"
-	"regexp"
 	"strings"
-
-	"github.com/MysticalDevil/codexsm/session"
 )
-
-var ansiColorRe = regexp.MustCompile(`\x1b\[[0-9;]*m`)
-
-func stripANSI(v string) string {
-	return ansiColorRe.ReplaceAllString(v, "")
-}
 
 func shouldUseColor(mode string, out io.Writer) bool {
 	switch strings.ToLower(strings.TrimSpace(mode)) {
@@ -61,53 +52,4 @@ func colorize(v, color string, enabled bool) string {
 	}
 
 	return color + v + ansiReset
-}
-
-func colorizeRenderedTable(text string, sessions []session.Session, noHeader, hasHealth bool) string {
-	if text == "" {
-		return text
-	}
-
-	hasTrailingNewline := strings.HasSuffix(text, "\n")
-	lines := strings.Split(strings.TrimSuffix(text, "\n"), "\n")
-	dataStart := 0
-
-	for i, line := range lines {
-		if strings.TrimSpace(line) == "" {
-			continue
-		}
-
-		if !noHeader && i == 0 {
-			lines[i] = colorize(line, ansiCyanBold, true)
-			dataStart = 1
-
-			continue
-		}
-
-		if strings.HasPrefix(line, "showing ") {
-			lines[i] = colorize(line, ansiDim, true)
-			continue
-		}
-
-		if hasHealth {
-			idx := i - dataStart
-			if idx >= 0 && idx < len(sessions) {
-				switch sessions[idx].Health {
-				case session.HealthOK:
-					lines[i] = colorize(line, ansiGreen, true)
-				case session.HealthMissingMeta:
-					lines[i] = colorize(line, ansiYellow, true)
-				case session.HealthCorrupted:
-					lines[i] = colorize(line, ansiRed, true)
-				}
-			}
-		}
-	}
-
-	out := strings.Join(lines, "\n")
-	if hasTrailingNewline {
-		out += "\n"
-	}
-
-	return out
 }

@@ -1,4 +1,4 @@
-package cli
+package list
 
 import (
 	"encoding/csv"
@@ -14,12 +14,12 @@ import (
 	"github.com/MysticalDevil/codexsm/session"
 )
 
-type listColumn struct {
+type Column struct {
 	Key    string
 	Header string
 }
 
-func parseListColumns(input string, detailed bool, format string) ([]listColumn, error) {
+func ParseColumns(input string, detailed bool, format string) ([]Column, error) {
 	defaults := []string{"id", "updated_at", "size", "health", "host", "head"}
 	if detailed {
 		defaults = []string{"session_id", "created_at", "updated_at", "size", "health", "host_dir", "head", "path"}
@@ -50,7 +50,7 @@ func parseListColumns(input string, detailed bool, format string) ([]listColumn,
 		return nil, fmt.Errorf("no columns selected")
 	}
 
-	defs := map[string]listColumn{
+	defs := map[string]Column{
 		"id":         {Key: "id", Header: "ID"},
 		"session_id": {Key: "session_id", Header: "SESSION_ID"},
 		"created_at": {Key: "created_at", Header: "CREATED_AT"},
@@ -65,7 +65,7 @@ func parseListColumns(input string, detailed bool, format string) ([]listColumn,
 		"head":       {Key: "head", Header: "HEAD"},
 	}
 
-	cols := make([]listColumn, 0, len(names))
+	cols := make([]Column, 0, len(names))
 	for _, n := range names {
 		c, ok := defs[n]
 		if !ok {
@@ -78,7 +78,7 @@ func parseListColumns(input string, detailed bool, format string) ([]listColumn,
 	return cols, nil
 }
 
-func listColumnValue(key string, s session.Session, home string, headWidth int, truncateHead bool) string {
+func ColumnValue(key string, s session.Session, home string, headWidth int, truncateHead bool) string {
 	switch key {
 	case "id":
 		return core.ShortID(s.SessionID)
@@ -110,7 +110,7 @@ func listColumnValue(key string, s session.Session, home string, headWidth int, 
 		}
 
 		if truncateHead {
-			return truncateDisplayText(s.Head, headWidth)
+			return TruncateDisplayText(s.Head, headWidth)
 		}
 
 		return s.Head
@@ -119,7 +119,7 @@ func listColumnValue(key string, s session.Session, home string, headWidth int, 
 	}
 }
 
-func truncateDisplayText(v string, maxRunes int) string {
+func TruncateDisplayText(v string, maxRunes int) string {
 	if maxRunes <= 0 {
 		return v
 	}
@@ -146,7 +146,7 @@ func truncateDisplayText(v string, maxRunes int) string {
 	return b.String()
 }
 
-func hasHealthColumn(cols []listColumn) bool {
+func HasHealthColumn(cols []Column) bool {
 	for _, c := range cols {
 		if c.Key == "health" {
 			return true
@@ -156,7 +156,7 @@ func hasHealthColumn(cols []listColumn) bool {
 	return false
 }
 
-func writeListDelimited(out io.Writer, sessions []session.Session, sep rune, noHeader bool, columns []listColumn) error {
+func WriteDelimited(out io.Writer, sessions []session.Session, sep rune, noHeader bool, columns []Column) error {
 	home, _ := os.UserHomeDir()
 	w := csv.NewWriter(out)
 	w.Comma = sep
@@ -183,7 +183,7 @@ func writeListDelimited(out io.Writer, sessions []session.Session, sep rune, noH
 			case "path":
 				record = append(record, core.CompactHomePath(s.Path, home))
 			default:
-				record = append(record, listColumnValue(c.Key, s, home, 0, false))
+				record = append(record, ColumnValue(c.Key, s, home, 0, false))
 			}
 		}
 

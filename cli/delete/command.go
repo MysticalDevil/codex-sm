@@ -1,20 +1,28 @@
-package cli
+// Package del provides the `codexsm delete` command.
+package del
 
 import (
 	"errors"
 	"fmt"
-	"strings"
+	"log/slog"
+	"time"
 
-	"github.com/MysticalDevil/codexsm/config"
+	cliutil "github.com/MysticalDevil/codexsm/cli/util"
 	"github.com/MysticalDevil/codexsm/internal/core"
 	"github.com/MysticalDevil/codexsm/internal/ops"
 	"github.com/MysticalDevil/codexsm/session"
 	"github.com/MysticalDevil/codexsm/usecase"
-
 	"github.com/spf13/cobra"
 )
 
-func newDeleteCmd() *cobra.Command {
+// NewCommand builds the delete command.
+func NewCommand(
+	resolveSessionsRoot func() (string, error),
+	resolveTrashRoot func() (string, error),
+	resolveLogFile func() (string, error),
+	runtimeAuditSink usecase.AuditSink,
+	nowFn func() time.Time,
+) *cobra.Command {
 	var (
 		sessionsRoot string
 		trashRoot    string
@@ -48,26 +56,26 @@ func newDeleteCmd() *cobra.Command {
 			"  codexsm delete --host-contains /workspace/delete --head-contains fixture --dry-run=false --confirm --yes\n" +
 			"  codexsm delete --id <session_id> --dry-run=false --confirm --hard",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			lg := logger().With("command", "delete")
+			lg := slog.Default().With("command", "delete")
 
 			var err error
 
-			sessionsRoot, err = resolveOrDefault(sessionsRoot, runtimeSessionsRoot)
+			sessionsRoot, err = cliutil.ResolveOrDefault(sessionsRoot, resolveSessionsRoot)
 			if err != nil {
 				return err
 			}
 
-			trashRoot, err = resolveOrDefault(trashRoot, runtimeTrashRoot)
+			trashRoot, err = cliutil.ResolveOrDefault(trashRoot, resolveTrashRoot)
 			if err != nil {
 				return err
 			}
 
-			logFile, err = resolveOrDefault(logFile, runtimeLogFile)
+			logFile, err = cliutil.ResolveOrDefault(logFile, resolveLogFile)
 			if err != nil {
 				return err
 			}
 
-			sel, err := buildSelector(id, idPrefix, hostContains, pathContains, headContains, olderThan, health)
+			sel, err := cliutil.BuildSelector(id, idPrefix, hostContains, pathContains, headContains, olderThan, health)
 			if err != nil {
 				return err
 			}
@@ -77,7 +85,7 @@ func newDeleteCmd() *cobra.Command {
 				return err
 			}
 
-			now := runtimeClock.Now()
+			now := nowFn()
 
 			selected, err := usecase.SelectDeleteCandidates(usecase.DeleteCandidatesInput{
 				SessionsRoot: sessionsRoot,
@@ -85,24 +93,24 @@ func newDeleteCmd() *cobra.Command {
 				Now:          now,
 			})
 			if err != nil {
-				return WithExitCode(err, 1)
+				return cliutil.WithExitCode(err, 1)
 			}
 
 			candidates := selected.Candidates
 			lg.Info("matched delete candidates", "count", len(candidates), "dry_run", dryRun, "hard", hard)
 
 			if !dryRun {
-				printDeletePreview(cmd, candidates, hard, mode, previewLimit)
+				PrintDeletePreview(cmd, candidates, hard, mode, previewLimit)
 			}
 
 			if !dryRun && interactive && !yes && len(candidates) > 0 {
-				ok, err := interactiveConfirmDelete(cmd, len(candidates), hard)
+				ok, err := InteractiveConfirmDelete(cmd, len(candidates), hard)
 				if err != nil {
-					return WithExitCode(err, 1)
+					return cliutil.WithExitCode(err, 1)
 				}
 
 				if !ok {
-					return WithExitCode(errors.New("delete aborted by user"), 1)
+					return cliutil.WithExitCode(errors.New("delete aborted by user"), 1)
 				}
 
 				yes = true
@@ -139,25 +147,25 @@ func newDeleteCmd() *cobra.Command {
 				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "batch_id=%s\n", out.BatchID)
 			}
 
-			printDeleteSummary(cmd, summary)
+			PrintDeleteSummary(cmd, summary)
 
 			if out.LogError != nil {
-				return WithExitCode(fmt.Errorf("delete completed but failed to write log: %w", out.LogError), 3)
+				return cliutil.WithExitCode(fmt.Errorf("delete completed but failed to write log: %w", out.LogError), 3)
 			}
 
 			if deleteErr != nil {
 				lg.Warn("delete validation or execution returned error", "error", deleteErr)
-				return WithExitCode(deleteErr, 1)
+				return cliutil.WithExitCode(deleteErr, 1)
 			}
 
 			if summary.Failed > 0 {
 				lg.Warn("delete completed with failures", "failed", summary.Failed, "succeeded", summary.Succeeded)
 
 				if summary.Succeeded == 0 {
-					return WithExitCode(fmt.Errorf("all operations failed: %d failed", summary.Failed), 3)
+					return cliutil.WithExitCode(fmt.Errorf("all operations failed: %d failed", summary.Failed), 3)
 				}
 
-				return WithExitCode(fmt.Errorf("partial failure: %d failed", summary.Failed), 2)
+				return cliutil.WithExitCode(fmt.Errorf("partial failure: %d failed", summary.Failed), 2)
 			}
 
 			lg.Info("delete completed", "matched", summary.MatchedCount, "succeeded", summary.Succeeded, "simulation", summary.Simulation)
@@ -188,15 +196,7 @@ func newDeleteCmd() *cobra.Command {
 	return cmd
 }
 
-func resolveOrDefault(v string, fallback func() (string, error)) (string, error) {
-	if strings.TrimSpace(v) == "" {
-		return fallback()
-	}
-
-	return config.ResolvePath(v)
-}
-
-func printDeleteSummary(cmd *cobra.Command, s session.DeleteSummary) {
+func PrintDeleteSummary(cmd *cobra.Command, s session.DeleteSummary) {
 	out := cmd.OutOrStdout()
 
 	_, _ = fmt.Fprintf(out, "action=%s simulation=%t matched=%d succeeded=%d failed=%d skipped=%d affected_bytes=%d\n",
@@ -211,7 +211,7 @@ func printDeleteSummary(cmd *cobra.Command, s session.DeleteSummary) {
 	}
 }
 
-func printDeletePreview(cmd *cobra.Command, candidates []session.Session, hard bool, mode ops.PreviewMode, previewLimit int) {
+func PrintDeletePreview(cmd *cobra.Command, candidates []session.Session, hard bool, mode ops.PreviewMode, previewLimit int) {
 	if mode == ops.PreviewNone {
 		return
 	}
@@ -235,7 +235,7 @@ func printDeletePreview(cmd *cobra.Command, candidates []session.Session, hard b
 		sampleLimit = 0
 	}
 
-	logger().Debug("delete preview generated", "matched", len(candidates), "affected_bytes", totalBytes, "preview_mode", mode, "preview_limit", sampleLimit, "hard", hard)
+	slog.Default().Debug("delete preview generated", "matched", len(candidates), "affected_bytes", totalBytes, "preview_mode", mode, "preview_limit", sampleLimit, "hard", hard)
 
 	_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "preview action=%s matched=%d affected=%s mode=%s\n", action, len(candidates), core.FormatBytesIEC(totalBytes), mode)
 	for i, s := range candidates {
@@ -251,10 +251,10 @@ func printDeletePreview(cmd *cobra.Command, candidates []session.Session, hard b
 	}
 }
 
-func interactiveConfirmDelete(cmd *cobra.Command, count int, hard bool) (bool, error) {
+func InteractiveConfirmDelete(cmd *cobra.Command, count int, hard bool) (bool, error) {
 	in := cmd.InOrStdin()
 	if !ops.IsInteractiveReader(in) {
-		logger().Warn("interactive confirm requested but stdin is not terminal", "count", count)
+		slog.Default().Warn("interactive confirm requested but stdin is not terminal", "count", count)
 		return false, fmt.Errorf("interactive confirm requires a terminal stdin; use --yes to continue non-interactively")
 	}
 
@@ -268,7 +268,7 @@ func interactiveConfirmDelete(cmd *cobra.Command, count int, hard bool) (bool, e
 		mode = "hard"
 	}
 
-	logger().Info("delete interactive confirmation received", "approved", ok, "count", count, "mode", mode)
+	slog.Default().Info("delete interactive confirmation received", "approved", ok, "count", count, "mode", mode)
 
 	return ok, nil
 }

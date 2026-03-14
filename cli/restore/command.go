@@ -1,20 +1,30 @@
-package cli
+// Package restore provides the `codexsm restore` command.
+package restore
 
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"path/filepath"
 	"strings"
+	"time"
 
+	cliutil "github.com/MysticalDevil/codexsm/cli/util"
 	"github.com/MysticalDevil/codexsm/internal/core"
 	"github.com/MysticalDevil/codexsm/internal/ops"
 	"github.com/MysticalDevil/codexsm/session"
 	"github.com/MysticalDevil/codexsm/usecase"
-
 	"github.com/spf13/cobra"
 )
 
-func newRestoreCmd() *cobra.Command {
+// NewCommand builds the restore command.
+func NewCommand(
+	resolveSessionsRoot func() (string, error),
+	resolveTrashRoot func() (string, error),
+	resolveLogFile func() (string, error),
+	runtimeAuditSink usecase.AuditSink,
+	nowFn func() time.Time,
+) *cobra.Command {
 	var (
 		sessionsRoot string
 		trashRoot    string
@@ -48,26 +58,26 @@ func newRestoreCmd() *cobra.Command {
 			"  codexsm restore --path-contains /trash/sessions/2026/03/02 --head-contains fixture --dry-run=false --confirm --yes\n" +
 			"  codexsm restore --older-than 30d --dry-run=false --confirm --yes",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			lg := logger().With("command", "restore")
+			lg := slog.Default().With("command", "restore")
 
 			var err error
 
-			sessionsRoot, err = resolveOrDefault(sessionsRoot, runtimeSessionsRoot)
+			sessionsRoot, err = cliutil.ResolveOrDefault(sessionsRoot, resolveSessionsRoot)
 			if err != nil {
 				return err
 			}
 
-			trashRoot, err = resolveOrDefault(trashRoot, runtimeTrashRoot)
+			trashRoot, err = cliutil.ResolveOrDefault(trashRoot, resolveTrashRoot)
 			if err != nil {
 				return err
 			}
 
-			logFile, err = resolveOrDefault(logFile, runtimeLogFile)
+			logFile, err = cliutil.ResolveOrDefault(logFile, resolveLogFile)
 			if err != nil {
 				return err
 			}
 
-			sel, err := buildSelector(id, idPrefix, hostContains, pathContains, headContains, olderThan, health)
+			sel, err := cliutil.BuildSelector(id, idPrefix, hostContains, pathContains, headContains, olderThan, health)
 			if err != nil {
 				return err
 			}
@@ -77,7 +87,7 @@ func newRestoreCmd() *cobra.Command {
 				return err
 			}
 
-			now := runtimeClock.Now()
+			now := nowFn()
 			trashSessionsRoot := filepath.Join(trashRoot, "sessions")
 			batchID = strings.TrimSpace(batchID)
 
@@ -89,24 +99,24 @@ func newRestoreCmd() *cobra.Command {
 				Now:               now,
 			})
 			if err != nil {
-				return WithExitCode(err, 1)
+				return cliutil.WithExitCode(err, 1)
 			}
 
 			candidates := selected.Candidates
 			lg.Info("matched restore candidates", "count", len(candidates), "dry_run", dryRun)
 
 			if !dryRun {
-				printRestorePreview(cmd, candidates, mode, previewLimit)
+				PrintRestorePreview(cmd, candidates, mode, previewLimit)
 			}
 
 			if !dryRun && interactive && !yes && len(candidates) > 0 {
-				ok, err := interactiveConfirmRestore(cmd, len(candidates))
+				ok, err := InteractiveConfirmRestore(cmd, len(candidates))
 				if err != nil {
-					return WithExitCode(err, 1)
+					return cliutil.WithExitCode(err, 1)
 				}
 
 				if !ok {
-					return WithExitCode(errors.New("restore aborted by user"), 1)
+					return cliutil.WithExitCode(errors.New("restore aborted by user"), 1)
 				}
 
 				yes = true
@@ -146,25 +156,25 @@ func newRestoreCmd() *cobra.Command {
 				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "batch_id=%s\n", out.BatchID)
 			}
 
-			printRestoreSummary(cmd, summary)
+			PrintRestoreSummary(cmd, summary)
 
 			if out.LogError != nil {
-				return WithExitCode(fmt.Errorf("restore completed but failed to write log: %w", out.LogError), 3)
+				return cliutil.WithExitCode(fmt.Errorf("restore completed but failed to write log: %w", out.LogError), 3)
 			}
 
 			if runErr != nil {
 				lg.Warn("restore validation or execution returned error", "error", runErr)
-				return WithExitCode(runErr, 1)
+				return cliutil.WithExitCode(runErr, 1)
 			}
 
 			if summary.Failed > 0 {
 				lg.Warn("restore completed with failures", "failed", summary.Failed, "succeeded", summary.Succeeded)
 
 				if summary.Succeeded == 0 {
-					return WithExitCode(fmt.Errorf("all operations failed: %d failed", summary.Failed), 3)
+					return cliutil.WithExitCode(fmt.Errorf("all operations failed: %d failed", summary.Failed), 3)
 				}
 
-				return WithExitCode(fmt.Errorf("partial failure: %d failed", summary.Failed), 2)
+				return cliutil.WithExitCode(fmt.Errorf("partial failure: %d failed", summary.Failed), 2)
 			}
 
 			lg.Info("restore completed", "matched", summary.MatchedCount, "succeeded", summary.Succeeded, "simulation", summary.Simulation)
@@ -195,7 +205,7 @@ func newRestoreCmd() *cobra.Command {
 	return cmd
 }
 
-func printRestoreSummary(cmd *cobra.Command, s usecase.RestoreSummary) {
+func PrintRestoreSummary(cmd *cobra.Command, s usecase.RestoreSummary) {
 	out := cmd.OutOrStdout()
 
 	_, _ = fmt.Fprintf(out, "action=%s simulation=%t matched=%d succeeded=%d failed=%d skipped=%d affected_bytes=%d\n",
@@ -210,7 +220,7 @@ func printRestoreSummary(cmd *cobra.Command, s usecase.RestoreSummary) {
 	}
 }
 
-func printRestorePreview(cmd *cobra.Command, candidates []session.Session, mode ops.PreviewMode, previewLimit int) {
+func PrintRestorePreview(cmd *cobra.Command, candidates []session.Session, mode ops.PreviewMode, previewLimit int) {
 	if mode == ops.PreviewNone {
 		return
 	}
@@ -229,7 +239,7 @@ func printRestorePreview(cmd *cobra.Command, candidates []session.Session, mode 
 		sampleLimit = 0
 	}
 
-	logger().Debug("restore preview generated", "matched", len(candidates), "affected_bytes", totalBytes, "preview_mode", mode, "preview_limit", sampleLimit)
+	slog.Default().Debug("restore preview generated", "matched", len(candidates), "affected_bytes", totalBytes, "preview_mode", mode, "preview_limit", sampleLimit)
 
 	_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "preview action=restore matched=%d affected=%s mode=%s\n", len(candidates), core.FormatBytesIEC(totalBytes), mode)
 	for i, s := range candidates {
@@ -245,10 +255,10 @@ func printRestorePreview(cmd *cobra.Command, candidates []session.Session, mode 
 	}
 }
 
-func interactiveConfirmRestore(cmd *cobra.Command, count int) (bool, error) {
+func InteractiveConfirmRestore(cmd *cobra.Command, count int) (bool, error) {
 	in := cmd.InOrStdin()
 	if !ops.IsInteractiveReader(in) {
-		logger().Warn("interactive restore requested but stdin is not terminal", "count", count)
+		slog.Default().Warn("interactive restore requested but stdin is not terminal", "count", count)
 		return false, fmt.Errorf("interactive confirm requires a terminal stdin; use --yes to continue non-interactively")
 	}
 
@@ -257,7 +267,7 @@ func interactiveConfirmRestore(cmd *cobra.Command, count int) (bool, error) {
 		return false, err
 	}
 
-	logger().Info("restore interactive confirmation received", "approved", ok, "count", count)
+	slog.Default().Info("restore interactive confirmation received", "approved", ok, "count", count)
 
 	return ok, nil
 }

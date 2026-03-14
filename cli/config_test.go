@@ -6,59 +6,61 @@ import (
 	"strings"
 	"testing"
 
+	cfg "github.com/MysticalDevil/codexsm/cli/config"
+	cliutil "github.com/MysticalDevil/codexsm/cli/util"
 	"github.com/MysticalDevil/codexsm/config"
 	"github.com/MysticalDevil/codexsm/internal/testsupport"
 )
 
 func TestDefaultAppConfigTemplate(t *testing.T) {
-	cfg := defaultAppConfigTemplate()
-	if cfg.SessionsRoot == "" || cfg.TrashRoot == "" || cfg.LogFile == "" {
-		t.Fatalf("expected default paths, got %+v", cfg)
+	template := cfg.DefaultAppConfigTemplate()
+	if template.SessionsRoot == "" || template.TrashRoot == "" || template.LogFile == "" {
+		t.Fatalf("expected default paths, got %+v", template)
 	}
 
-	if cfg.TUI.GroupBy != "host" || cfg.TUI.Theme == "" || cfg.TUI.Source != "sessions" {
-		t.Fatalf("unexpected default tui config: %+v", cfg.TUI)
+	if template.TUI.GroupBy != "host" || template.TUI.Theme == "" || template.TUI.Source != "sessions" {
+		t.Fatalf("unexpected default tui config: %+v", template.TUI)
 	}
 }
 
 func TestValidateAppConfig(t *testing.T) {
-	valid := defaultAppConfigTemplate()
-	if err := validateAppConfig(valid); err != nil {
+	valid := cfg.DefaultAppConfigTemplate()
+	if err := cfg.ValidateAppConfig(valid); err != nil {
 		t.Fatalf("validateAppConfig valid: %v", err)
 	}
 
 	validDay := valid
 
 	validDay.TUI.GroupBy = "day"
-	if err := validateAppConfig(validDay); err != nil {
+	if err := cfg.ValidateAppConfig(validDay); err != nil {
 		t.Fatalf("validateAppConfig valid day group: %v", err)
 	}
 
 	badGroup := valid
 
 	badGroup.TUI.GroupBy = "weekly"
-	if err := validateAppConfig(badGroup); err == nil || !strings.Contains(err.Error(), "tui.group_by") {
+	if err := cfg.ValidateAppConfig(badGroup); err == nil || !strings.Contains(err.Error(), "tui.group_by") {
 		t.Fatalf("expected group_by validation error, got: %v", err)
 	}
 
 	badSource := valid
 
 	badSource.TUI.Source = "archive"
-	if err := validateAppConfig(badSource); err == nil || !strings.Contains(err.Error(), "tui.source") {
+	if err := cfg.ValidateAppConfig(badSource); err == nil || !strings.Contains(err.Error(), "tui.source") {
 		t.Fatalf("expected source validation error, got: %v", err)
 	}
 
 	badTheme := valid
 
 	badTheme.TUI.Theme = "not-a-theme"
-	if err := validateAppConfig(badTheme); err == nil || !strings.Contains(err.Error(), "tui.theme") {
+	if err := cfg.ValidateAppConfig(badTheme); err == nil || !strings.Contains(err.Error(), "tui.theme") {
 		t.Fatalf("expected theme validation error, got: %v", err)
 	}
 
 	badColor := valid
 
 	badColor.TUI.Colors = map[string]string{"": "#ffffff"}
-	if err := validateAppConfig(badColor); err == nil || !strings.Contains(err.Error(), "tui.colors") {
+	if err := cfg.ValidateAppConfig(badColor); err == nil || !strings.Contains(err.Error(), "tui.colors") {
 		t.Fatalf("expected colors validation error, got: %v", err)
 	}
 }
@@ -71,11 +73,11 @@ func TestWriteFileAtomic(t *testing.T) {
 		t.Fatalf("mkdir: %v", err)
 	}
 
-	if err := writeFileAtomic(p, []byte(`{"a":1}`), 0o644); err != nil {
+	if err := cliutil.WriteFileAtomic(p, []byte(`{"a":1}`), 0o644); err != nil {
 		t.Fatalf("writeFileAtomic initial: %v", err)
 	}
 
-	if err := writeFileAtomic(p, []byte(`{"a":2}`), 0o644); err != nil {
+	if err := cliutil.WriteFileAtomic(p, []byte(`{"a":2}`), 0o644); err != nil {
 		t.Fatalf("writeFileAtomic replace: %v", err)
 	}
 

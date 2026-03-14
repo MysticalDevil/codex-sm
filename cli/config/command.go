@@ -1,26 +1,25 @@
-package cli
+// Package config provides the `codexsm config` command tree.
+package config
 
 import (
-	"bytes"
-	"encoding/json/jsontext"
 	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"slices"
 	"strings"
 
-	"github.com/MysticalDevil/codexsm/config"
+	cliutil "github.com/MysticalDevil/codexsm/cli/util"
+	appconfig "github.com/MysticalDevil/codexsm/config"
 	"github.com/MysticalDevil/codexsm/tui"
 	"github.com/spf13/cobra"
 )
 
-type configShowOutput struct {
-	Path      string            `json:"path"`
-	Exists    bool              `json:"exists"`
-	Config    config.AppConfig  `json:"config"`
-	Effective *effectiveRuntime `json:"effective,omitempty"`
+type showOutput struct {
+	Path      string              `json:"path"`
+	Exists    bool                `json:"exists"`
+	Config    appconfig.AppConfig `json:"config"`
+	Effective *effectiveRuntime   `json:"effective,omitempty"`
 }
 
 type effectiveRuntime struct {
@@ -29,7 +28,12 @@ type effectiveRuntime struct {
 	LogFile      string `json:"log_file"`
 }
 
-func newConfigCmd() *cobra.Command {
+// NewCommand builds the config command tree.
+func NewCommand(
+	resolveSessionsRoot func() (string, error),
+	resolveTrashRoot func() (string, error),
+	resolveLogFile func() (string, error),
+) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "config",
 		Short: "Manage codexsm config file",
@@ -47,26 +51,30 @@ func newConfigCmd() *cobra.Command {
 		},
 	}
 
-	cmd.AddCommand(newConfigShowCmd())
-	cmd.AddCommand(newConfigInitCmd())
-	cmd.AddCommand(newConfigValidateCmd())
+	cmd.AddCommand(newShowCmd(resolveSessionsRoot, resolveTrashRoot, resolveLogFile))
+	cmd.AddCommand(newInitCmd())
+	cmd.AddCommand(newValidateCmd())
 
 	return cmd
 }
 
-func newConfigShowCmd() *cobra.Command {
+func newShowCmd(
+	resolveSessionsRoot func() (string, error),
+	resolveTrashRoot func() (string, error),
+	resolveLogFile func() (string, error),
+) *cobra.Command {
 	var resolved bool
 
 	cmd := &cobra.Command{
 		Use:   "show",
 		Short: "Print config content",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			p, err := config.AppConfigPath()
+			p, err := appconfig.AppConfigPath()
 			if err != nil {
 				return err
 			}
 
-			cfg, err := config.LoadAppConfig()
+			cfg, err := appconfig.LoadAppConfig()
 			if err != nil {
 				return err
 			}
@@ -78,24 +86,24 @@ func newConfigShowCmd() *cobra.Command {
 				return fmt.Errorf("stat config %s: %w", p, statErr)
 			}
 
-			out := configShowOutput{
+			out := showOutput{
 				Path:   p,
 				Exists: exists,
 				Config: cfg,
 			}
 
 			if resolved {
-				sessionsRoot, err := runtimeSessionsRoot()
+				sessionsRoot, err := resolveSessionsRoot()
 				if err != nil {
 					return err
 				}
 
-				trashRoot, err := runtimeTrashRoot()
+				trashRoot, err := resolveTrashRoot()
 				if err != nil {
 					return err
 				}
 
-				logFile, err := runtimeLogFile()
+				logFile, err := resolveLogFile()
 				if err != nil {
 					return err
 				}
@@ -107,7 +115,7 @@ func newConfigShowCmd() *cobra.Command {
 				}
 			}
 
-			data, err := marshalPrettyJSON(out)
+			data, err := cliutil.MarshalPrettyJSON(out)
 			if err != nil {
 				return err
 			}
@@ -122,7 +130,7 @@ func newConfigShowCmd() *cobra.Command {
 	return cmd
 }
 
-func newConfigInitCmd() *cobra.Command {
+func newInitCmd() *cobra.Command {
 	var (
 		force  bool
 		dryRun bool
@@ -132,7 +140,7 @@ func newConfigInitCmd() *cobra.Command {
 		Use:   "init",
 		Short: "Write a starter config template",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			p, err := config.AppConfigPath()
+			p, err := appconfig.AppConfigPath()
 			if err != nil {
 				return err
 			}
@@ -145,7 +153,7 @@ func newConfigInitCmd() *cobra.Command {
 				}
 			}
 
-			data, err := marshalPrettyJSON(defaultAppConfigTemplate())
+			data, err := cliutil.MarshalPrettyJSON(DefaultAppConfigTemplate())
 			if err != nil {
 				return err
 			}
@@ -162,11 +170,11 @@ func newConfigInitCmd() *cobra.Command {
 				return err
 			}
 
-			if err := config.EnsureConfigDir(); err != nil {
+			if err := appconfig.EnsureConfigDir(); err != nil {
 				return err
 			}
 
-			if err := writeFileAtomic(p, data, 0o644); err != nil {
+			if err := cliutil.WriteFileAtomic(p, data, 0o644); err != nil {
 				return err
 			}
 
@@ -181,12 +189,12 @@ func newConfigInitCmd() *cobra.Command {
 	return cmd
 }
 
-func newConfigValidateCmd() *cobra.Command {
+func newValidateCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "validate",
 		Short: "Validate config schema and key values",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			p, err := config.AppConfigPath()
+			p, err := appconfig.AppConfigPath()
 			if err != nil {
 				return err
 			}
@@ -200,12 +208,12 @@ func newConfigValidateCmd() *cobra.Command {
 				return fmt.Errorf("read config %s: %w", p, err)
 			}
 
-			var cfg config.AppConfig
+			var cfg appconfig.AppConfig
 			if err := json.Unmarshal(raw, &cfg); err != nil {
 				return fmt.Errorf("parse config %s: %w", p, err)
 			}
 
-			if err := validateAppConfig(cfg); err != nil {
+			if err := ValidateAppConfig(cfg); err != nil {
 				return err
 			}
 
@@ -218,12 +226,13 @@ func newConfigValidateCmd() *cobra.Command {
 	return cmd
 }
 
-func defaultAppConfigTemplate() config.AppConfig {
-	return config.AppConfig{
+// DefaultAppConfigTemplate returns the default template for `config init`.
+func DefaultAppConfigTemplate() appconfig.AppConfig {
+	return appconfig.AppConfig{
 		SessionsRoot: "~/.codex/sessions",
 		TrashRoot:    "~/.codex/trash",
 		LogFile:      "~/.codex/codexsm/logs/actions.log",
-		TUI: config.TUIConfig{
+		TUI: appconfig.TUIConfig{
 			GroupBy: "host",
 			Theme:   tui.DefaultThemeName(),
 			Source:  "sessions",
@@ -232,7 +241,8 @@ func defaultAppConfigTemplate() config.AppConfig {
 	}
 }
 
-func validateAppConfig(cfg config.AppConfig) error {
+// ValidateAppConfig validates config fields and enum values.
+func ValidateAppConfig(cfg appconfig.AppConfig) error {
 	var errs []error
 
 	checkPath := func(name, value string) {
@@ -240,7 +250,7 @@ func validateAppConfig(cfg config.AppConfig) error {
 			return
 		}
 
-		if _, err := config.ResolveConfigPath(value); err != nil {
+		if _, err := appconfig.ResolveConfigPath(value); err != nil {
 			errs = append(errs, fmt.Errorf("%s: %w", name, err))
 		}
 	}
@@ -275,55 +285,4 @@ func validateAppConfig(cfg config.AppConfig) error {
 	}
 
 	return errors.Join(errs...)
-}
-
-func writeFileAtomic(path string, data []byte, mode os.FileMode) error {
-	dir := filepath.Dir(path)
-
-	tmp, err := os.CreateTemp(dir, ".codexsm-config-*.tmp")
-	if err != nil {
-		return fmt.Errorf("create temp file in %s: %w", dir, err)
-	}
-
-	tmpPath := tmp.Name()
-	cleanup := func() {
-		_ = os.Remove(tmpPath)
-	}
-
-	if _, err := tmp.Write(data); err != nil {
-		_ = tmp.Close()
-
-		cleanup()
-
-		return fmt.Errorf("write temp file: %w", err)
-	}
-
-	if err := tmp.Chmod(mode); err != nil {
-		_ = tmp.Close()
-
-		cleanup()
-
-		return fmt.Errorf("chmod temp file: %w", err)
-	}
-
-	if err := tmp.Close(); err != nil {
-		cleanup()
-		return fmt.Errorf("close temp file: %w", err)
-	}
-
-	if err := os.Rename(tmpPath, path); err != nil {
-		cleanup()
-		return fmt.Errorf("replace config %s: %w", path, err)
-	}
-
-	return nil
-}
-
-func marshalPrettyJSON(v any) ([]byte, error) {
-	var buf bytes.Buffer
-	if err := json.MarshalWrite(&buf, v, jsontext.Multiline(true), jsontext.WithIndent("  ")); err != nil {
-		return nil, err
-	}
-
-	return buf.Bytes(), nil
 }
