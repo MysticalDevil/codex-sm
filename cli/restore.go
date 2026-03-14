@@ -5,20 +5,15 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/MysticalDevil/codexsm/audit"
 	"github.com/MysticalDevil/codexsm/internal/core"
-	"github.com/MysticalDevil/codexsm/internal/fileutil"
 	"github.com/MysticalDevil/codexsm/internal/ops"
-	"github.com/MysticalDevil/codexsm/internal/restoreexec"
 	"github.com/MysticalDevil/codexsm/session"
 	"github.com/MysticalDevil/codexsm/usecase"
 
 	"github.com/spf13/cobra"
 )
-
-type restoreSummary = restoreexec.Summary
 
 func newRestoreCmd() *cobra.Command {
 	var (
@@ -73,10 +68,11 @@ func newRestoreCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			mode, err := parsePreviewMode(previewMode)
+			mode, err := ops.ParsePreviewMode(previewMode)
 			if err != nil {
 				return err
 			}
+			now := runtimeClock.Now()
 			trashSessionsRoot := filepath.Join(trashRoot, "sessions")
 			batchID = strings.TrimSpace(batchID)
 			selected, err := usecase.SelectRestoreCandidates(usecase.RestoreCandidatesInput{
@@ -84,7 +80,7 @@ func newRestoreCmd() *cobra.Command {
 				Selector:          sel,
 				BatchID:           batchID,
 				LogFile:           logFile,
-				Now:               time.Now(),
+				Now:               now,
 			})
 			if err != nil {
 				return WithExitCode(err, 1)
@@ -96,7 +92,7 @@ func newRestoreCmd() *cobra.Command {
 			}
 			opBatchID := ""
 			if len(candidates) > 0 {
-				opBatchID, err = audit.NewBatchID()
+				opBatchID, err = runtimeAuditSink.NewBatchID()
 				if err != nil {
 					return err
 				}
@@ -113,20 +109,25 @@ func newRestoreCmd() *cobra.Command {
 				yes = true
 			}
 
-			effectiveMaxBatch := usecase.EffectiveMaxBatch(cmd.Flags().Changed("max-batch"), maxBatch, dryRun)
-			summary, runErr := restoreSessions(candidates, sel, restoreOptions{
+			out, runErr := usecase.RunRestoreAction(usecase.RestoreActionInput{
+				Candidates:         candidates,
+				Selector:           sel,
 				DryRun:             dryRun,
 				Confirm:            confirm,
 				Yes:                yes,
 				AllowEmptySelector: batchID != "",
-				MaxBatch:           effectiveMaxBatch,
+				MaxBatch:           maxBatch,
+				MaxBatchChanged:    cmd.Flags().Changed("max-batch"),
+				RealDefault:        usecase.DefaultMaxBatchReal,
+				DryRunDefault:      usecase.DefaultMaxBatchDryRun,
 				SessionsRoot:       sessionsRoot,
 				TrashSessionsRoot:  trashSessionsRoot,
 			})
+			summary := out.Summary
 
 			rec := audit.BuildActionRecord(
 				opBatchID,
-				time.Now().UTC(),
+				now.UTC(),
 				summary.Action,
 				summary.Simulation,
 				sel,
@@ -135,7 +136,7 @@ func newRestoreCmd() *cobra.Command {
 				summary.Results,
 				summary.ErrorSummary,
 			)
-			logErr := audit.WriteActionLog(logFile, rec)
+			logErr := runtimeAuditSink.WriteActionLog(logFile, rec)
 			if logErr != nil {
 				lg.Error("failed to write action log", "error", logErr, "log_file", logFile)
 			}
@@ -188,18 +189,7 @@ func newRestoreCmd() *cobra.Command {
 
 	return cmd
 }
-
-type restoreOptions = restoreexec.Options
-
-func restoreSessions(candidates []session.Session, sel session.Selector, opts restoreOptions) (restoreSummary, error) {
-	return restoreexec.Execute(candidates, sel, opts)
-}
-
-func restoreActionName(dryRun bool) string {
-	return restoreexec.ActionName(dryRun)
-}
-
-func printRestoreSummary(cmd *cobra.Command, s restoreSummary) {
+func printRestoreSummary(cmd *cobra.Command, s usecase.RestoreSummary) {
 	out := cmd.OutOrStdout()
 	_, _ = fmt.Fprintf(out, "action=%s simulation=%t matched=%d succeeded=%d failed=%d skipped=%d affected_bytes=%d\n",
 		s.Action, s.Simulation, s.MatchedCount, s.Succeeded, s.Failed, s.Skipped, s.AffectedBytes)
@@ -252,12 +242,4 @@ func interactiveConfirmRestore(cmd *cobra.Command, count int) (bool, error) {
 	}
 	logger().Info("restore interactive confirmation received", "approved", ok, "count", count)
 	return ok, nil
-}
-
-func moveFile(src, dst string) error {
-	return fileutil.MoveFile(src, dst)
-}
-
-func copyFileForRestore(src, dst string) (retErr error) {
-	return fileutil.CopyFile(src, dst)
 }

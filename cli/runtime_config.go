@@ -37,7 +37,3 @@ func runtimeLogFile() (string, error) {
 	}
 	return config.DefaultLogFile()
 }
-
-func runtimeCodexStateDB() (string, error) {
-	return config.DefaultCodexStateDB()
-}

@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/MysticalDevil/codexsm/config"
 	"github.com/MysticalDevil/codexsm/session"
 	"github.com/spf13/cobra"
 )
@@ -40,7 +41,7 @@ func newSessionMigrateCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			stateDB, err = resolveOrDefault(stateDB, runtimeCodexStateDB)
+			stateDB, err = resolveOrDefault(stateDB, config.DefaultCodexStateDB)
 			if err != nil {
 				return err
 			}

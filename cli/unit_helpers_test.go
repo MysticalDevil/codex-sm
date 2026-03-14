@@ -10,8 +10,11 @@ import (
 	"time"
 
 	"github.com/MysticalDevil/codexsm/internal/core"
+	"github.com/MysticalDevil/codexsm/internal/fileutil"
+	"github.com/MysticalDevil/codexsm/internal/ops"
 	"github.com/MysticalDevil/codexsm/internal/testsupport"
 	"github.com/MysticalDevil/codexsm/session"
+	"github.com/MysticalDevil/codexsm/usecase"
 	"github.com/spf13/cobra"
 )
 
@@ -121,17 +124,17 @@ func TestColorAndSelectorHelpers(t *testing.T) {
 	if _, err := parseHealth("bad"); err == nil {
 		t.Fatal("expected parseHealth error")
 	}
-	if got, err := parsePreviewMode("sample"); err != nil || got != previewSample {
-		t.Fatalf("parsePreviewMode(sample) got=%q err=%v", got, err)
+	if got, err := ops.ParsePreviewMode("sample"); err != nil || got != ops.PreviewSample {
+		t.Fatalf("ParsePreviewMode(sample) got=%q err=%v", got, err)
 	}
-	if got, err := parsePreviewMode("full"); err != nil || got != previewFull {
-		t.Fatalf("parsePreviewMode(full) got=%q err=%v", got, err)
+	if got, err := ops.ParsePreviewMode("full"); err != nil || got != ops.PreviewFull {
+		t.Fatalf("ParsePreviewMode(full) got=%q err=%v", got, err)
 	}
-	if got, err := parsePreviewMode("none"); err != nil || got != previewNone {
-		t.Fatalf("parsePreviewMode(none) got=%q err=%v", got, err)
+	if got, err := ops.ParsePreviewMode("none"); err != nil || got != ops.PreviewNone {
+		t.Fatalf("ParsePreviewMode(none) got=%q err=%v", got, err)
 	}
-	if _, err := parsePreviewMode("bad"); err == nil {
-		t.Fatal("expected parsePreviewMode error")
+	if _, err := ops.ParsePreviewMode("bad"); err == nil {
+		t.Fatal("expected ParsePreviewMode error")
 	}
 }
 
@@ -185,17 +188,14 @@ func TestDeleteRestoreHelperPaths(t *testing.T) {
 		MatchedCount: 1,
 		Results:      []session.DeleteResult{{SessionID: "s1", Path: "/tmp/a", Status: "simulated"}},
 	})
-	printDeletePreview(cmd, []session.Session{{SessionID: "s1", Path: "/tmp/a", SizeBytes: 5}}, false, previewSample, 1)
-	printRestorePreview(cmd, []session.Session{{SessionID: "s1", Path: "/tmp/a", SizeBytes: 5}}, previewSample, 1)
-	printRestoreSummary(cmd, restoreSummary{
+	printDeletePreview(cmd, []session.Session{{SessionID: "s1", Path: "/tmp/a", SizeBytes: 5}}, false, ops.PreviewSample, 1)
+	printRestorePreview(cmd, []session.Session{{SessionID: "s1", Path: "/tmp/a", SizeBytes: 5}}, ops.PreviewSample, 1)
+	printRestoreSummary(cmd, usecase.RestoreSummary{
 		Action:       "restore-dry-run",
 		Simulation:   true,
 		MatchedCount: 1,
 		Results:      []session.DeleteResult{{SessionID: "s1", Path: "/tmp/a", Status: "simulated"}},
 	})
-	if restoreActionName(true) != "restore-dry-run" || restoreActionName(false) != "restore" {
-		t.Fatal("unexpected restoreActionName")
-	}
 }
 
 func TestDeleteRestorePreviewHelpersEdgeCases(t *testing.T) {
@@ -208,7 +208,7 @@ func TestDeleteRestorePreviewHelpersEdgeCases(t *testing.T) {
 		cmd := &cobra.Command{}
 		errBuf := &bytes.Buffer{}
 		cmd.SetErr(errBuf)
-		printDeletePreview(cmd, items, true, previewFull, -1)
+		printDeletePreview(cmd, items, true, ops.PreviewFull, -1)
 		got := errBuf.String()
 		if !strings.Contains(got, "preview action=hard-delete matched=2") {
 			t.Fatalf("unexpected delete preview header: %q", got)
@@ -222,7 +222,7 @@ func TestDeleteRestorePreviewHelpersEdgeCases(t *testing.T) {
 		cmd := &cobra.Command{}
 		errBuf := &bytes.Buffer{}
 		cmd.SetErr(errBuf)
-		printDeletePreview(cmd, items, false, previewSample, -3)
+		printDeletePreview(cmd, items, false, ops.PreviewSample, -3)
 		got := errBuf.String()
 		if strings.Contains(got, core.ShortID("s1")) || strings.Contains(got, core.ShortID("s2")) {
 			t.Fatalf("did not expect item rows with negative sample limit, got: %q", got)
@@ -236,7 +236,7 @@ func TestDeleteRestorePreviewHelpersEdgeCases(t *testing.T) {
 		cmd := &cobra.Command{}
 		errBuf := &bytes.Buffer{}
 		cmd.SetErr(errBuf)
-		printRestorePreview(cmd, items, previewFull, -1)
+		printRestorePreview(cmd, items, ops.PreviewFull, -1)
 		got := errBuf.String()
 		if !strings.Contains(got, "preview action=restore matched=2") {
 			t.Fatalf("unexpected restore preview header: %q", got)
@@ -250,7 +250,7 @@ func TestDeleteRestorePreviewHelpersEdgeCases(t *testing.T) {
 		cmd := &cobra.Command{}
 		errBuf := &bytes.Buffer{}
 		cmd.SetErr(errBuf)
-		printRestorePreview(cmd, items, previewSample, -1)
+		printRestorePreview(cmd, items, ops.PreviewSample, -1)
 		got := errBuf.String()
 		if strings.Contains(got, core.ShortID("s1")) || strings.Contains(got, core.ShortID("s2")) {
 			t.Fatalf("did not expect restore item rows with negative sample limit, got: %q", got)
@@ -272,8 +272,8 @@ func TestRestoreMoveFileAndCopy(t *testing.T) {
 	if err := os.WriteFile(src, []byte("abc"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := moveFile(src, dst); err != nil {
-		t.Fatalf("moveFile: %v", err)
+	if err := fileutil.MoveFile(src, dst); err != nil {
+		t.Fatalf("MoveFile: %v", err)
 	}
 	if _, err := os.Stat(src); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("src should be moved, err=%v", err)
@@ -288,8 +288,8 @@ func TestRestoreMoveFileAndCopy(t *testing.T) {
 	if err := os.WriteFile(src2, []byte("xyz"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := copyFileForRestore(src2, dst2); err != nil {
-		t.Fatalf("copyFileForRestore: %v", err)
+	if err := fileutil.CopyFile(src2, dst2); err != nil {
+		t.Fatalf("CopyFile: %v", err)
 	}
 	data2, err := os.ReadFile(dst2)
 	if err != nil || string(data2) != "xyz" {

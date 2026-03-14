@@ -4,12 +4,10 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/MysticalDevil/codexsm/audit"
 	"github.com/MysticalDevil/codexsm/config"
 	"github.com/MysticalDevil/codexsm/internal/core"
-	"github.com/MysticalDevil/codexsm/internal/deleteexec"
 	"github.com/MysticalDevil/codexsm/internal/ops"
 	"github.com/MysticalDevil/codexsm/session"
 	"github.com/MysticalDevil/codexsm/usecase"
@@ -70,15 +68,16 @@ func newDeleteCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			mode, err := parsePreviewMode(previewMode)
+			mode, err := ops.ParsePreviewMode(previewMode)
 			if err != nil {
 				return err
 			}
+			now := runtimeClock.Now()
 
 			selected, err := usecase.SelectDeleteCandidates(usecase.DeleteCandidatesInput{
 				SessionsRoot: sessionsRoot,
 				Selector:     sel,
-				Now:          time.Now(),
+				Now:          now,
 			})
 			if err != nil {
 				return WithExitCode(err, 1)
@@ -90,7 +89,7 @@ func newDeleteCmd() *cobra.Command {
 			}
 			batchID := ""
 			if len(candidates) > 0 {
-				batchID, err = audit.NewBatchID()
+				batchID, err = runtimeAuditSink.NewBatchID()
 				if err != nil {
 					return err
 				}
@@ -107,21 +106,25 @@ func newDeleteCmd() *cobra.Command {
 				yes = true
 			}
 
-			effectiveMaxBatch := usecase.EffectiveMaxBatch(cmd.Flags().Changed("max-batch"), maxBatch, dryRun)
-			opts := deleteexec.Options{
-				DryRun:       dryRun,
-				Confirm:      confirm,
-				Yes:          yes,
-				Hard:         hard,
-				MaxBatch:     effectiveMaxBatch,
-				TrashRoot:    trashRoot,
-				SessionsRoot: sessionsRoot,
-			}
-			summary, deleteErr := deleteexec.Execute(candidates, sel, opts)
+			out, deleteErr := usecase.RunDeleteAction(usecase.DeleteActionInput{
+				Candidates:      candidates,
+				Selector:        sel,
+				DryRun:          dryRun,
+				Confirm:         confirm,
+				Yes:             yes,
+				Hard:            hard,
+				SessionsRoot:    sessionsRoot,
+				TrashRoot:       trashRoot,
+				MaxBatch:        maxBatch,
+				MaxBatchChanged: cmd.Flags().Changed("max-batch"),
+				RealDefault:     usecase.DefaultMaxBatchReal,
+				DryRunDefault:   usecase.DefaultMaxBatchDryRun,
+			})
+			summary := out.Summary
 
 			rec := audit.BuildActionRecord(
 				batchID,
-				time.Now().UTC(),
+				now.UTC(),
 				summary.Action,
 				summary.Simulation,
 				sel,
@@ -130,7 +133,7 @@ func newDeleteCmd() *cobra.Command {
 				summary.Results,
 				summary.ErrorSummary,
 			)
-			logErr := audit.WriteActionLog(logFile, rec)
+			logErr := runtimeAuditSink.WriteActionLog(logFile, rec)
 			if logErr != nil {
 				lg.Error("failed to write action log", "error", logErr, "log_file", logFile)
 			}
