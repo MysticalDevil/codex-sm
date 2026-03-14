@@ -19,9 +19,11 @@ func TestParsePreviewMode(t *testing.T) {
 		if tt.ok && err != nil {
 			t.Fatalf("ParsePreviewMode(%q) unexpected error: %v", tt.in, err)
 		}
+
 		if !tt.ok && err == nil {
 			t.Fatalf("ParsePreviewMode(%q) expected error", tt.in)
 		}
+
 		if tt.ok && got != tt.want {
 			t.Fatalf("ParsePreviewMode(%q)=%q, want=%q", tt.in, got, tt.want)
 		}

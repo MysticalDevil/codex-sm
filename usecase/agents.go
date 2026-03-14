@@ -57,12 +57,14 @@ func ExplainAgents(in AgentsExplainInput) (AgentsExplainResult, error) {
 	if err != nil {
 		return AgentsExplainResult{}, err
 	}
+
 	home, _ := os.UserHomeDir()
 
 	sourcePaths, err := discoverAgentsSources(cwd, home)
 	if err != nil {
 		return AgentsExplainResult{}, err
 	}
+
 	result := AgentsExplainResult{
 		CWD:     core.CompactHomePath(cwd, home),
 		Sources: make([]AgentsExplainSource, 0, len(sourcePaths)),
@@ -76,17 +78,21 @@ func ExplainAgents(in AgentsExplainInput) (AgentsExplainResult, error) {
 	}
 
 	latestByKey := make(map[string]int, 64)
+
 	for _, src := range result.Sources {
 		rawPath := expandCompactPath(src.Path, home)
+
 		lines, err := extractAgentsRules(rawPath)
 		if err != nil {
 			return AgentsExplainResult{}, err
 		}
+
 		for _, line := range lines {
 			key := normalizeAgentsRuleKey(line.Text)
 			if key == "" {
 				continue
 			}
+
 			rule := AgentsExplainRule{
 				ID:         agentsRuleID(src.Path, line.Number, line.Text),
 				Key:        key,
@@ -100,12 +106,14 @@ func ExplainAgents(in AgentsExplainInput) (AgentsExplainResult, error) {
 				result.Rules[prev].Status = "shadowed"
 				result.Rules[prev].ShadowedBy = fmt.Sprintf("%s:%d", src.Path, line.Number)
 			}
+
 			result.Rules = append(result.Rules, rule)
 			latestByKey[key] = len(result.Rules) - 1
 		}
 	}
 
 	result.Summary.Sources = len(result.Sources)
+
 	result.Summary.Rules = len(result.Rules)
 	for _, r := range result.Rules {
 		if r.Status == "effective" {
@@ -114,6 +122,7 @@ func ExplainAgents(in AgentsExplainInput) (AgentsExplainResult, error) {
 			result.Summary.Shadowed++
 		}
 	}
+
 	return result, nil
 }
 
@@ -128,44 +137,56 @@ func resolveAgentsCWD(cwd string) (string, error) {
 		if err != nil {
 			return "", err
 		}
+
 		cwd = wd
 	}
+
 	abs, err := filepath.Abs(cwd)
 	if err != nil {
 		return "", err
 	}
+
 	info, err := os.Stat(abs)
 	if err != nil {
 		return "", err
 	}
+
 	if !info.IsDir() {
 		abs = filepath.Dir(abs)
 	}
+
 	return filepath.Clean(abs), nil
 }
 
 func discoverAgentsSources(cwd, home string) ([]string, error) {
 	var out []string
+
 	seen := make(map[string]struct{}, 8)
 	appendIfExists := func(p string) error {
 		if p == "" {
 			return nil
 		}
+
 		if _, ok := seen[p]; ok {
 			return nil
 		}
+
 		st, err := os.Stat(p)
 		if err != nil {
 			if errors.Is(err, os.ErrNotExist) {
 				return nil
 			}
+
 			return err
 		}
+
 		if st.IsDir() {
 			return nil
 		}
+
 		seen[p] = struct{}{}
 		out = append(out, p)
+
 		return nil
 	}
 
@@ -176,20 +197,25 @@ func discoverAgentsSources(cwd, home string) ([]string, error) {
 	}
 
 	ancestors := make([]string, 0, 8)
+
 	cur := cwd
 	for {
 		ancestors = append(ancestors, cur)
+
 		parent := filepath.Dir(cur)
 		if parent == cur {
 			break
 		}
+
 		cur = parent
 	}
+
 	for i := len(ancestors) - 1; i >= 0; i-- {
 		if err := appendIfExists(filepath.Join(ancestors[i], "AGENTS.md")); err != nil {
 			return nil, err
 		}
 	}
+
 	return out, nil
 }
 
@@ -198,34 +224,43 @@ func extractAgentsRules(path string) ([]agentsRuleLine, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	defer func() { _ = f.Close() }()
 
 	out := make([]agentsRuleLine, 0, 32)
 	sc := bufio.NewScanner(f)
 	sc.Buffer(make([]byte, 0, 64*1024), 4*1024*1024)
+
 	inCodeFence := false
+
 	lineNum := 0
 	for sc.Scan() {
 		lineNum++
+
 		line := strings.TrimSpace(sc.Text())
 		if strings.HasPrefix(line, "```") {
 			inCodeFence = !inCodeFence
 			continue
 		}
+
 		if inCodeFence {
 			continue
 		}
+
 		if line == "" || strings.HasPrefix(line, "#") {
 			continue
 		}
+
 		out = append(out, agentsRuleLine{
 			Number: lineNum,
 			Text:   line,
 		})
 	}
+
 	if err := sc.Err(); err != nil {
 		return nil, err
 	}
+
 	return out, nil
 }
 
@@ -237,9 +272,10 @@ func agentsRuleID(path string, line int, text string) string {
 	h := fnv.New64a()
 	_, _ = h.Write([]byte(path))
 	_, _ = h.Write([]byte{0})
-	_, _ = h.Write([]byte(fmt.Sprintf("%d", line)))
+	_, _ = fmt.Fprintf(h, "%d", line)
 	_, _ = h.Write([]byte{0})
 	_, _ = h.Write([]byte(text))
+
 	return fmt.Sprintf("%x", h.Sum64())
 }
 
@@ -247,9 +283,11 @@ func expandCompactPath(p, home string) string {
 	if p == "~" && home != "" {
 		return home
 	}
+
 	prefix := "~" + string(os.PathSeparator)
 	if strings.HasPrefix(p, prefix) && home != "" {
 		return filepath.Join(home, strings.TrimPrefix(p, prefix))
 	}
+
 	return p
 }

@@ -21,14 +21,17 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width = msg.Width
 		m.height = msg.Height
 		m.clampOffset()
+
 		return m, m.ensurePreviewRequest()
 	case preview.LoadedMsg:
 		out := preview.HandleLoaded(m.previewReqID, m.previewWait, msg, m.previewIndex, m.indexCap)
 		if !out.Accepted {
 			return m, nil
 		}
+
 		m.previewWait = out.NextWait
 		m.previewCachePut(out.CacheKey, out.CacheLines)
+
 		return m, out.PersistCmd
 	case preview.IndexPersistedMsg:
 		return m, nil
@@ -36,8 +39,10 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.handleKey(msg.String()) {
 			return m, tea.Quit
 		}
+
 		return m, m.ensurePreviewRequest()
 	}
+
 	return m, nil
 }
 
@@ -70,6 +75,7 @@ func (m *tuiModel) handleKey(key string) bool {
 			if m.cursor < len(m.tree)-1 {
 				m.cursor++
 			}
+
 			m.skipToSelectable(1)
 			m.syncPreviewSelection()
 			m.clampOffset()
@@ -81,6 +87,7 @@ func (m *tuiModel) handleKey(key string) bool {
 			if m.cursor > 0 {
 				m.cursor--
 			}
+
 			m.skipToSelectable(-1)
 			m.syncPreviewSelection()
 			m.clampOffset()
@@ -104,6 +111,7 @@ func (m *tuiModel) handleKey(key string) bool {
 			if len(m.tree) > 0 {
 				m.cursor = len(m.tree) - 1
 			}
+
 			m.skipToSelectable(-1)
 			m.syncPreviewSelection()
 			m.clampOffset()
@@ -132,6 +140,7 @@ func (m *tuiModel) handleKey(key string) bool {
 	case "n", "esc":
 		m.cancelPendingAction()
 	}
+
 	return false
 }
 
@@ -172,12 +181,15 @@ func (m *tuiModel) ensurePreviewRequest() tea.Cmd {
 		m.previewWait = ""
 		return nil
 	}
+
 	width, lines := m.currentPreviewRequestDims()
+
 	key := previewCacheKeyForSession(selected, width)
 	if _, ok := m.previewCacheGet(key); ok {
 		m.previewWait = ""
 		return nil
 	}
+
 	if m.previewWait == key {
 		return nil
 	}
@@ -196,6 +208,7 @@ func (m *tuiModel) ensurePreviewRequest() tea.Cmd {
 		SizeBytes:     selected.SizeBytes,
 		UpdatedAtUnix: selected.UpdatedAt.UnixNano(),
 	}
+
 	return preview.EnsureRequest(preview.Request{
 		RequestID:     req.RequestID,
 		Key:           req.Key,
@@ -217,6 +230,7 @@ func (m *tuiModel) currentPreviewRequestDims() (int, int) {
 	// Keep in sync with appendSelectedSessionPreview fixed-row budget.
 	previewContentHeight := max(1, previewInnerH-5)
 	previewTextWidth := max(8, rightW-8)
+
 	return previewTextWidth, previewContentHeight
 }
 
@@ -224,19 +238,24 @@ func (m *tuiModel) previewCacheGet(key string) ([]string, bool) {
 	if m.previewCache == nil {
 		m.previewCache = make(map[string][]string)
 	}
+
 	if m.previewNodes == nil {
 		m.previewNodes = make(map[string]*list.Element)
 	}
+
 	if m.previewLRU == nil {
 		m.previewLRU = list.New()
 	}
+
 	v, ok := m.previewCache[key]
 	if !ok {
 		return nil, false
 	}
+
 	if n, ok := m.previewNodes[key]; ok && n != nil {
 		m.previewLRU.MoveToBack(n)
 	}
+
 	return append([]string(nil), v...), true
 }
 
@@ -244,10 +263,12 @@ func (m *tuiModel) previewCachePeek(key string) ([]string, bool) {
 	if m.previewCache == nil {
 		return nil, false
 	}
+
 	v, ok := m.previewCache[key]
 	if !ok {
 		return nil, false
 	}
+
 	return append([]string(nil), v...), true
 }
 
@@ -255,22 +276,27 @@ func (m *tuiModel) previewCachePut(key string, lines []string) {
 	if m.previewBytesBudget <= 0 {
 		m.previewBytesBudget = 8 << 20
 	}
+
 	if m.previewCache == nil {
 		m.previewCache = make(map[string][]string)
 	}
+
 	if m.previewNodes == nil {
 		m.previewNodes = make(map[string]*list.Element)
 	}
+
 	if m.previewLRU == nil {
 		m.previewLRU = list.New()
 	}
 
 	copied := append([]string(nil), lines...)
 	newSize := previewLinesBytes(copied)
+
 	oldSize := int64(0)
 	if old, ok := m.previewCache[key]; ok {
 		oldSize = previewLinesBytes(old)
 	}
+
 	m.previewCache[key] = copied
 	m.previewBytesUsed += newSize - oldSize
 
@@ -279,28 +305,36 @@ func (m *tuiModel) previewCachePut(key string, lines []string) {
 			ent.Size = newSize
 			n.Value = ent
 		}
+
 		m.previewLRU.MoveToBack(n)
 	} else {
 		m.previewNodes[key] = m.previewLRU.PushBack(previewLRUEntry{Key: key, Size: newSize})
 	}
+
 	for m.previewBytesUsed > m.previewBytesBudget && m.previewLRU.Len() > 0 {
 		front := m.previewLRU.Front()
 		if front == nil {
 			break
 		}
+
 		ent, ok := front.Value.(previewLRUEntry)
 		if !ok {
 			m.previewLRU.Remove(front)
 			continue
 		}
+
 		k := ent.Key
+
 		m.previewLRU.Remove(front)
 		delete(m.previewNodes, k)
+
 		if old, ok := m.previewCache[k]; ok {
 			m.previewBytesUsed -= previewLinesBytes(old)
 		}
+
 		delete(m.previewCache, k)
 	}
+
 	if m.previewBytesUsed < 0 {
 		m.previewBytesUsed = 0
 	}
@@ -314,16 +348,20 @@ func previewLinesBytes(lines []string) int64 {
 func (m *tuiModel) previewFor(path string, width, lines int) []string {
 	sizeBytes := int64(0)
 	updatedAtUnix := int64(0)
+
 	if info, err := os.Stat(path); err == nil {
 		sizeBytes = info.Size()
 		updatedAtUnix = info.ModTime().UnixNano()
 	}
+
 	key := preview.CacheKeyForSession(path, width, sizeBytes, updatedAtUnix)
 	if cached, ok := m.previewCacheGet(key); ok {
 		return cached
 	}
+
 	out := buildPreviewLines(path, width, lines, m.theme)
 	m.previewCachePut(key, out)
+
 	return out
 }
 
@@ -333,6 +371,7 @@ func buildPreviewLines(path string, width, lines int, theme tuiTheme) []string {
 
 func previewPalette(theme tuiTheme) preview.ThemePalette {
 	def := builtinThemes[defaultTUIThemeName()]
+
 	return preview.ThemePalette{
 		PrefixDefault:   theme.hex("prefix_default", def["prefix_default"]),
 		PrefixUser:      theme.hex("prefix_user", def["prefix_user"]),

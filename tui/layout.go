@@ -25,9 +25,11 @@ func NormalizeSize(width, height int) (int, int) {
 	if width <= 0 {
 		width = 120
 	}
+
 	if height <= 0 {
 		height = 32
 	}
+
 	return width, height
 }
 
@@ -36,6 +38,7 @@ func RenderWidth(width int) int {
 	if width <= 1 {
 		return width
 	}
+
 	return width - 1
 }
 
@@ -44,6 +47,7 @@ func IsTooSmall(width, height int) bool {
 	if width <= 0 || height <= 0 {
 		return false
 	}
+
 	return RenderWidth(width) < MinWidth || height < MinHeight
 }
 
@@ -59,18 +63,22 @@ func Compute(width, height int) Metrics {
 	if totalW < 132 {
 		gapW = 0
 	}
+
 	leftOuterW := int(float64(totalW) * 0.28)
 	if leftOuterW < 28 {
 		leftOuterW = 28
 	}
+
 	if leftOuterW > totalW-36-gapW {
 		leftOuterW = max(28, totalW-36-gapW)
 	}
+
 	rightOuterW := totalW - leftOuterW - gapW
 	if rightOuterW < 36 {
 		rightOuterW = 36
 		leftOuterW = max(28, totalW-rightOuterW-gapW)
 	}
+
 	if leftOuterW+gapW+rightOuterW > totalW {
 		rightOuterW = max(36, totalW-leftOuterW-gapW)
 	}
@@ -79,6 +87,7 @@ func Compute(width, height int) Metrics {
 	if infoOuterH >= mainAreaH-4 {
 		infoOuterH = max(3, mainAreaH/4)
 	}
+
 	previewOuterH := mainAreaH - infoOuterH
 	if previewOuterH < 5 {
 		previewOuterH = 5

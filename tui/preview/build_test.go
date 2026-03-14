@@ -35,9 +35,11 @@ func TestCacheKeyForSession(t *testing.T) {
 	k1 := CacheKeyForSession("/tmp/a.jsonl", 24, 100, 200)
 	k2 := CacheKeyForSession("/tmp/a.jsonl", 48, 100, 200)
 	k3 := CacheKeyForSession("/tmp/a.jsonl", 24, 101, 200)
+
 	if k1 == k2 {
 		t.Fatalf("expected width to affect cache key: %q", k1)
 	}
+
 	if k1 == k3 {
 		t.Fatalf("expected size to affect cache key: %q", k1)
 	}
@@ -47,6 +49,7 @@ func TestBuildLinesFriendlyOversizeWarning(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "oversize.jsonl")
 	longText := strings.Repeat("x", 1024*1024+128)
+
 	content := `{"type":"session_meta","payload":{"id":"x","timestamp":"2026-03-02T09:44:00.024Z"}}` + "\n" +
 		`{"type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"` + longText + `"}]}}` + "\n"
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
@@ -54,10 +57,12 @@ func TestBuildLinesFriendlyOversizeWarning(t *testing.T) {
 	}
 
 	lines := BuildLines(path, 64, 20, ThemePalette{})
+
 	joined := strings.Join(lines, "\n")
 	if !strings.Contains(joined, "preview unavailable: a session entry exceeds the safe preview limit") {
 		t.Fatalf("expected friendly oversize warning, got: %q", joined)
 	}
+
 	if strings.Contains(joined, "token too long") {
 		t.Fatalf("did not expect raw scanner error, got: %q", joined)
 	}

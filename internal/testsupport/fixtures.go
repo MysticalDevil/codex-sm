@@ -28,13 +28,16 @@ func PrepareFixtureSandbox(t testing.TB, fixtureName string) string {
 	}
 
 	name := sanitizeName(t.Name())
+
 	dst := filepath.Join(sandboxRoot, name+"-"+time.Now().Format("20060102-150405.000000000"))
 	if err := copyTree(src, dst); err != nil {
 		t.Fatalf("copy fixture %q to sandbox: %v", fixtureName, err)
 	}
+
 	t.Cleanup(func() {
 		_ = os.RemoveAll(dst)
 	})
+
 	return dst
 }
 
@@ -44,15 +47,18 @@ func TestdataRoot() string {
 	if !ok {
 		panic("runtime.Caller failed in testsupport.TestdataRoot")
 	}
+
 	return filepath.Clean(filepath.Join(filepath.Dir(thisFile), "..", "..", "testdata"))
 }
 
 func sanitizeName(s string) string {
 	replacer := strings.NewReplacer("/", "_", "\\", "_", " ", "_", ":", "_")
+
 	out := replacer.Replace(s)
 	if out == "" {
 		return "test"
 	}
+
 	return out
 }
 
@@ -61,14 +67,17 @@ func copyTree(src, dst string) error {
 		if walkErr != nil {
 			return walkErr
 		}
+
 		rel, err := filepath.Rel(src, path)
 		if err != nil {
 			return err
 		}
+
 		target := filepath.Join(dst, rel)
 		if d.IsDir() {
 			return os.MkdirAll(target, 0o755)
 		}
+
 		return copyFile(path, target)
 	})
 }
@@ -78,6 +87,7 @@ func copyFile(src, dst string) error {
 	if err != nil {
 		return err
 	}
+
 	defer func() {
 		_ = in.Close()
 	}()
@@ -86,20 +96,26 @@ func copyFile(src, dst string) error {
 	if err != nil {
 		return err
 	}
+
 	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
 		return err
 	}
+
 	out, err := os.OpenFile(dst, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, info.Mode().Perm())
 	if err != nil {
 		return err
 	}
+
 	_, copyErr := io.Copy(out, in)
 	closeErr := out.Close()
+
 	if copyErr != nil {
 		return copyErr
 	}
+
 	if closeErr != nil {
 		return closeErr
 	}
+
 	return nil
 }

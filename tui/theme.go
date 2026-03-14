@@ -17,6 +17,7 @@ func (t tuiTheme) hex(key, fallback string) string {
 			return v
 		}
 	}
+
 	return fallback
 }
 
@@ -24,15 +25,19 @@ func (t tuiTheme) merge(overrides map[string]string) tuiTheme {
 	if len(overrides) == 0 {
 		return t
 	}
+
 	if t.Colors == nil {
 		t.Colors = make(map[string]string, len(overrides))
 	}
+
 	for k, v := range overrides {
 		if strings.TrimSpace(k) == "" || strings.TrimSpace(v) == "" {
 			continue
 		}
+
 		t.Colors[strings.TrimSpace(strings.ToLower(k))] = strings.TrimSpace(v)
 	}
+
 	return t
 }
 
@@ -45,7 +50,9 @@ func availableTUIThemes() []string {
 	for name := range builtinThemes {
 		names = append(names, name)
 	}
+
 	slices.Sort(names)
+
 	return names
 }
 
@@ -54,6 +61,7 @@ func resolveTUITheme(cfgName string, cfgColors map[string]string, flagName strin
 	if name == "" {
 		name = strings.ToLower(strings.TrimSpace(cfgName))
 	}
+
 	if name == "" || name == "custom" {
 		name = defaultTUIThemeName()
 	}
@@ -62,6 +70,7 @@ func resolveTUITheme(cfgName string, cfgColors map[string]string, flagName strin
 	if !ok {
 		return tuiTheme{}, fmt.Errorf("unknown theme %q (available: %s)", name, strings.Join(availableTUIThemes(), ", "))
 	}
+
 	theme := tuiTheme{
 		Name:   name,
 		Colors: cloneColorMap(base),
@@ -72,7 +81,9 @@ func resolveTUITheme(cfgName string, cfgColors map[string]string, flagName strin
 	if err != nil {
 		return tuiTheme{}, err
 	}
+
 	theme = theme.merge(flagOverride)
+
 	return theme, nil
 }
 
@@ -80,23 +91,29 @@ func parseThemeOverrides(items []string) (map[string]string, error) {
 	if len(items) == 0 {
 		return nil, nil
 	}
+
 	out := make(map[string]string, len(items))
 	for _, item := range items {
 		v := strings.TrimSpace(item)
 		if v == "" {
 			continue
 		}
+
 		parts := strings.SplitN(v, "=", 2)
 		if len(parts) != 2 {
 			return nil, fmt.Errorf("invalid --theme-color %q (expected key=value)", item)
 		}
+
 		key := strings.TrimSpace(strings.ToLower(parts[0]))
+
 		val := strings.TrimSpace(parts[1])
 		if key == "" || val == "" {
 			return nil, fmt.Errorf("invalid --theme-color %q (expected non-empty key=value)", item)
 		}
+
 		out[key] = val
 	}
+
 	return out, nil
 }
 
@@ -105,6 +122,7 @@ func cloneColorMap(m map[string]string) map[string]string {
 	for k, v := range m {
 		out[k] = v
 	}
+
 	return out
 }
 

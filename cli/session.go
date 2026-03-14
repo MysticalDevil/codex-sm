@@ -11,5 +11,6 @@ func newSessionCmd() *cobra.Command {
 		},
 	}
 	cmd.AddCommand(newSessionMigrateCmd())
+
 	return cmd
 }

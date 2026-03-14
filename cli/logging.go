@@ -18,11 +18,15 @@ func configureLogger(format, level string, out io.Writer) error {
 	if err != nil {
 		return err
 	}
+
 	if out == nil {
 		out = io.Discard
 	}
+
 	opts := &slog.HandlerOptions{Level: lv}
+
 	var h slog.Handler
+
 	switch strings.ToLower(strings.TrimSpace(format)) {
 	case "", "text":
 		h = slog.NewTextHandler(out, opts)
@@ -31,8 +35,10 @@ func configureLogger(format, level string, out io.Writer) error {
 	default:
 		return fmt.Errorf("invalid --log-format %q (allowed: text, json)", format)
 	}
+
 	appLogger = slog.New(h)
 	slog.SetDefault(appLogger)
+
 	return nil
 }
 

@@ -18,9 +18,11 @@ func TestRenderWidth(t *testing.T) {
 	if got := RenderWidth(0); got != 0 {
 		t.Fatalf("RenderWidth(0)=%d, want 0", got)
 	}
+
 	if got := RenderWidth(1); got != 1 {
 		t.Fatalf("RenderWidth(1)=%d, want 1", got)
 	}
+
 	if got := RenderWidth(140); got != 139 {
 		t.Fatalf("RenderWidth(140)=%d, want 139", got)
 	}
@@ -30,9 +32,11 @@ func TestIsTooSmall(t *testing.T) {
 	if IsTooSmall(118, 30) != true {
 		t.Fatal("width below minimum should be too small")
 	}
+
 	if IsTooSmall(120, 20) != true {
 		t.Fatal("height below minimum should be too small")
 	}
+
 	if IsTooSmall(119, 30) != false {
 		t.Fatal("expected enough terminal size")
 	}
@@ -47,15 +51,19 @@ func TestCompute(t *testing.T) {
 	if m.TotalW != 119 || m.TotalH != 32 {
 		t.Fatalf("unexpected normalized size: %+v", m)
 	}
+
 	if m.KeysOuterH != 3 {
 		t.Fatalf("unexpected keys height: %+v", m)
 	}
+
 	if m.LeftOuterW+m.GapW+m.RightOuterW > m.TotalW {
 		t.Fatalf("horizontal overflow: %+v", m)
 	}
+
 	if m.InfoOuterH+m.PreviewOuterH != m.MainAreaH {
 		t.Fatalf("vertical mismatch: %+v", m)
 	}
+
 	if m.LeftOuterW < 28 || m.RightOuterW < 36 {
 		t.Fatalf("min width guard failed: %+v", m)
 	}

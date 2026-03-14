@@ -13,20 +13,25 @@ func ResolvePath(path string) (string, error) {
 	if path == "" {
 		return "", nil
 	}
+
 	if path == "~" {
 		h, err := os.UserHomeDir()
 		if err != nil {
 			return "", err
 		}
+
 		return h, nil
 	}
+
 	if strings.HasPrefix(path, "~/") {
 		h, err := os.UserHomeDir()
 		if err != nil {
 			return "", err
 		}
+
 		return filepath.Join(h, path[2:]), nil
 	}
+
 	return path, nil
 }
 
@@ -35,6 +40,7 @@ func DefaultSessionsRoot() (string, error) {
 	if v := strings.TrimSpace(os.Getenv("SESSIONS_ROOT")); v != "" {
 		return ResolvePath(v)
 	}
+
 	return ResolvePath("~/.codex/sessions")
 }
 
@@ -59,8 +65,10 @@ func EnsureDirForFile(filePath string) error {
 	if dir == "." || dir == "" {
 		return nil
 	}
+
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return fmt.Errorf("create dir %s: %w", dir, err)
 	}
+
 	return nil
 }

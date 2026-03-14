@@ -31,15 +31,18 @@ func LoadTUISessions(in LoadTUISessionsInput) (LoadTUISessionsResult, error) {
 	if err != nil {
 		return LoadTUISessionsResult{}, err
 	}
+
 	items := append([]session.Session(nil), q.Items...)
 	core.SortSessionsByRisk(items, in.Evaluator, nil)
 
 	if in.ScanLimit > 0 && len(items) > in.ScanLimit {
 		items = items[:in.ScanLimit]
 	}
+
 	if in.ViewLimit > 0 && len(items) > in.ViewLimit {
 		items = items[:in.ViewLimit]
 	}
+
 	return LoadTUISessionsResult{
 		Total: len(q.Items),
 		Items: items,

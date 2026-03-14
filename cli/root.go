@@ -42,6 +42,7 @@ func NewRootCmd() *cobra.Command {
 			if err := configureLogger(logFormat, logLevel, cmd.ErrOrStderr()); err != nil {
 				return err
 			}
+
 			return loadRuntimeConfig()
 		},
 	}
@@ -60,14 +61,18 @@ func NewRootCmd() *cobra.Command {
 	cmd.AddCommand(newVersionCmd())
 	cmd.AddCommand(newDoctorCmd())
 	applyHelpStyles(cmd)
+
 	return cmd
 }
 
 func applyHelpStyles(root *cobra.Command) {
 	helpTemplate := buildHelpTemplate()
+
 	var walk func(*cobra.Command)
+
 	walk = func(c *cobra.Command) {
 		c.SetHelpTemplate(helpTemplate)
+
 		for _, sc := range c.Commands() {
 			walk(sc)
 		}
@@ -111,6 +116,7 @@ func buildHelpTemplate() string {
 	b.WriteString("\n{{range .Commands}}{{if .IsAdditionalHelpTopicCommand}}  {{rpad .CommandPath .CommandPathPadding}} {{.Short}}\n{{end}}{{end}}{{end}}")
 
 	b.WriteString("\n")
-	b.WriteString(fmt.Sprintf("%sUse \"%s{{.CommandPath}} [command] --help%s\" for more information about a command.\n", dim, cyan, reset))
+	fmt.Fprintf(&b, "%sUse \"%s{{.CommandPath}} [command] --help%s\" for more information about a command.\n", dim, cyan, reset)
+
 	return b.String()
 }

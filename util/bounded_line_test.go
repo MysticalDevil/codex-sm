@@ -3,6 +3,7 @@ package util
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"io"
 	"testing"
 )
@@ -16,9 +17,11 @@ func TestReadBoundedLineLargeWithinLimit(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ReadBoundedLine: %v", err)
 	}
+
 	if truncated {
 		t.Fatal("expected non-truncated line")
 	}
+
 	if got, want := len(line), 12<<10; got != want {
 		t.Fatalf("line length=%d want=%d", got, want)
 	}
@@ -29,12 +32,14 @@ func TestReadBoundedLineTruncatedAndEof(t *testing.T) {
 	r := bufio.NewReader(bytes.NewReader(lineBytes))
 
 	line, truncated, err := ReadBoundedLine(r, 8)
-	if err != io.EOF {
+	if !errors.Is(err, io.EOF) {
 		t.Fatalf("expected EOF, got %v", err)
 	}
+
 	if !truncated {
 		t.Fatal("expected truncated line")
 	}
+
 	if got, want := len(line), 8; got != want {
 		t.Fatalf("line length=%d want=%d", got, want)
 	}

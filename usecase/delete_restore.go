@@ -32,6 +32,7 @@ func SelectDeleteCandidates(in DeleteCandidatesInput) (DeleteCandidatesResult, e
 	if !in.Selector.HasAnyFilter() {
 		return DeleteCandidatesResult{}, errors.New("delete requires at least one selector (--id/--id-prefix/--host-contains/--path-contains/--head-contains/--older-than/--health)")
 	}
+
 	q, err := core.QuerySessions(in.Repository, in.SessionsRoot, core.QuerySpec{
 		Selector: in.Selector,
 		Now:      in.Now,
@@ -39,10 +40,12 @@ func SelectDeleteCandidates(in DeleteCandidatesInput) (DeleteCandidatesResult, e
 	if err != nil {
 		return DeleteCandidatesResult{}, err
 	}
+
 	var affected int64
 	for _, s := range q.Items {
 		affected += s.SizeBytes
 	}
+
 	return DeleteCandidatesResult{
 		Candidates:    q.Items,
 		AffectedBytes: affected,
@@ -75,38 +78,48 @@ func SelectRestoreCandidates(in RestoreCandidatesInput) (RestoreCandidatesResult
 		if loadIDs == nil {
 			loadIDs = audit.SessionIDsForBatchRollback
 		}
+
 		ids, err := loadIDs(in.LogFile, batchID)
 		if err != nil {
 			return RestoreCandidatesResult{}, err
 		}
+
 		idSet := make(map[string]struct{}, len(ids))
 		for _, id := range ids {
 			idSet[id] = struct{}{}
 		}
+
 		q, err := core.QuerySessions(in.Repository, in.TrashSessionsRoot, core.QuerySpec{
 			Now: in.Now,
 		})
 		if err != nil {
 			return RestoreCandidatesResult{}, err
 		}
+
 		candidates := make([]session.Session, 0, len(q.Items))
+
 		var affected int64
+
 		for _, s := range q.Items {
 			if _, ok := idSet[s.SessionID]; !ok {
 				continue
 			}
+
 			candidates = append(candidates, s)
 			affected += s.SizeBytes
 		}
+
 		if len(candidates) == 0 {
 			return RestoreCandidatesResult{}, fmt.Errorf("batch id %q has no sessions currently restorable from trash", batchID)
 		}
+
 		return RestoreCandidatesResult{Candidates: candidates, AffectedBytes: affected}, nil
 	}
 
 	if !in.Selector.HasAnyFilter() {
 		return RestoreCandidatesResult{}, errors.New("restore requires at least one selector (--id/--id-prefix/--host-contains/--path-contains/--head-contains/--older-than/--health or --batch-id)")
 	}
+
 	q, err := core.QuerySessions(in.Repository, in.TrashSessionsRoot, core.QuerySpec{
 		Selector: in.Selector,
 		Now:      in.Now,
@@ -114,10 +127,12 @@ func SelectRestoreCandidates(in RestoreCandidatesInput) (RestoreCandidatesResult
 	if err != nil {
 		return RestoreCandidatesResult{}, err
 	}
+
 	var affected int64
 	for _, s := range q.Items {
 		affected += s.SizeBytes
 	}
+
 	return RestoreCandidatesResult{
 		Candidates:    q.Items,
 		AffectedBytes: affected,
@@ -132,8 +147,10 @@ func EffectiveMaxBatchWithDefaults(flagChanged bool, configured int, dryRun bool
 	if flagChanged {
 		return configured
 	}
+
 	if dryRun {
 		return dryRunDefault
 	}
+
 	return realDefault
 }

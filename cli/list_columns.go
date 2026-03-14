@@ -24,23 +24,28 @@ func parseListColumns(input string, detailed bool, format string) ([]listColumn,
 	if detailed {
 		defaults = []string{"session_id", "created_at", "updated_at", "size", "health", "host_dir", "head", "path"}
 	}
+
 	if format == "csv" || format == "tsv" {
 		defaults = []string{"session_id", "created_at", "updated_at", "size_bytes", "health", "host_dir", "head", "path"}
 	}
 
 	raw := strings.TrimSpace(input)
 	names := defaults
+
 	if raw != "" {
 		parts := strings.Split(raw, ",")
+
 		names = make([]string, 0, len(parts))
 		for _, p := range parts {
 			name := strings.ToLower(strings.TrimSpace(p))
 			if name == "" {
 				continue
 			}
+
 			names = append(names, name)
 		}
 	}
+
 	if len(names) == 0 {
 		return nil, fmt.Errorf("no columns selected")
 	}
@@ -66,8 +71,10 @@ func parseListColumns(input string, detailed bool, format string) ([]listColumn,
 		if !ok {
 			return nil, fmt.Errorf("invalid --column value %q", n)
 		}
+
 		cols = append(cols, c)
 	}
+
 	return cols, nil
 }
 
@@ -91,6 +98,7 @@ func listColumnValue(key string, s session.Session, home string, headWidth int, 
 		if strings.TrimSpace(s.HostDir) == "" {
 			return "-"
 		}
+
 		return core.CompactHomePath(s.HostDir, home)
 	case "path":
 		return core.CompactHomePath(s.Path, home)
@@ -100,9 +108,11 @@ func listColumnValue(key string, s session.Session, home string, headWidth int, 
 		if strings.TrimSpace(s.Head) == "" {
 			return "-"
 		}
+
 		if truncateHead {
 			return truncateDisplayText(s.Head, headWidth)
 		}
+
 		return s.Head
 	default:
 		return ""
@@ -113,20 +123,26 @@ func truncateDisplayText(v string, maxRunes int) string {
 	if maxRunes <= 0 {
 		return v
 	}
+
 	if utf8.RuneCountInString(v) <= maxRunes {
 		return v
 	}
 
 	var b strings.Builder
+
 	count := 0
 	for _, r := range v {
 		if count >= maxRunes {
 			break
 		}
+
 		b.WriteRune(r)
+
 		count++
 	}
+
 	b.WriteString("...")
+
 	return b.String()
 }
 
@@ -136,6 +152,7 @@ func hasHealthColumn(cols []listColumn) bool {
 			return true
 		}
 	}
+
 	return false
 }
 
@@ -143,15 +160,18 @@ func writeListDelimited(out io.Writer, sessions []session.Session, sep rune, noH
 	home, _ := os.UserHomeDir()
 	w := csv.NewWriter(out)
 	w.Comma = sep
+
 	if !noHeader {
 		h := make([]string, 0, len(columns))
 		for _, c := range columns {
 			h = append(h, strings.ToLower(c.Header))
 		}
+
 		if err := w.Write(h); err != nil {
 			return err
 		}
 	}
+
 	for _, s := range sessions {
 		record := make([]string, 0, len(columns))
 		for _, c := range columns {
@@ -166,11 +186,14 @@ func writeListDelimited(out io.Writer, sessions []session.Session, sep rune, noH
 				record = append(record, listColumnValue(c.Key, s, home, 0, false))
 			}
 		}
+
 		if err := w.Write(record); err != nil {
 			return err
 		}
 	}
+
 	w.Flush()
+
 	return w.Error()
 }
 
@@ -178,5 +201,6 @@ func formatCSVTime(t time.Time) string {
 	if t.IsZero() {
 		return ""
 	}
+
 	return t.Format(time.RFC3339)
 }

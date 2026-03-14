@@ -1,0 +1,42 @@
+---
+version: "2"
+
+run:
+  timeout: 5m
+  issues-exit-code: 1
+  tests: true
+
+linters:
+  enable:
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - gocritic  # auto-fix
+    - errorlint  # auto-fix
+    - exhaustive
+    - prealloc
+    - unconvert
+    - whitespace  # auto-fix
+    - wsl_v5  # auto-fix
+    - dupword  # auto-fix
+    - mirror  # auto-fix
+    - iface  # auto-fix
+    - godot  # auto-fix
+    - goheader  # auto-fix
+  settings:
+    gocritic:
+      enable-all: false
+    whitespace:
+      skip-generated: true
+  exclusions:
+    rules:
+      - linters:
+          - errcheck
+        path: '.*_test\.go'
+        text: 'Error return value of `.*\.Close` is not checked'
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0

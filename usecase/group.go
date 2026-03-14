@@ -33,6 +33,7 @@ func GroupSessions(in GroupInput) ([]GroupStat, error) {
 	if in.Offset < 0 {
 		return nil, fmt.Errorf("invalid --offset value %d", in.Offset)
 	}
+
 	q, err := core.QuerySessions(in.Repository, in.SessionsRoot, core.QuerySpec{
 		Selector: in.Selector,
 		Now:      in.Now,
@@ -40,19 +41,24 @@ func GroupSessions(in GroupInput) ([]GroupStat, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	stats, err := BuildGroupStats(q.Items, in.By, in.SortBy, in.Order)
 	if err != nil {
 		return nil, err
 	}
+
 	if in.Offset > 0 {
 		if in.Offset >= len(stats) {
 			return []GroupStat{}, nil
 		}
+
 		stats = stats[in.Offset:]
 	}
+
 	if in.Limit > 0 && len(stats) > in.Limit {
 		stats = stats[:in.Limit]
 	}
+
 	return stats, nil
 }
 
@@ -61,9 +67,11 @@ func BuildGroupStats(sessions []session.Session, by, sortBy, order string) ([]Gr
 	if mode == "" {
 		mode = "day"
 	}
+
 	if mode != "day" && mode != "health" {
 		return nil, fmt.Errorf("invalid --by %q (allowed: day, health)", by)
 	}
+
 	sortMode := strings.ToLower(strings.TrimSpace(sortBy))
 	if sortMode == "" || sortMode == "auto" {
 		if mode == "day" {
@@ -72,12 +80,15 @@ func BuildGroupStats(sessions []session.Session, by, sortBy, order string) ([]Gr
 			sortMode = "count"
 		}
 	}
+
 	switch sortMode {
 	case "group", "count", "size", "latest":
 	default:
 		return nil, fmt.Errorf("invalid --sort %q (allowed: auto, group, count, size, latest)", sortBy)
 	}
+
 	desc := true
+
 	switch strings.ToLower(strings.TrimSpace(order)) {
 	case "", "desc":
 		desc = true
@@ -92,24 +103,31 @@ func BuildGroupStats(sessions []session.Session, by, sortBy, order string) ([]Gr
 		size   int64
 		latest time.Time
 	}
+
 	m := make(map[string]*agg)
+
 	for _, s := range sessions {
 		var key string
+
 		switch mode {
 		case "day":
 			key = s.UpdatedAt.Local().Format("2006-01-02")
 		case "health":
 			key = string(s.Health)
 		}
+
 		if key == "" {
 			key = "-"
 		}
+
 		a := m[key]
 		if a == nil {
 			a = &agg{}
 			m[key] = a
 		}
+
 		a.count++
+
 		a.size += s.SizeBytes
 		if s.UpdatedAt.After(a.latest) {
 			a.latest = s.UpdatedAt
@@ -122,6 +140,7 @@ func BuildGroupStats(sessions []session.Session, by, sortBy, order string) ([]Gr
 		if !a.latest.IsZero() {
 			latest = core.FormatDisplayTime(a.latest)
 		}
+
 		out = append(out, GroupStat{Group: key, Count: a.count, SizeBytes: a.size, Latest: latest})
 	}
 
@@ -129,8 +148,10 @@ func BuildGroupStats(sessions []session.Session, by, sortBy, order string) ([]Gr
 		if desc {
 			return groupLess(out[j], out[i], sortMode)
 		}
+
 		return groupLess(out[i], out[j], sortMode)
 	})
+
 	return out, nil
 }
 
@@ -142,16 +163,19 @@ func groupLess(a, b GroupStat, sortMode string) bool {
 		if a.Count == b.Count {
 			return a.Group < b.Group
 		}
+
 		return a.Count < b.Count
 	case "size":
 		if a.SizeBytes == b.SizeBytes {
 			return a.Group < b.Group
 		}
+
 		return a.SizeBytes < b.SizeBytes
 	case "latest":
 		if a.Latest == b.Latest {
 			return a.Group < b.Group
 		}
+
 		return a.Latest < b.Latest
 	default:
 		return a.Group < b.Group

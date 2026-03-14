@@ -66,12 +66,14 @@ func renderKeysLine(width int, theme tuiTheme) string {
 	if width <= 0 {
 		return renderKeysSegments(variants[len(variants)-1], theme)
 	}
+
 	for _, variant := range variants {
 		line := renderKeysSegments(variant, theme)
 		if lipgloss.Width(line) <= width {
 			return line
 		}
 	}
+
 	return truncateDisplay(renderKeysSegments(variants[len(variants)-1], theme), width)
 }
 
@@ -103,6 +105,7 @@ func renderKeysSegments(segments []keysSegment, theme tuiTheme) string {
 			parts = append(parts, lipgloss.NewStyle().Foreground(lipgloss.Color(theme.hex("keys_sep", builtinThemes[defaultTUIThemeName()]["keys_sep"]))).Render(segment.label))
 		}
 	}
+
 	return strings.Join(parts, "")
 }
 
@@ -110,27 +113,35 @@ func buildPreviewScrollBar(start, end, total, width int) string {
 	if width < 8 {
 		width = 8
 	}
+
 	if total <= 0 {
 		return "[" + strings.Repeat("─", width) + "]"
 	}
+
 	if end < start {
 		end = start
 	}
+
 	if end > total {
 		end = total
 	}
+
 	beginRatio := float64(start) / float64(total)
 	endRatio := float64(end) / float64(total)
 	l := int(beginRatio * float64(width))
+
 	r := int(endRatio * float64(width))
 	if r <= l {
 		r = l + 1
 	}
+
 	if r > width {
 		r = width
 	}
+
 	var b strings.Builder
 	b.WriteByte('[')
+
 	for i := 0; i < width; i++ {
 		if i >= l && i < r {
 			b.WriteString("█")
@@ -138,7 +149,9 @@ func buildPreviewScrollBar(start, end, total, width int) string {
 			b.WriteString("─")
 		}
 	}
+
 	b.WriteByte(']')
+
 	return b.String()
 }
 
@@ -150,6 +163,8 @@ func (m tuiModel) colorHex(key string) string {
 			Colors: cloneColorMap(builtinThemes[defaultTUIThemeName()]),
 		}
 	}
+
 	fallback := builtinThemes[defaultTUIThemeName()][key]
+
 	return theme.hex(key, fallback)
 }

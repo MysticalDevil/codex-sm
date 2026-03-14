@@ -16,6 +16,7 @@ func ReadBoundedLine(r *bufio.Reader, maxBytes int) (line []byte, truncated bool
 	}
 
 	var out bytes.Buffer
+
 	for {
 		chunk, readErr := r.ReadSlice('\n')
 		if len(chunk) > 0 {

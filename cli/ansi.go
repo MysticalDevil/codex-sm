@@ -25,6 +25,7 @@ func shouldUseColor(mode string, out io.Writer) bool {
 		if strings.EqualFold(os.Getenv("NO_COLOR"), "1") || strings.TrimSpace(os.Getenv("NO_COLOR")) != "" {
 			return false
 		}
+
 		return isTerminalWriter(out)
 	default:
 		return isTerminalWriter(out)
@@ -36,10 +37,12 @@ func isTerminalWriter(out io.Writer) bool {
 	if !ok {
 		return false
 	}
+
 	fi, err := f.Stat()
 	if err != nil {
 		return false
 	}
+
 	return (fi.Mode() & os.ModeCharDevice) != 0
 }
 
@@ -56,6 +59,7 @@ func colorize(v, color string, enabled bool) string {
 	if !enabled || color == "" {
 		return v
 	}
+
 	return color + v + ansiReset
 }
 
@@ -67,19 +71,24 @@ func colorizeRenderedTable(text string, sessions []session.Session, noHeader, ha
 	hasTrailingNewline := strings.HasSuffix(text, "\n")
 	lines := strings.Split(strings.TrimSuffix(text, "\n"), "\n")
 	dataStart := 0
+
 	for i, line := range lines {
 		if strings.TrimSpace(line) == "" {
 			continue
 		}
+
 		if !noHeader && i == 0 {
 			lines[i] = colorize(line, ansiCyanBold, true)
 			dataStart = 1
+
 			continue
 		}
+
 		if strings.HasPrefix(line, "showing ") {
 			lines[i] = colorize(line, ansiDim, true)
 			continue
 		}
+
 		if hasHealth {
 			idx := i - dataStart
 			if idx >= 0 && idx < len(sessions) {
@@ -99,5 +108,6 @@ func colorizeRenderedTable(text string, sessions []session.Session, noHeader, ha
 	if hasTrailingNewline {
 		out += "\n"
 	}
+
 	return out
 }

@@ -38,9 +38,11 @@ func TestBuildGroupStats(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BuildGroupStats: %v", err)
 	}
+
 	if len(stats) != 2 {
 		t.Fatalf("expected 2 groups, got %d", len(stats))
 	}
+
 	if stats[0].Group != "ok" || stats[0].Count != 2 {
 		t.Fatalf("unexpected top group: %+v", stats[0])
 	}
@@ -48,9 +50,11 @@ func TestBuildGroupStats(t *testing.T) {
 	if _, err := BuildGroupStats(items, "bad", "count", "desc"); err == nil {
 		t.Fatal("expected invalid --by error")
 	}
+
 	if _, err := BuildGroupStats(items, "day", "bad", "desc"); err == nil {
 		t.Fatal("expected invalid --sort error")
 	}
+
 	if _, err := BuildGroupStats(items, "day", "count", "bad"); err == nil {
 		t.Fatal("expected invalid --order error")
 	}
@@ -71,9 +75,11 @@ func TestListAndPreviewUsecases(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListSessions: %v", err)
 	}
+
 	if result.Total == 0 || len(result.Items) == 0 {
 		t.Fatalf("expected listed sessions, got total=%d items=%d", result.Total, len(result.Items))
 	}
+
 	if len(result.Items) > 3 {
 		t.Fatalf("expected limit applied, got items=%d", len(result.Items))
 	}
@@ -82,6 +88,7 @@ func TestListAndPreviewUsecases(t *testing.T) {
 func TestExtractPreviewMessages(t *testing.T) {
 	dir := t.TempDir()
 	p := filepath.Join(dir, "a.jsonl")
+
 	lines := []string{
 		`{"type":"response_item","payload":{"type":"message","role":"user","content":[{"text":"hello world"}]}}`,
 		`{"type":"response_item","payload":{"type":"message","role":"assistant","text":"ok"}}`,
@@ -90,13 +97,16 @@ func TestExtractPreviewMessages(t *testing.T) {
 	if err := os.WriteFile(p, []byte(strings.Join(lines, "\n")), 0o644); err != nil {
 		t.Fatalf("write fixture: %v", err)
 	}
+
 	items, err := ExtractPreviewMessages(p, 10)
 	if err != nil {
 		t.Fatalf("ExtractPreviewMessages: %v", err)
 	}
+
 	if len(items) != 2 {
 		t.Fatalf("unexpected extracted count: %d", len(items))
 	}
+
 	if items[0].Role != "user" || items[0].Text != "hello world" {
 		t.Fatalf("unexpected first message: %+v", items[0])
 	}
@@ -106,10 +116,12 @@ func TestExtractPreviewMessages_LongLine(t *testing.T) {
 	dir := t.TempDir()
 	p := filepath.Join(dir, "long.jsonl")
 	payload := strings.Repeat("A", defaultPreviewMaxLineSize+1)
+
 	line := `{"type":"response_item","payload":{"type":"message","role":"user","text":"` + payload + `"}}`
 	if err := os.WriteFile(p, []byte(line+"\n"), 0o644); err != nil {
 		t.Fatalf("write long fixture: %v", err)
 	}
+
 	_, err := ExtractPreviewMessages(p, 10)
 	if !errors.Is(err, ErrPreviewEntryTooLong) {
 		t.Fatalf("expected ErrPreviewEntryTooLong, got %v", err)
@@ -119,6 +131,7 @@ func TestExtractPreviewMessages_LongLine(t *testing.T) {
 func TestDoctorRisk(t *testing.T) {
 	workspace := testsupport.PrepareFixtureSandbox(t, "rich")
 	root := filepath.Join(workspace, "sessions")
+
 	rep, err := DoctorRisk(DoctorRiskInput{
 		SessionsRoot:   root,
 		SampleLimit:    2,
@@ -127,12 +140,15 @@ func TestDoctorRisk(t *testing.T) {
 	if err != nil {
 		t.Fatalf("DoctorRisk: %v", err)
 	}
+
 	if rep.SessionsTotal == 0 || rep.RiskTotal == 0 {
 		t.Fatalf("unexpected report: %+v", rep)
 	}
+
 	if rep.SampleLimit != 2 {
 		t.Fatalf("expected sample limit=2, got %+v", rep)
 	}
+
 	if len(rep.Samples) > 2 {
 		t.Fatalf("expected <=2 samples, got %d", len(rep.Samples))
 	}
@@ -153,6 +169,7 @@ func TestCheckSessionHostPaths(t *testing.T) {
 	if got.Level != DoctorWarn {
 		t.Fatalf("expected warn, got %s detail=%q", got.Level, got.Detail)
 	}
+
 	if !strings.Contains(got.Detail, "recommended_actions:") {
 		t.Fatalf("expected action block in detail, got: %q", got.Detail)
 	}
@@ -160,11 +177,14 @@ func TestCheckSessionHostPaths(t *testing.T) {
 
 func writeDoctorSessionFixture(t *testing.T, sessionsRoot, id, host string) {
 	t.Helper()
+
 	dir := filepath.Join(sessionsRoot, "2026", "03", "08")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatalf("mkdir sessions fixture: %v", err)
 	}
+
 	path := filepath.Join(dir, id+".jsonl")
+
 	line := `{"type":"session_meta","payload":{"id":"` + id + `","cwd":"` + host + `","timestamp":"` + time.Now().UTC().Format(time.RFC3339Nano) + `"}}` + "\n"
 	if err := os.WriteFile(path, []byte(line), 0o644); err != nil {
 		t.Fatalf("write session fixture: %v", err)

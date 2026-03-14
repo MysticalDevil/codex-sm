@@ -48,6 +48,7 @@ func newGroupCmd() *cobra.Command {
 			"  codexsm group --by health --sort size --order desc --format csv",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var err error
+
 			sessionsRoot, err = resolveOrDefault(sessionsRoot, runtimeSessionsRoot)
 			if err != nil {
 				return err
@@ -77,15 +78,18 @@ func newGroupCmd() *cobra.Command {
 				if err != nil {
 					return err
 				}
+
 				return writeWithPager(cmd.OutOrStdout(), table, pager, pageSize, true)
 			case "json":
 				b, err := json.Marshal(stats)
 				if err != nil {
 					return err
 				}
+
 				if _, err := cmd.OutOrStdout().Write(append(b, '\n')); err != nil {
 					return err
 				}
+
 				return nil
 			case "csv":
 				return writeGroupDelimited(cmd.OutOrStdout(), stats, ',')
@@ -120,20 +124,27 @@ func newGroupCmd() *cobra.Command {
 
 func renderGroupTable(stats []groupStat, by, colorMode string, out io.Writer) (string, error) {
 	useColor := shouldUseColor(colorMode, out)
+
 	var buf bytes.Buffer
+
 	w := tabwriter.NewWriter(&buf, 2, 4, 2, ' ', 0)
+
 	_, _ = fmt.Fprintln(w, "GROUP\tCOUNT\tSIZE\tLATEST")
 	for _, g := range stats {
 		_, _ = fmt.Fprintf(w, "%s\t%d\t%s\t%s\n", g.Group, g.Count, core.FormatBytesIEC(g.SizeBytes), g.Latest)
 	}
+
 	if err := w.Flush(); err != nil {
 		return "", err
 	}
+
 	_, _ = fmt.Fprintf(&buf, "groups=%d by=%s\n", len(stats), strings.ToLower(strings.TrimSpace(by)))
+
 	text := buf.String()
 	if !useColor {
 		return text, nil
 	}
+
 	return colorizeGroupedTable(text), nil
 }
 
@@ -141,33 +152,41 @@ func colorizeGroupedTable(text string) string {
 	if text == "" {
 		return text
 	}
+
 	hasTrailingNewline := strings.HasSuffix(text, "\n")
+
 	lines := strings.Split(strings.TrimSuffix(text, "\n"), "\n")
 	for i, line := range lines {
 		if strings.TrimSpace(line) == "" {
 			continue
 		}
+
 		if i == 0 {
 			lines[i] = colorize(line, ansiCyanBold, true)
 			continue
 		}
+
 		if strings.HasPrefix(line, "groups=") {
 			lines[i] = colorize(line, ansiDim, true)
 		}
 	}
+
 	out := strings.Join(lines, "\n")
 	if hasTrailingNewline {
 		out += "\n"
 	}
+
 	return out
 }
 
 func writeGroupDelimited(out io.Writer, stats []groupStat, sep rune) error {
 	w := csv.NewWriter(out)
+
 	w.Comma = sep
 	if err := w.Write([]string{"group", "count", "size_bytes", "latest"}); err != nil {
 		return err
 	}
+
 	for _, g := range stats {
 		if err := w.Write([]string{
 			g.Group,
@@ -178,6 +197,8 @@ func writeGroupDelimited(out io.Writer, stats []groupStat, sep rune) error {
 			return err
 		}
 	}
+
 	w.Flush()
+
 	return w.Error()
 }

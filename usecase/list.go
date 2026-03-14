@@ -35,5 +35,6 @@ func ListSessions(in ListInput) (ListResult, error) {
 	if err != nil {
 		return ListResult{}, err
 	}
+
 	return ListResult{Total: q.Total, Items: q.Items}, nil
 }

@@ -2,6 +2,7 @@ package migrate
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"time"
@@ -44,34 +45,56 @@ func openMigrationDB(path string) (*sql.DB, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	if err := db.Ping(); err != nil {
-		db.Close()
+		if closeErr := db.Close(); closeErr != nil {
+			return nil, fmt.Errorf("ping db: %w (close db: %w)", err, closeErr)
+		}
+
 		return nil, err
 	}
+
 	if err := verifyThreadsSchema(db); err != nil {
-		db.Close()
+		if closeErr := db.Close(); closeErr != nil {
+			return nil, fmt.Errorf("verify schema: %w (close db: %w)", err, closeErr)
+		}
+
 		return nil, err
 	}
+
 	return db, nil
 }
 
-func verifyThreadsSchema(db *sql.DB) error {
+func verifyThreadsSchema(db *sql.DB) (err error) {
 	rows, err := db.Query(sqlThreadsTableInfo)
 	if err != nil {
 		return fmt.Errorf("inspect threads schema: %w", err)
 	}
-	defer rows.Close()
+
+	defer func() {
+		closeErr := rows.Close()
+		if closeErr != nil && err == nil {
+			err = fmt.Errorf("close threads schema rows: %w", closeErr)
+		}
+	}()
+
 	cols := map[string]bool{}
+
 	for rows.Next() {
-		var cid int
-		var name, typ string
-		var notnull, pk int
-		var dflt any
+		var (
+			cid         int
+			name, typ   string
+			notnull, pk int
+			dflt        any
+		)
+
 		if err := rows.Scan(&cid, &name, &typ, &notnull, &dflt, &pk); err != nil {
 			return fmt.Errorf("scan threads schema: %w", err)
 		}
+
 		cols[name] = true
 	}
+
 	required := []string{
 		"id", "rollout_path", "created_at", "updated_at", "source", "model_provider", "cwd", "title",
 		"sandbox_policy", "approval_mode", "tokens_used", "has_user_event", "archived", "archived_at",
@@ -80,27 +103,44 @@ func verifyThreadsSchema(db *sql.DB) error {
 	}
 	for _, name := range required {
 		if !cols[name] {
-			return fmt.Errorf("Codex state schema incompatible: missing threads.%s", name)
+			return fmt.Errorf("codex state schema incompatible: missing threads.%s", name)
 		}
 	}
+
 	return nil
 }
 
-func listThreadRowsByCWD(dbPath, cwd string) ([]threadRow, error) {
+func listThreadRowsByCWD(dbPath, cwd string) (out []threadRow, err error) {
 	db, err := openMigrationDB(dbPath)
 	if err != nil {
 		return nil, err
 	}
-	defer db.Close()
+
+	defer func() {
+		closeErr := db.Close()
+		if closeErr != nil && err == nil {
+			err = fmt.Errorf("close migration db: %w", closeErr)
+		}
+	}()
+
 	rows, err := db.Query(sqlListThreadsByCWD, cwd)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
-	var out []threadRow
+
+	defer func() {
+		closeErr := rows.Close()
+		if closeErr != nil && err == nil {
+			err = fmt.Errorf("close thread rows: %w", closeErr)
+		}
+	}()
+
 	for rows.Next() {
-		var createdAt, updatedAt int64
-		var row threadRow
+		var (
+			createdAt, updatedAt int64
+			row                  threadRow
+		)
+
 		if err := rows.Scan(
 			&row.ID, &row.RolloutPath, &createdAt, &updatedAt, &row.Source, &row.ModelProvider, &row.Cwd, &row.Title,
 			&row.SandboxPolicy, &row.ApprovalMode, &row.TokensUsed, &row.HasUserEvent, &row.Archived, &row.ArchivedAt,
@@ -109,29 +149,55 @@ func listThreadRowsByCWD(dbPath, cwd string) ([]threadRow, error) {
 		); err != nil {
 			return nil, err
 		}
+
 		row.CreatedAt = time.Unix(createdAt, 0).UTC()
 		row.UpdatedAt = time.Unix(updatedAt, 0).UTC()
 		out = append(out, row)
 	}
-	return out, rows.Err()
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return out, nil
 }
 
-func insertMigratedThreads(dbPath string, migrations []executedMigration) error {
+func insertMigratedThreads(dbPath string, migrations []executedMigration) (err error) {
 	db, err := openMigrationDB(dbPath)
 	if err != nil {
 		return err
 	}
-	defer db.Close()
+
+	defer func() {
+		closeErr := db.Close()
+		if closeErr != nil && err == nil {
+			err = fmt.Errorf("close migration db: %w", closeErr)
+		}
+	}()
+
 	tx, err := db.Begin()
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+
+	defer func() {
+		rollbackErr := tx.Rollback()
+		if rollbackErr != nil && !errors.Is(rollbackErr, sql.ErrTxDone) && err == nil {
+			err = fmt.Errorf("rollback migration tx: %w", rollbackErr)
+		}
+	}()
+
 	stmt, err := tx.Prepare(sqlInsertThread)
 	if err != nil {
 		return err
 	}
-	defer stmt.Close()
+
+	defer func() {
+		closeErr := stmt.Close()
+		if closeErr != nil && err == nil {
+			err = fmt.Errorf("close insert stmt: %w", closeErr)
+		}
+	}()
 
 	for _, migration := range migrations {
 		dest := migration.dest
@@ -144,6 +210,7 @@ func insertMigratedThreads(dbPath string, migrations []executedMigration) error 
 			return fmt.Errorf("insert cloned thread for %s: %w", filepath.Base(dest.RolloutPath), err)
 		}
 	}
+
 	return tx.Commit()
 }
 
@@ -151,6 +218,7 @@ func nullableString(v sql.NullString) any {
 	if v.Valid {
 		return v.String
 	}
+
 	return nil
 }
 
@@ -158,5 +226,6 @@ func nullableInt64(v sql.NullInt64) any {
 	if v.Valid {
 		return v.Int64
 	}
+
 	return nil
 }

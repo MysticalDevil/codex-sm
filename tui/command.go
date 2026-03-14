@@ -89,9 +89,11 @@ func NewCommand(deps CommandDeps) *cobra.Command {
 	if deps.ResolveSessionsRoot == nil {
 		deps.ResolveSessionsRoot = config.DefaultSessionsRoot
 	}
+
 	if deps.ResolveTrashRoot == nil {
 		deps.ResolveTrashRoot = config.DefaultTrashRoot
 	}
+
 	if deps.ResolveLogFile == nil {
 		deps.ResolveLogFile = config.DefaultLogFile
 	}
@@ -132,57 +134,70 @@ func NewCommand(deps CommandDeps) *cobra.Command {
 				if err != nil {
 					return err
 				}
+
 				sessionsRoot = v
 			} else {
 				v, err := config.ResolvePath(sessionsRoot)
 				if err != nil {
 					return err
 				}
+
 				sessionsRoot = v
 			}
+
 			if strings.TrimSpace(trashRoot) == "" {
 				v, err := deps.ResolveTrashRoot()
 				if err != nil {
 					return err
 				}
+
 				trashRoot = v
 			} else {
 				v, err := config.ResolvePath(trashRoot)
 				if err != nil {
 					return err
 				}
+
 				trashRoot = v
 			}
+
 			if strings.TrimSpace(logFile) == "" {
 				v, err := deps.ResolveLogFile()
 				if err != nil {
 					return err
 				}
+
 				logFile = v
 			} else {
 				v, err := config.ResolvePath(logFile)
 				if err != nil {
 					return err
 				}
+
 				logFile = v
 			}
 
 			if strings.TrimSpace(source) == "" {
 				source = strings.TrimSpace(deps.TUIConfig.Source)
 			}
+
 			source = strings.ToLower(strings.TrimSpace(source))
 			if source == "" {
 				source = "sessions"
 			}
+
 			if source != "sessions" && source != "trash" {
 				return fmt.Errorf("invalid --source %q (allowed: sessions, trash)", source)
 			}
+
 			if scanLimit < 0 {
 				return fmt.Errorf("invalid --scan-limit value %d", scanLimit)
 			}
+
 			if viewLimit < 0 {
 				return fmt.Errorf("invalid --view-limit value %d", viewLimit)
 			}
+
 			scanRoot := sessionsRoot
 			if source == "trash" {
 				scanRoot = filepath.Join(trashRoot, "sessions")
@@ -196,24 +211,30 @@ func NewCommand(deps CommandDeps) *cobra.Command {
 			if err != nil {
 				return err
 			}
+
 			items := result.Items
 
 			home, _ := config.ResolvePath("~")
+
 			if strings.TrimSpace(groupBy) == "" {
 				groupBy = strings.TrimSpace(deps.TUIConfig.GroupBy)
 			}
+
 			mode, err := normalizeTUIGroupBy(groupBy)
 			if err != nil {
 				return err
 			}
+
 			theme, err := resolveTUITheme(deps.TUIConfig.Theme, deps.TUIConfig.Colors, themeName, themeColors)
 			if err != nil {
 				return err
 			}
+
 			previewIndex, err := config.ResolvePath("~/.codex/codexsm/index/preview.v1.jsonl")
 			if err != nil {
 				previewIndex = ""
 			}
+
 			m := tuiModel{
 				sessions:           items,
 				home:               home,
@@ -239,6 +260,7 @@ func NewCommand(deps CommandDeps) *cobra.Command {
 			}
 			m.rebuildTree()
 			_, err = tea.NewProgram(m, tea.WithAltScreen()).Run()
+
 			return err
 		},
 	}
@@ -257,5 +279,6 @@ func NewCommand(deps CommandDeps) *cobra.Command {
 	cmd.Flags().BoolVarP(&yes, "yes", "y", false, "skip TUI confirmation prompts")
 	cmd.Flags().BoolVar(&hardDelete, "hard", false, "hard delete on session source")
 	cmd.Flags().IntVar(&maxBatch, "max-batch", 100, "max sessions allowed for one real TUI action")
+
 	return cmd
 }

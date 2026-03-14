@@ -51,7 +51,9 @@ func ParseSortSpec(sortBy, order string) (SortSpec, error) {
 	if by == "" {
 		by = string(SortFieldUpdatedAt)
 	}
+
 	var field SortField
+
 	switch by {
 	case "updated_at":
 		field = SortFieldUpdatedAt
@@ -71,7 +73,9 @@ func ParseSortSpec(sortBy, order string) (SortSpec, error) {
 	if ord == "" {
 		ord = string(SortOrderDesc)
 	}
+
 	var normalized SortOrder
+
 	switch ord {
 	case "asc":
 		normalized = SortOrderAsc
@@ -80,6 +84,7 @@ func ParseSortSpec(sortBy, order string) (SortSpec, error) {
 	default:
 		return SortSpec{}, fmt.Errorf("invalid --order value %q", order)
 	}
+
 	return SortSpec{Field: field, Order: normalized}, nil
 }
 
@@ -91,17 +96,21 @@ func normalizeSortSpec(spec QuerySpec) (SortSpec, error) {
 		default:
 			return SortSpec{}, fmt.Errorf("invalid --sort value %q", string(field))
 		}
+
 		order := spec.Sort.Order
 		if order == "" {
 			order = SortOrderDesc
 		}
+
 		switch order {
 		case SortOrderAsc, SortOrderDesc:
 		default:
 			return SortSpec{}, fmt.Errorf("invalid --order value %q", string(order))
 		}
+
 		return SortSpec{Field: field, Order: order}, nil
 	}
+
 	return ParseSortSpec(spec.SortBy, spec.Order)
 }
 

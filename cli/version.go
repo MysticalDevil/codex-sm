@@ -14,12 +14,14 @@ func newVersionCmd() *cobra.Command {
 		Short: "Print version",
 		Run: func(cmd *cobra.Command, args []string) {
 			if short {
-				fmt.Fprintln(cmd.OutOrStdout(), Version)
+				_, _ = fmt.Fprintln(cmd.OutOrStdout(), Version)
 				return
 			}
-			fmt.Fprintf(cmd.OutOrStdout(), "codexsm %s\n", Version)
+
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "codexsm %s\n", Version)
 		},
 	}
 	cmd.Flags().BoolVar(&short, "short", false, "print version only")
+
 	return cmd
 }

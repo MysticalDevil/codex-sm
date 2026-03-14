@@ -14,27 +14,33 @@ import (
 
 func TestRewriteMigrationLineUpdatesMetadataOnly(t *testing.T) {
 	line := []byte(`{"type":"session_meta","payload":{"id":"old-id","cwd":"/old","other":"keep"}}`)
+
 	got, err := rewriteMigrationLine(line, "old-id", "new-id", "/new")
 	if err != nil {
 		t.Fatalf("rewrite line: %v", err)
 	}
+
 	text := string(got)
 	if !strings.Contains(text, `"id":"new-id"`) || !strings.Contains(text, `"cwd":"/new"`) || !strings.Contains(text, `"other":"keep"`) {
 		t.Fatalf("unexpected rewritten line: %s", text)
 	}
 
 	raw := []byte(`{"type":"response_item","payload":{"type":"message","role":"user","text":"keep raw"}}`)
+
 	got, err = rewriteMigrationLine(raw, "old-id", "new-id", "/new")
 	if err != nil {
 		t.Fatalf("rewrite response item: %v", err)
 	}
+
 	var wantObj, gotObj map[string]any
 	if err := json.Unmarshal(raw, &wantObj); err != nil {
 		t.Fatalf("unmarshal want: %v", err)
 	}
+
 	if err := json.Unmarshal(got, &gotObj); err != nil {
 		t.Fatalf("unmarshal got: %v", err)
 	}
+
 	if gotObj["type"] != wantObj["type"] {
 		t.Fatalf("response item type changed: %#v", gotObj)
 	}
@@ -49,10 +55,12 @@ func TestBuildMigratedRolloutPath(t *testing.T) {
 
 func TestMigrateSessionsSkipsAlreadyMigrated(t *testing.T) {
 	root := t.TempDir()
+
 	srcRollout := filepath.Join(root, "2026", "03", "10", "rollout-2026-03-10-old-id.jsonl")
 	if err := os.MkdirAll(filepath.Dir(srcRollout), 0o755); err != nil {
 		t.Fatal(err)
 	}
+
 	srcContent := strings.Join([]string{
 		`{"type":"session_meta","payload":{"id":"old-id","timestamp":"2026-03-10T01:00:00Z","cwd":"/old"}}`,
 		`{"type":"turn_context","payload":{"cwd":"/old"}}`,
@@ -60,6 +68,7 @@ func TestMigrateSessionsSkipsAlreadyMigrated(t *testing.T) {
 	if err := os.WriteFile(srcRollout, []byte(srcContent), 0o644); err != nil {
 		t.Fatal(err)
 	}
+
 	dbPath := filepath.Join(root, "state.sqlite")
 	createMigrationTestDB(t, dbPath)
 	insertThreadRow(t, dbPath, testThreadRow("old-id", srcRollout, "/old", "main", 1773072000))
@@ -75,6 +84,7 @@ func TestMigrateSessionsSkipsAlreadyMigrated(t *testing.T) {
 	if err != nil {
 		t.Fatalf("migrate sessions: %v", err)
 	}
+
 	if result.Matched != 0 || result.Skipped != 1 {
 		t.Fatalf("unexpected result: %+v", result)
 	}
@@ -82,11 +92,13 @@ func TestMigrateSessionsSkipsAlreadyMigrated(t *testing.T) {
 
 func createMigrationTestDB(t *testing.T, path string) {
 	t.Helper()
+
 	db, err := sql.Open("sqlite", path)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer db.Close()
+
 	schema := `
 CREATE TABLE threads (
     id TEXT PRIMARY KEY,
@@ -119,6 +131,7 @@ CREATE TABLE threads (
 
 func testThreadRow(id, rolloutPath, cwd, branch string, updatedAt int64) threadRow {
 	ts := time.Unix(updatedAt, 0).UTC()
+
 	return threadRow{
 		ID:               id,
 		RolloutPath:      rolloutPath,
@@ -142,11 +155,13 @@ func testThreadRow(id, rolloutPath, cwd, branch string, updatedAt int64) threadR
 
 func insertThreadRow(t *testing.T, path string, row threadRow) {
 	t.Helper()
+
 	db, err := sql.Open("sqlite", path)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer db.Close()
+
 	_, err = db.Exec(`
 INSERT INTO threads (
     id, rollout_path, created_at, updated_at, source, model_provider, cwd, title,

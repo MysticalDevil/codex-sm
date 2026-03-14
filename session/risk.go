@@ -65,11 +65,14 @@ func EvaluateRisk(s Session, checker IntegrityChecker) Risk {
 		return Risk{Level: RiskHigh, Reason: RiskReasonCorrupted, Detail: "session file is corrupted or unreadable"}
 	case HealthMissingMeta:
 		return Risk{Level: RiskMedium, Reason: RiskReasonMissingMeta, Detail: "session_meta missing or invalid"}
+	case HealthOK:
+		break
 	}
 
 	if checker == nil {
 		return Risk{Level: RiskNone, Reason: RiskReasonNone}
 	}
+
 	res := checker(s)
 	if res.Err != nil {
 		return Risk{
@@ -78,6 +81,7 @@ func EvaluateRisk(s Session, checker IntegrityChecker) Risk {
 			Detail: strings.TrimSpace(res.Err.Error()),
 		}
 	}
+
 	if res.Verified && !res.Match {
 		return Risk{
 			Level:  RiskHigh,
@@ -85,6 +89,7 @@ func EvaluateRisk(s Session, checker IntegrityChecker) Risk {
 			Detail: strings.TrimSpace(res.Detail),
 		}
 	}
+
 	return Risk{Level: RiskNone, Reason: RiskReasonNone}
 }
 

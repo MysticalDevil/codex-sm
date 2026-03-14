@@ -20,8 +20,10 @@ func BenchmarkRenderTable(b *testing.B) {
 
 	b.ReportAllocs()
 	b.ResetTimer()
+
 	for i := 0; i < b.N; i++ {
 		out := &bytes.Buffer{}
+
 		table, err := renderTable(sessions, len(sessions), listRenderOptions{
 			NoHeader:  false,
 			ColorMode: "never",
@@ -32,6 +34,7 @@ func BenchmarkRenderTable(b *testing.B) {
 		if err != nil {
 			b.Fatalf("renderTable: %v", err)
 		}
+
 		if len(table) == 0 {
 			b.Fatal("expected non-empty output")
 		}
@@ -40,6 +43,7 @@ func BenchmarkRenderTable(b *testing.B) {
 
 func BenchmarkRenderTable_LargeColumns(b *testing.B) {
 	sessions := makeCLIBenchSessions(1200)
+
 	cols, err := parseListColumns("session_id,created_at,updated_at,size_bytes,health,host_dir,head,path", true, "table")
 	if err != nil {
 		b.Fatalf("parseListColumns setup: %v", err)
@@ -47,8 +51,10 @@ func BenchmarkRenderTable_LargeColumns(b *testing.B) {
 
 	b.ReportAllocs()
 	b.ResetTimer()
+
 	for i := 0; i < b.N; i++ {
 		out := &bytes.Buffer{}
+
 		table, err := renderTable(sessions, len(sessions), listRenderOptions{
 			Detailed:  true,
 			NoHeader:  false,
@@ -60,6 +66,7 @@ func BenchmarkRenderTable_LargeColumns(b *testing.B) {
 		if err != nil {
 			b.Fatalf("renderTable: %v", err)
 		}
+
 		if len(table) == 0 {
 			b.Fatal("expected non-empty output")
 		}
@@ -71,15 +78,19 @@ func BenchmarkRenderJSON(b *testing.B) {
 
 	b.ReportAllocs()
 	b.ResetTimer()
+
 	for i := 0; i < b.N; i++ {
 		buf := &bytes.Buffer{}
+
 		data, err := json.Marshal(sessions)
 		if err != nil {
 			b.Fatalf("json.Marshal: %v", err)
 		}
+
 		if _, err := buf.Write(append(data, '\n')); err != nil {
 			b.Fatalf("write json output: %v", err)
 		}
+
 		if buf.Len() == 0 {
 			b.Fatal("expected non-empty json output")
 		}
@@ -88,6 +99,7 @@ func BenchmarkRenderJSON(b *testing.B) {
 
 func makeCLIBenchSessions(n int) []session.Session {
 	base := time.Date(2026, 3, 9, 0, 0, 0, 0, time.UTC)
+
 	out := make([]session.Session, 0, n)
 	for i := 0; i < n; i++ {
 		health := session.HealthOK
@@ -96,6 +108,7 @@ func makeCLIBenchSessions(n int) []session.Session {
 		} else if i%41 == 0 {
 			health = session.HealthMissingMeta
 		}
+
 		out = append(out, session.Session{
 			SessionID: fmt.Sprintf("%08x-1111-2222-3333-%012x", i, i),
 			CreatedAt: base.Add(time.Duration(i) * time.Minute),
@@ -107,5 +120,6 @@ func makeCLIBenchSessions(n int) []session.Session {
 			Head:      fmt.Sprintf("benchmark head %04d with multilingual 文本 and emoji 😄 for output width checks", i),
 		})
 	}
+
 	return out
 }

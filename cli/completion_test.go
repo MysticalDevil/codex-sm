@@ -10,6 +10,7 @@ func TestCompletionCommandBash(t *testing.T) {
 	cmd := NewRootCmd()
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
+
 	cmd.SetOut(stdout)
 	cmd.SetErr(stderr)
 	cmd.SetArgs([]string{"completion", "bash"})
@@ -17,6 +18,7 @@ func TestCompletionCommandBash(t *testing.T) {
 	if err := cmd.Execute(); err != nil {
 		t.Fatalf("completion bash execute: %v", err)
 	}
+
 	out := stdout.String()
 	if !strings.Contains(out, "__start_codexsm") {
 		t.Fatalf("unexpected bash completion output: %q", out)

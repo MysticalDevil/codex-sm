@@ -66,19 +66,24 @@ func MigrateSessions(opts MigrateOptions) (MigrateResult, error) {
 	opts.ToCWD = strings.TrimSpace(opts.ToCWD)
 	opts.Branch = strings.TrimSpace(opts.Branch)
 	opts.SessionsRoot = strings.TrimSpace(opts.SessionsRoot)
+
 	opts.StateDBPath = strings.TrimSpace(opts.StateDBPath)
 	if opts.FromCWD == "" {
 		return MigrateResult{}, fmt.Errorf("source cwd is required")
 	}
+
 	if opts.ToCWD == "" {
 		return MigrateResult{}, fmt.Errorf("destination cwd is required")
 	}
+
 	if opts.SessionsRoot == "" {
 		return MigrateResult{}, fmt.Errorf("sessions root is required")
 	}
+
 	if opts.StateDBPath == "" {
 		return MigrateResult{}, fmt.Errorf("codex state db path is required")
 	}
+
 	if !opts.DryRun && !opts.Confirm {
 		return MigrateResult{}, fmt.Errorf("real migration requires --confirm")
 	}
@@ -90,6 +95,7 @@ func MigrateSessions(opts MigrateOptions) (MigrateResult, error) {
 		DryRun:       opts.DryRun,
 		PrintCreated: opts.PrintCreated,
 	}
+
 	rollouts, err := collectMigrationRollouts(opts.SessionsRoot, opts.FromCWD)
 	if err != nil {
 		return result, err
@@ -99,6 +105,7 @@ func MigrateSessions(opts MigrateOptions) (MigrateResult, error) {
 	if err != nil {
 		return result, err
 	}
+
 	targetRows, err := listThreadRowsByCWD(opts.StateDBPath, opts.ToCWD)
 	if err != nil {
 		return result, err
@@ -108,6 +115,7 @@ func MigrateSessions(opts MigrateOptions) (MigrateResult, error) {
 	for _, row := range sourceRows {
 		sourceByID[row.ID] = row
 	}
+
 	for id, meta := range rollouts {
 		if _, ok := sourceByID[id]; !ok {
 			result.Warnings = append(result.Warnings, fmt.Sprintf("rollout exists without thread row: %s", meta.Path))
@@ -115,6 +123,7 @@ func MigrateSessions(opts MigrateOptions) (MigrateResult, error) {
 	}
 
 	targetLabel := targetRolloutLabel(opts.ToCWD)
+
 	targetExisting := make(map[string]struct{}, len(targetRows))
 	for _, row := range targetRows {
 		base := filepath.Base(row.RolloutPath)
@@ -128,19 +137,24 @@ func MigrateSessions(opts MigrateOptions) (MigrateResult, error) {
 			result.Warnings = append(result.Warnings, fmt.Sprintf("thread row exists without rollout file: %s", row.ID))
 			continue
 		}
+
 		if opts.HasSince && row.UpdatedAt.Before(opts.Since) {
 			continue
 		}
+
 		if existingRolloutForSource(row.RolloutPath, targetLabel, targetExisting) {
 			result.Skipped++
 			continue
 		}
+
 		destID := uuid.NewString()
 		destRoll := buildMigratedRolloutPath(meta.Path, targetLabel, destID)
+
 		destBranch := row.GitBranch
 		if opts.Branch != "" {
 			destBranch = opts.Branch
 		}
+
 		candidates = append(candidates, migrateCandidate{
 			thread:     row,
 			sourceMeta: meta,
@@ -154,16 +168,20 @@ func MigrateSessions(opts MigrateOptions) (MigrateResult, error) {
 		if a.thread.UpdatedAt.Equal(b.thread.UpdatedAt) {
 			return strings.Compare(a.thread.ID, b.thread.ID)
 		}
+
 		if a.thread.UpdatedAt.After(b.thread.UpdatedAt) {
 			return -1
 		}
+
 		return 1
 	})
 
 	if opts.Limit > 0 && len(candidates) > opts.Limit {
 		candidates = candidates[:opts.Limit]
 	}
+
 	result.Matched = len(candidates)
+
 	result.Planned = make([]MigratePlan, 0, len(candidates))
 	for _, c := range candidates {
 		result.Planned = append(result.Planned, MigratePlan{
@@ -182,26 +200,32 @@ func MigrateSessions(opts MigrateOptions) (MigrateResult, error) {
 		if result.Skipped > 0 || len(result.Warnings) > 0 {
 			return result, nil
 		}
+
 		if len(result.Warnings) == 0 {
 			return result, fmt.Errorf("no sessions matched source cwd %q", opts.FromCWD)
 		}
 	}
+
 	if opts.DryRun {
 		return result, nil
 	}
+
 	if st, err := os.Stat(opts.ToCWD); err != nil || !st.IsDir() {
 		result.Warnings = append(result.Warnings, fmt.Sprintf("target cwd does not currently exist on disk: %s", opts.ToCWD))
 	}
 
 	createdPaths := make([]string, 0, len(candidates))
+
 	executed := make([]executedMigration, 0, len(candidates))
 	for _, candidate := range candidates {
 		if _, err := os.Stat(candidate.destRoll); err == nil {
 			return result, fmt.Errorf("destination rollout already exists: %s", candidate.destRoll)
 		}
+
 		if err := writeMigratedRollout(candidate.sourceMeta.Path, candidate.destRoll, candidate.thread.ID, candidate.destID, opts.ToCWD); err != nil {
 			return result, err
 		}
+
 		createdPaths = append(createdPaths, candidate.destRoll)
 		executed = append(executed, executedMigration{
 			source: candidate.thread,
@@ -231,27 +255,33 @@ func MigrateSessions(opts MigrateOptions) (MigrateResult, error) {
 			},
 		})
 	}
+
 	if err := insertMigratedThreads(opts.StateDBPath, executed); err != nil {
 		return result, fmt.Errorf("wrote rollout files but failed to update Codex thread index: %w (created=%s)", err, strings.Join(createdPaths, ", "))
 	}
+
 	result.Created = len(executed)
+
 	return result, nil
 }
 
 func existingRolloutForSource(sourceRollout, targetLabel string, targetExisting map[string]struct{}) bool {
 	sourceStem := strings.TrimSuffix(filepath.Base(sourceRollout), filepath.Ext(sourceRollout))
+
 	prefix := sourceStem + "-" + targetLabel + "-"
 	for name := range targetExisting {
 		if strings.HasPrefix(name, prefix) {
 			return true
 		}
 	}
+
 	return false
 }
 
 func buildMigratedRolloutPath(sourceRollout, targetLabel, destID string) string {
 	dir := filepath.Dir(sourceRollout)
 	stem := strings.TrimSuffix(filepath.Base(sourceRollout), filepath.Ext(sourceRollout))
+
 	return filepath.Join(dir, stem+"-"+targetLabel+"-"+destID+".jsonl")
 }
 
@@ -271,9 +301,11 @@ func targetRolloutLabel(dest string) string {
 			return '-'
 		}
 	}, label)
+
 	label = strings.Trim(label, "-_")
 	if label == "" {
 		return "migrated"
 	}
+
 	return label
 }

@@ -24,29 +24,37 @@ func ScanSessions(root string) ([]session.Session, error) {
 	}
 
 	var out []session.Session
+
 	err := filepath.WalkDir(root, func(path string, d os.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
 		}
+
 		if d.IsDir() {
 			return nil
 		}
+
 		if filepath.Ext(path) != ".jsonl" {
 			return nil
 		}
+
 		s, err := scanOne(path)
 		if err != nil {
 			return err
 		}
+
 		out = append(out, s)
+
 		return nil
 	})
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return []session.Session{}, nil
 		}
+
 		return nil, err
 	}
+
 	return out, nil
 }
 
@@ -57,46 +65,57 @@ func ScanSessionsLimited(root string, limit int, less func(a, b session.Session)
 	if root == "" {
 		return nil, fmt.Errorf("sessions root is empty")
 	}
+
 	if limit <= 0 {
 		return ScanSessions(root)
 	}
+
 	if less == nil {
 		return nil, fmt.Errorf("limited scan comparator is nil")
 	}
 
 	out := make([]session.Session, 0, limit)
+
 	err := filepath.WalkDir(root, func(path string, d os.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
 		}
+
 		if d.IsDir() || filepath.Ext(path) != ".jsonl" {
 			return nil
 		}
+
 		s, err := scanOne(path)
 		if err != nil {
 			return err
 		}
+
 		if len(out) < limit {
 			out = append(out, s)
 			return nil
 		}
+
 		worst := 0
 		for i := 1; i < len(out); i++ {
 			if less(out[worst], out[i]) {
 				worst = i
 			}
 		}
+
 		if less(s, out[worst]) {
 			out[worst] = s
 		}
+
 		return nil
 	})
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return []session.Session{}, nil
 		}
+
 		return nil, err
 	}
+
 	slices.SortStableFunc(out, func(a, b session.Session) int {
 		switch {
 		case less(a, b):
@@ -107,6 +126,7 @@ func ScanSessionsLimited(root string, limit int, less func(a, b session.Session)
 			return 0
 		}
 	})
+
 	return out, nil
 }
 
@@ -134,8 +154,10 @@ func scanOne(path string) (session.Session, error) {
 		if s.CreatedAt.IsZero() {
 			s.CreatedAt = s.UpdatedAt
 		}
+
 		return s, nil
 	}
+
 	closeScanFile := func() {
 		if closeErr := f.Close(); closeErr != nil {
 			s.Health = session.HealthCorrupted
@@ -146,58 +168,78 @@ func scanOne(path string) (session.Session, error) {
 	}
 
 	r := bufio.NewReader(f)
+
 	line, truncated, err := readBoundedLine(r, maxSessionMetaLineBytes)
 	if err != nil && !errors.Is(err, io.EOF) {
 		s.Health = session.HealthCorrupted
 		if s.CreatedAt.IsZero() {
 			s.CreatedAt = s.UpdatedAt
 		}
+
 		closeScanFile()
+
 		return s, nil
 	}
+
 	if truncated {
 		s.Health = session.HealthCorrupted
 		s.CreatedAt = s.UpdatedAt
+
 		closeScanFile()
+
 		return s, nil
 	}
+
 	if len(line) == 0 {
 		s.Health = session.HealthMissingMeta
 		s.CreatedAt = s.UpdatedAt
+
 		closeScanFile()
+
 		return s, nil
 	}
 
 	var m metaLine
+
 	if !jsontext.Value(line).IsValid() {
 		s.Health = session.HealthCorrupted
 		s.CreatedAt = s.UpdatedAt
+
 		closeScanFile()
+
 		return s, nil
 	}
+
 	if err := json.Unmarshal(line, &m); err != nil {
 		s.Health = session.HealthCorrupted
 		s.CreatedAt = s.UpdatedAt
+
 		closeScanFile()
+
 		return s, nil
 	}
 
 	if m.Type != "session_meta" || strings.TrimSpace(m.Payload.ID) == "" {
 		s.Health = session.HealthMissingMeta
 		s.CreatedAt = s.UpdatedAt
+
 		closeScanFile()
+
 		return s, nil
 	}
 
 	s.SessionID = m.Payload.ID
+
 	s.HostDir = strings.TrimSpace(m.Payload.Cwd)
 	if ts, err := time.Parse(time.RFC3339Nano, strings.TrimSpace(m.Payload.Timestamp)); err == nil {
 		s.CreatedAt = ts
 	} else {
 		s.CreatedAt = s.UpdatedAt
 	}
+
 	s.Head = readConversationHead(r)
 
 	closeScanFile()
+
 	return s, nil
 }

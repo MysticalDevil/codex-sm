@@ -17,6 +17,7 @@ func TestSortSessionsByRisk(t *testing.T) {
 	}
 
 	SortSessionsByRisk(items, nil, nil)
+
 	want := []string{"high-old", "mid-new", "mid-old", "ok-new"}
 	for i, id := range want {
 		if items[i].SessionID != id {
@@ -27,6 +28,7 @@ func TestSortSessionsByRisk(t *testing.T) {
 
 func TestCompactHomePath(t *testing.T) {
 	home := "/home/test-user"
+
 	cases := []struct {
 		in   string
 		want string

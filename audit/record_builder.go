@@ -36,5 +36,6 @@ func BuildActionRecord(
 			Path:      s.Path,
 		})
 	}
+
 	return rec
 }

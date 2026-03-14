@@ -25,6 +25,7 @@ func HandleLoaded(currentReqID uint64, waitKey string, msg LoadedMsg, indexPath 
 	if msg.RequestID != currentReqID || msg.Key != waitKey {
 		return HandleLoadedOutput{Accepted: false, NextWait: waitKey}
 	}
+
 	out := HandleLoadedOutput{
 		Accepted:   true,
 		NextWait:   "",
@@ -35,7 +36,9 @@ func HandleLoaded(currentReqID uint64, waitKey string, msg LoadedMsg, indexPath 
 		out.CacheLines = []string{" preview load failed: " + msg.Err}
 		return out
 	}
+
 	out.PersistCmd = PersistIndexCmd(indexPath, cap, msg.Record)
+
 	return out
 }
 
@@ -65,6 +68,7 @@ func LoadCmd(req Request) tea.Cmd {
 		}
 
 		lines := BuildLines(req.Path, req.Width, req.Lines, req.Palette)
+
 		return LoadedMsg{
 			RequestID: req.RequestID,
 			Key:       req.Key,
@@ -87,9 +91,11 @@ func PersistIndexCmd(indexPath string, cap int, record IndexRecord) tea.Cmd {
 		if strings.TrimSpace(indexPath) == "" || strings.TrimSpace(record.Key) == "" {
 			return IndexPersistedMsg{}
 		}
+
 		if err := UpsertIndex(indexPath, cap, record); err != nil {
 			return IndexPersistedMsg{Err: err.Error()}
 		}
+
 		return IndexPersistedMsg{}
 	}
 }

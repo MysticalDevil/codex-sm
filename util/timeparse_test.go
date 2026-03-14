@@ -18,6 +18,7 @@ func TestParseOlderThan(t *testing.T) {
 		if err != nil {
 			t.Fatalf("ParseOlderThan(%q): %v", tc.in, err)
 		}
+
 		if got.String() != tc.want {
 			t.Fatalf("ParseOlderThan(%q)=%s want %s", tc.in, got.String(), tc.want)
 		}

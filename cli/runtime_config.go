@@ -13,7 +13,9 @@ func loadRuntimeConfig() error {
 	if err != nil {
 		return err
 	}
+
 	runtimeConfig = cfg
+
 	return nil
 }
 
@@ -21,6 +23,7 @@ func runtimeSessionsRoot() (string, error) {
 	if v := strings.TrimSpace(runtimeConfig.SessionsRoot); v != "" {
 		return config.ResolveConfigPath(v)
 	}
+
 	return config.DefaultSessionsRoot()
 }
 
@@ -28,6 +31,7 @@ func runtimeTrashRoot() (string, error) {
 	if v := strings.TrimSpace(runtimeConfig.TrashRoot); v != "" {
 		return config.ResolveConfigPath(v)
 	}
+
 	return config.DefaultTrashRoot()
 }
 
@@ -35,5 +39,6 @@ func runtimeLogFile() (string, error) {
 	if v := strings.TrimSpace(runtimeConfig.LogFile); v != "" {
 		return config.ResolveConfigPath(v)
 	}
+
 	return config.DefaultLogFile()
 }

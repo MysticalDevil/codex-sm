@@ -65,10 +65,12 @@ func RunDeleteAction(in DeleteActionInput) (DeleteActionResult, error) {
 		in.RealDefault,
 		in.DryRunDefault,
 	)
+
 	executor := in.Executor
 	if executor == nil {
 		executor = SessionDeleteExecutor{}
 	}
+
 	sum, err := executor.Execute(in.Candidates, in.Selector, session.DeleteOptions{
 		DryRun:       in.DryRun,
 		Confirm:      in.Confirm,
@@ -78,21 +80,26 @@ func RunDeleteAction(in DeleteActionInput) (DeleteActionResult, error) {
 		SessionsRoot: in.SessionsRoot,
 		TrashRoot:    in.TrashRoot,
 	})
+
 	out := DeleteActionResult{Summary: sum, AppliedMaxBatch: applied}
 	if in.AuditSink == nil || in.LogFile == "" {
 		return out, err
 	}
+
 	if len(in.Candidates) > 0 {
 		batchID, batchErr := in.AuditSink.NewBatchID()
 		if batchErr != nil {
 			return out, batchErr
 		}
+
 		out.BatchID = batchID
 	}
+
 	ts := in.Now
 	if ts.IsZero() {
 		ts = time.Now()
 	}
+
 	rec := audit.BuildActionRecord(
 		out.BatchID,
 		ts.UTC(),
@@ -105,6 +112,7 @@ func RunDeleteAction(in DeleteActionInput) (DeleteActionResult, error) {
 		sum.ErrorSummary,
 	)
 	out.LogError = in.AuditSink.WriteActionLog(in.LogFile, rec)
+
 	return out, err
 }
 
@@ -158,10 +166,12 @@ func RunRestoreAction(in RestoreActionInput) (RestoreActionResult, error) {
 		in.RealDefault,
 		in.DryRunDefault,
 	)
+
 	executor := in.Executor
 	if executor == nil {
 		executor = SessionRestoreExecutor{}
 	}
+
 	sum, err := executor.Execute(in.Candidates, in.Selector, session.RestoreOptions{
 		DryRun:             in.DryRun,
 		Confirm:            in.Confirm,
@@ -171,21 +181,26 @@ func RunRestoreAction(in RestoreActionInput) (RestoreActionResult, error) {
 		SessionsRoot:       in.SessionsRoot,
 		TrashSessionsRoot:  in.TrashSessionsRoot,
 	})
+
 	out := RestoreActionResult{Summary: sum, AppliedMaxBatch: applied}
 	if in.AuditSink == nil || in.LogFile == "" {
 		return out, err
 	}
+
 	if len(in.Candidates) > 0 {
 		batchID, batchErr := in.AuditSink.NewBatchID()
 		if batchErr != nil {
 			return out, batchErr
 		}
+
 		out.BatchID = batchID
 	}
+
 	ts := in.Now
 	if ts.IsZero() {
 		ts = time.Now()
 	}
+
 	rec := audit.BuildActionRecord(
 		out.BatchID,
 		ts.UTC(),
@@ -198,5 +213,6 @@ func RunRestoreAction(in RestoreActionInput) (RestoreActionResult, error) {
 		sum.ErrorSummary,
 	)
 	out.LogError = in.AuditSink.WriteActionLog(in.LogFile, rec)
+
 	return out, err
 }

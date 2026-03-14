@@ -16,6 +16,7 @@ func TestConfirmDeleteNonInteractive(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected non-interactive error")
 	}
+
 	if ok {
 		t.Fatal("non-interactive confirm must not approve")
 	}
@@ -26,6 +27,7 @@ func TestConfirmRestoreNonInteractive(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected non-interactive error")
 	}
+
 	if ok {
 		t.Fatal("non-interactive confirm must not approve")
 	}

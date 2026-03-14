@@ -15,10 +15,12 @@ import (
 func TestSessionMigrateDryRunAndRealExecution(t *testing.T) {
 	root := t.TempDir()
 	sessionsRoot := filepath.Join(root, "sessions")
+
 	srcRollout := filepath.Join(sessionsRoot, "2026", "03", "10", "rollout-2026-03-10-old-id.jsonl")
 	if err := os.MkdirAll(filepath.Dir(srcRollout), 0o755); err != nil {
 		t.Fatal(err)
 	}
+
 	content := strings.Join([]string{
 		`{"type":"session_meta","payload":{"id":"old-id","timestamp":"2026-03-10T01:00:00Z","cwd":"/old"}}`,
 		`{"type":"turn_context","payload":{"cwd":"/old"}}`,
@@ -27,6 +29,7 @@ func TestSessionMigrateDryRunAndRealExecution(t *testing.T) {
 	if err := os.WriteFile(srcRollout, []byte(content), 0o644); err != nil {
 		t.Fatal(err)
 	}
+
 	dbPath := filepath.Join(root, "state.sqlite")
 	createCLIMigrationDB(t, dbPath)
 	insertCLIMigrationRow(t, dbPath, "old-id", srcRollout, "/old", "main")
@@ -34,6 +37,7 @@ func TestSessionMigrateDryRunAndRealExecution(t *testing.T) {
 	cmd := NewRootCmd()
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
+
 	cmd.SetOut(stdout)
 	cmd.SetErr(stderr)
 	cmd.SetArgs([]string{
@@ -44,14 +48,17 @@ func TestSessionMigrateDryRunAndRealExecution(t *testing.T) {
 		"--codex-state-db", dbPath,
 		"--print-created",
 	})
+
 	if err := cmd.Execute(); err != nil {
 		t.Fatalf("dry-run execute: %v", err)
 	}
+
 	if !strings.Contains(stdout.String(), "session-migrate: action=dry-run matched=1") {
 		t.Fatalf("unexpected dry-run output: %s", stdout.String())
 	}
 
 	cmd = NewRootCmd()
+
 	stdout.Reset()
 	stderr.Reset()
 	cmd.SetOut(stdout)
@@ -65,21 +72,26 @@ func TestSessionMigrateDryRunAndRealExecution(t *testing.T) {
 		"--dry-run=false",
 		"--confirm",
 	})
+
 	if err := cmd.Execute(); err != nil {
 		t.Fatalf("real execute: %v", err)
 	}
+
 	if !strings.Contains(stdout.String(), "session-migrate: action=migrate matched=1 planned=1 created=1") {
 		t.Fatalf("unexpected migrate output: %s", stdout.String())
 	}
+
 	db, err := sql.Open("sqlite", dbPath)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer db.Close()
+
 	var count int
 	if err := db.QueryRow(`select count(*) from threads where cwd = ?`, filepath.Join(root, "new-main")).Scan(&count); err != nil {
 		t.Fatal(err)
 	}
+
 	if count != 1 {
 		t.Fatalf("expected one migrated thread row, got %d", count)
 	}
@@ -88,10 +100,12 @@ func TestSessionMigrateDryRunAndRealExecution(t *testing.T) {
 func TestSessionMigrateFileDryRun(t *testing.T) {
 	root := t.TempDir()
 	sessionsRoot := filepath.Join(root, "sessions")
+
 	srcRollout := filepath.Join(sessionsRoot, "2026", "03", "10", "rollout-2026-03-10-old-id.jsonl")
 	if err := os.MkdirAll(filepath.Dir(srcRollout), 0o755); err != nil {
 		t.Fatal(err)
 	}
+
 	content := strings.Join([]string{
 		`{"type":"session_meta","payload":{"id":"old-id","timestamp":"2026-03-10T01:00:00Z","cwd":"/old"}}`,
 		`{"type":"turn_context","payload":{"cwd":"/old"}}`,
@@ -99,10 +113,13 @@ func TestSessionMigrateFileDryRun(t *testing.T) {
 	if err := os.WriteFile(srcRollout, []byte(content), 0o644); err != nil {
 		t.Fatal(err)
 	}
+
 	dbPath := filepath.Join(root, "state.sqlite")
 	createCLIMigrationDB(t, dbPath)
 	insertCLIMigrationRow(t, dbPath, "old-id", srcRollout, "/old", "main")
+
 	filePath := filepath.Join(root, "migrate.toml")
+
 	fileContent := `
 [[mapping]]
 from = "/old"
@@ -119,6 +136,7 @@ to = "` + filepath.Join(root, "missing-main") + `"
 	cmd := NewRootCmd()
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
+
 	cmd.SetOut(stdout)
 	cmd.SetErr(stderr)
 	cmd.SetArgs([]string{
@@ -127,13 +145,16 @@ to = "` + filepath.Join(root, "missing-main") + `"
 		"--sessions-root", sessionsRoot,
 		"--codex-state-db", dbPath,
 	})
+
 	err := cmd.Execute()
 	if err == nil {
 		t.Fatal("expected dry-run batch error")
 	}
+
 	if !strings.Contains(stdout.String(), "session-migrate-batch: action=dry-run mappings=2 succeeded=1 failed=1") {
 		t.Fatalf("unexpected batch output: %s", stdout.String())
 	}
+
 	if !strings.Contains(err.Error(), "1 migration mapping(s) failed") {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -149,6 +170,7 @@ func TestSessionMigrateRejectsMixedFileAndDirectFlags(t *testing.T) {
 		"--from", "/old",
 		"--to", "/new",
 	})
+
 	err := cmd.Execute()
 	if err == nil || !strings.Contains(err.Error(), "--file cannot be combined with --from or --to") {
 		t.Fatalf("unexpected error: %v", err)
@@ -157,11 +179,13 @@ func TestSessionMigrateRejectsMixedFileAndDirectFlags(t *testing.T) {
 
 func createCLIMigrationDB(t *testing.T, path string) {
 	t.Helper()
+
 	db, err := sql.Open("sqlite", path)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer db.Close()
+
 	_, err = db.Exec(`
 CREATE TABLE threads (
     id TEXT PRIMARY KEY,
@@ -194,12 +218,15 @@ CREATE TABLE threads (
 
 func insertCLIMigrationRow(t *testing.T, dbPath, id, rolloutPath, cwd, branch string) {
 	t.Helper()
+
 	db, err := sql.Open("sqlite", dbPath)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer db.Close()
+
 	ts := time.Unix(1773072000, 0).UTC()
+
 	_, err = db.Exec(`
 INSERT INTO threads (
     id, rollout_path, created_at, updated_at, source, model_provider, cwd, title,

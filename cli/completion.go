@@ -9,6 +9,7 @@ import (
 
 func newCompletionCmd() *cobra.Command {
 	var noDescriptions bool
+
 	cmd := &cobra.Command{
 		Use:       "completion [bash|zsh|fish|powershell]",
 		Short:     "Generate shell completion scripts",
@@ -36,6 +37,7 @@ func newCompletionCmd() *cobra.Command {
 				if noDescriptions {
 					return root.GenPowerShellCompletion(out)
 				}
+
 				return root.GenPowerShellCompletionWithDesc(out)
 			default:
 				return fmt.Errorf("unsupported shell %q (allowed: bash, zsh, fish, powershell)", shell)
@@ -43,5 +45,6 @@ func newCompletionCmd() *cobra.Command {
 		},
 	}
 	cmd.Flags().BoolVar(&noDescriptions, "no-descriptions", false, "disable completion descriptions where supported")
+
 	return cmd
 }

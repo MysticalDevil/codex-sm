@@ -10,14 +10,19 @@ import (
 )
 
 func readConversationHead(r *bufio.Reader) string {
-	const maxLines = 1024
-	const maxCandidates = 24
+	const (
+		maxLines      = 1024
+		maxCandidates = 24
+	)
+
 	candidates := make([]string, 0, maxCandidates)
+
 	for i := 0; i < maxLines; i++ {
 		line, truncated, err := readBoundedLine(r, maxSessionHeadLineBytes)
 		if err != nil && !errors.Is(err, io.EOF) {
 			break
 		}
+
 		if !truncated && len(line) > 0 {
 			head := conversationHeadFromLine(line)
 			if head != "" {
@@ -27,10 +32,12 @@ func readConversationHead(r *bufio.Reader) string {
 				}
 			}
 		}
+
 		if errors.Is(err, io.EOF) {
 			break
 		}
 	}
+
 	return pickBestHead(candidates)
 }
 
@@ -38,25 +45,31 @@ func pickBestHead(candidates []string) string {
 	if len(candidates) == 0 {
 		return ""
 	}
+
 	best := ""
 	bestScore := -1
+
 	firstUseful := ""
 	for _, c := range candidates {
 		if firstUseful == "" && !isLikelyHeadNoise(c) {
 			firstUseful = c
 		}
+
 		score := scoreHeadCandidate(c)
 		if score > bestScore {
 			best = c
 			bestScore = score
 		}
 	}
+
 	if bestScore > 0 {
 		return best
 	}
+
 	if firstUseful != "" {
 		return firstUseful
 	}
+
 	return candidates[0]
 }
 
@@ -65,12 +78,14 @@ func scoreHeadCandidate(v string) int {
 	if s == "" {
 		return 0
 	}
+
 	if isLikelyHeadNoise(s) {
 		return 0
 	}
 
 	runes := utf8.RuneCountInString(s)
 	score := 10
+
 	switch {
 	case runes >= 12 && runes <= 96:
 		score += 45
@@ -94,6 +109,7 @@ func scoreHeadCandidate(v string) int {
 	if strings.Contains(s, "?") || strings.Contains(s, "？") {
 		score += 8
 	}
+
 	return score
 }
 
@@ -102,6 +118,7 @@ func isLikelyHeadNoise(v string) bool {
 	if lower == "" {
 		return true
 	}
+
 	noiseMarkers := []string{
 		"agents.md instructions",
 		"<instructions>",
@@ -116,5 +133,6 @@ func isLikelyHeadNoise(v string) bool {
 	if slices.ContainsFunc(noiseMarkers, func(m string) bool { return strings.Contains(lower, m) }) {
 		return true
 	}
+
 	return utf8.RuneCountInString(lower) > 200
 }

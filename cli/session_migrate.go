@@ -37,20 +37,25 @@ func newSessionMigrateCmd() *cobra.Command {
 			"  codexsm session migrate --from /old/path --to /new/path --branch main --since 2026-03-10",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var err error
+
 			sessionsRoot, err = resolveOrDefault(sessionsRoot, runtimeSessionsRoot)
 			if err != nil {
 				return err
 			}
+
 			stateDB, err = resolveOrDefault(stateDB, config.DefaultCodexStateDB)
 			if err != nil {
 				return err
 			}
+
 			since, hasSince, err := parseSinceTime(sinceRaw)
 			if err != nil {
 				return err
 			}
+
 			filePath = strings.TrimSpace(filePath)
 			fromPath = strings.TrimSpace(fromPath)
+
 			toPath = strings.TrimSpace(toPath)
 			switch {
 			case filePath != "" && (fromPath != "" || toPath != ""):
@@ -72,9 +77,11 @@ func newSessionMigrateCmd() *cobra.Command {
 					PrintCreated: printCreated,
 				})
 				printSessionMigrateBatchResult(cmd, result)
+
 				if err != nil {
 					return WithExitCode(err, 1)
 				}
+
 				return nil
 			}
 
@@ -94,7 +101,9 @@ func newSessionMigrateCmd() *cobra.Command {
 			if err != nil {
 				return WithExitCode(err, 1)
 			}
+
 			printSessionMigrateResult(cmd, result)
+
 			return nil
 		},
 	}
@@ -110,6 +119,7 @@ func newSessionMigrateCmd() *cobra.Command {
 	cmd.Flags().BoolVar(&dryRun, "dry-run", true, "simulate migration without writing files or sqlite rows")
 	cmd.Flags().BoolVar(&confirm, "confirm", false, "required for real migration")
 	cmd.Flags().BoolVar(&printCreated, "print-created", false, "print source id to destination id mappings")
+
 	return cmd
 }
 
@@ -118,33 +128,40 @@ func parseSinceTime(raw string) (time.Time, bool, error) {
 	if raw == "" {
 		return time.Time{}, false, nil
 	}
+
 	for _, layout := range []string{time.RFC3339Nano, time.RFC3339, "2006-01-02"} {
 		if ts, err := time.Parse(layout, raw); err == nil {
 			return ts, true, nil
 		}
 	}
+
 	return time.Time{}, false, fmt.Errorf("invalid --since value %q: expected RFC3339 timestamp or YYYY-MM-DD", raw)
 }
 
 func printSessionMigrateResult(cmd *cobra.Command, result sessionmigrate.MigrateResult) {
 	out := cmd.OutOrStdout()
+
 	action := "dry-run"
 	if !result.DryRun {
 		action = "migrate"
 	}
+
 	_, _ = fmt.Fprintf(out, "session-migrate: action=%s matched=%d planned=%d created=%d skipped=%d warnings=%d\n",
 		action, result.Matched, len(result.Planned), result.Created, result.Skipped, len(result.Warnings))
 	_, _ = fmt.Fprintf(out, "from=%s\n", result.FromCWD)
+
 	_, _ = fmt.Fprintf(out, "to=%s\n", result.ToCWD)
 	if result.DestBranch != "" {
 		_, _ = fmt.Fprintf(out, "branch=%s\n", result.DestBranch)
 	}
+
 	if result.PrintCreated && len(result.Planned) > 0 {
 		_, _ = fmt.Fprintln(out, "mappings:")
 		for _, p := range result.Planned {
 			_, _ = fmt.Fprintf(out, "- %s -> %s %s\n", p.SourceID, p.DestID, p.DestRollout)
 		}
 	}
+
 	if len(result.Warnings) > 0 {
 		_, _ = fmt.Fprintln(out, "warnings:")
 		for _, warning := range result.Warnings {
@@ -155,10 +172,12 @@ func printSessionMigrateResult(cmd *cobra.Command, result sessionmigrate.Migrate
 
 func printSessionMigrateBatchResult(cmd *cobra.Command, result sessionmigrate.MigrateBatchResult) {
 	out := cmd.OutOrStdout()
+
 	action := "dry-run"
 	if !result.DryRun {
 		action = "migrate"
 	}
+
 	_, _ = fmt.Fprintf(out, "session-migrate-batch: action=%s mappings=%d succeeded=%d failed=%d matched=%d created=%d skipped=%d\n",
 		action, result.TotalMappings, result.Succeeded, result.Failed, result.Matched, result.Created, result.Skipped)
 	for i, item := range result.Items {
@@ -166,21 +185,25 @@ func printSessionMigrateBatchResult(cmd *cobra.Command, result sessionmigrate.Mi
 		if item.Err != nil {
 			status = "error"
 		}
+
 		_, _ = fmt.Fprintf(out, "mapping[%d]: status=%s from=%s to=%s matched=%d created=%d skipped=%d\n",
 			i+1, status, item.Mapping.FromCWD, item.Mapping.ToCWD, item.Result.Matched, item.Result.Created, item.Result.Skipped)
 		if item.Mapping.Branch != "" {
 			_, _ = fmt.Fprintf(out, "branch=%s\n", item.Mapping.Branch)
 		}
+
 		if item.Err != nil {
 			_, _ = fmt.Fprintf(out, "error=%s\n", item.Err)
 			continue
 		}
+
 		if result.PrintCreated && len(item.Result.Planned) > 0 {
 			_, _ = fmt.Fprintln(out, "mappings:")
 			for _, p := range item.Result.Planned {
 				_, _ = fmt.Fprintf(out, "- %s -> %s %s\n", p.SourceID, p.DestID, p.DestRollout)
 			}
 		}
+
 		if len(item.Result.Warnings) > 0 {
 			_, _ = fmt.Fprintln(out, "warnings:")
 			for _, warning := range item.Result.Warnings {

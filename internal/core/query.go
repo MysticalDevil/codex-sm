@@ -20,21 +20,26 @@ func QuerySessions(repo SessionRepository, root string, spec QuerySpec) (QueryRe
 	if repo == nil {
 		repo = ScannerRepository{}
 	}
+
 	if spec.Offset < 0 {
 		return QueryResult{}, errInvalidOffset(spec.Offset)
 	}
+
 	sortSpec, err := normalizeSortSpec(spec)
 	if err != nil {
 		return QueryResult{}, err
 	}
+
 	items, err := repo.ScanSessions(root)
 	if err != nil {
 		return QueryResult{}, err
 	}
+
 	now := spec.Now
 	if now.IsZero() {
 		now = time.Now()
 	}
+
 	filtered := session.FilterSessions(items, spec.Selector, now)
 	sortSessions(filtered, sortSpec)
 
@@ -43,11 +48,14 @@ func QuerySessions(repo SessionRepository, root string, spec QuerySpec) (QueryRe
 		if spec.Offset >= total {
 			return QueryResult{Total: total, Items: []session.Session{}}, nil
 		}
+
 		filtered = filtered[spec.Offset:]
 	}
+
 	if spec.Limit > 0 && len(filtered) > spec.Limit {
 		filtered = filtered[:spec.Limit]
 	}
+
 	return QueryResult{
 		Total: total,
 		Items: filtered,
@@ -82,19 +90,24 @@ func sortSessions(items []session.Session, spec SortSpec) {
 			if a.SizeBytes < b.SizeBytes {
 				return -1
 			}
+
 			if a.SizeBytes > b.SizeBytes {
 				return 1
 			}
+
 			return 0
 		case SortFieldHealth:
 			ra := healthRank(a.Health)
+
 			rb := healthRank(b.Health)
 			if ra < rb {
 				return -1
 			}
+
 			if ra > rb {
 				return 1
 			}
+
 			return 0
 		case SortFieldID:
 			return strings.Compare(a.SessionID, b.SessionID)
@@ -108,12 +121,15 @@ func sortSessions(items []session.Session, spec SortSpec) {
 		if c == 0 {
 			c = strings.Compare(a.SessionID, b.SessionID)
 		}
+
 		if c == 0 {
 			c = strings.Compare(a.Path, b.Path)
 		}
+
 		if spec.Order == SortOrderDesc {
 			c = -c
 		}
+
 		return c
 	})
 }

@@ -30,6 +30,7 @@ func AppConfigPath() (string, error) {
 	if v := strings.TrimSpace(os.Getenv("CSM_CONFIG")); v != "" {
 		return ResolvePath(v)
 	}
+
 	return ResolvePath("~/.config/codexsm/config.json")
 }
 
@@ -40,17 +41,21 @@ func LoadAppConfig() (AppConfig, error) {
 	if err != nil {
 		return AppConfig{}, err
 	}
+
 	data, err := os.ReadFile(p)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return AppConfig{}, nil
 		}
+
 		return AppConfig{}, fmt.Errorf("read config %s: %w", p, err)
 	}
+
 	var cfg AppConfig
 	if err := json.Unmarshal(data, &cfg); err != nil {
 		return AppConfig{}, fmt.Errorf("parse config %s: %w", p, err)
 	}
+
 	return cfg, nil
 }
 
@@ -60,6 +65,7 @@ func ResolveConfigPath(v string) (string, error) {
 	if v == "" {
 		return "", nil
 	}
+
 	return ResolvePath(v)
 }
 
@@ -69,6 +75,8 @@ func EnsureConfigDir() error {
 	if err != nil {
 		return err
 	}
+
 	dir := filepath.Dir(p)
+
 	return os.MkdirAll(dir, 0o755)
 }

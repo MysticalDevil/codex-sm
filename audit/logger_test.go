@@ -36,6 +36,7 @@ func TestWriteActionLog(t *testing.T) {
 	if err := WriteActionLog(logFile, rec); err != nil {
 		t.Fatalf("WriteActionLog #1: %v", err)
 	}
+
 	if err := WriteActionLog(logFile, rec); err != nil {
 		t.Fatalf("WriteActionLog #2: %v", err)
 	}
@@ -44,6 +45,7 @@ func TestWriteActionLog(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ReadFile: %v", err)
 	}
+
 	lines := strings.Split(strings.TrimSpace(string(data)), "\n")
 	if len(lines) != 2 {
 		t.Fatalf("expected 2 log lines, got %d", len(lines))
@@ -58,15 +60,19 @@ func TestWriteActionLog(t *testing.T) {
 	if !ok {
 		t.Fatalf("selector missing or wrong type: %#v", got["selector"])
 	}
+
 	if got["batch_id"] != rec.BatchID {
 		t.Fatalf("batch_id mismatch: %#v", got["batch_id"])
 	}
+
 	if sel["older_than"] != "30m0s" {
 		t.Fatalf("older_than should be duration string, got: %#v", sel["older_than"])
 	}
+
 	if sel["id_prefix"] != "019c" {
 		t.Fatalf("id_prefix mismatch: %#v", sel["id_prefix"])
 	}
+
 	if sel["host_contains"] != "/workspace" || sel["path_contains"] != "rollout" || sel["head_contains"] != "fixture" {
 		t.Fatalf("contains selectors mismatch: %#v", sel)
 	}
@@ -74,6 +80,7 @@ func TestWriteActionLog(t *testing.T) {
 
 func TestSessionIDsForBatchRollback(t *testing.T) {
 	logFile := filepath.Join(t.TempDir(), "logs", "actions.log")
+
 	base := ActionRecord{
 		Timestamp:  time.Date(2026, 3, 5, 8, 0, 0, 0, time.UTC),
 		Action:     "soft-delete",
@@ -87,6 +94,7 @@ func TestSessionIDsForBatchRollback(t *testing.T) {
 	if err := WriteActionLog(logFile, base); err != nil {
 		t.Fatalf("WriteActionLog base: %v", err)
 	}
+
 	if err := WriteActionLog(logFile, ActionRecord{
 		Timestamp:  base.Timestamp.Add(time.Minute),
 		Action:     "soft-delete",
@@ -101,6 +109,7 @@ func TestSessionIDsForBatchRollback(t *testing.T) {
 	if err != nil {
 		t.Fatalf("SessionIDsForBatchRollback(b-1): %v", err)
 	}
+
 	if len(ids) != 2 || ids[0] != "a" || ids[1] != "b" {
 		t.Fatalf("unexpected ids: %#v", ids)
 	}
@@ -108,6 +117,7 @@ func TestSessionIDsForBatchRollback(t *testing.T) {
 	if _, err := SessionIDsForBatchRollback(logFile, "missing"); err == nil {
 		t.Fatal("expected missing batch id error")
 	}
+
 	if _, err := SessionIDsForBatchRollback(logFile, "b-2"); err == nil {
 		t.Fatal("expected no restorable results error")
 	}
@@ -118,13 +128,16 @@ func TestNewBatchID(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewBatchID #1: %v", err)
 	}
+
 	b, err := NewBatchID()
 	if err != nil {
 		t.Fatalf("NewBatchID #2: %v", err)
 	}
+
 	if a == "" || b == "" {
 		t.Fatalf("batch ids must be non-empty: a=%q b=%q", a, b)
 	}
+
 	if a == b {
 		t.Fatalf("batch ids should differ: %q", a)
 	}
@@ -150,9 +163,11 @@ func TestBuildActionRecord(t *testing.T) {
 	if rec.BatchID != "b-1" || rec.Timestamp != ts || rec.Action != "dry-run" {
 		t.Fatalf("unexpected basic fields: %+v", rec)
 	}
+
 	if rec.MatchedCount != 1 || len(rec.Sessions) != 1 || rec.Sessions[0].SessionID != "s1" {
 		t.Fatalf("unexpected session fields: %+v", rec)
 	}
+
 	if rec.AffectedBytes != 123 || len(rec.Results) != 1 {
 		t.Fatalf("unexpected payload fields: %+v", rec)
 	}

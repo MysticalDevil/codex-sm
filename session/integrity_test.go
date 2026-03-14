@@ -9,10 +9,12 @@ import (
 
 func TestSHA256SidecarChecker(t *testing.T) {
 	dir := t.TempDir()
+
 	p := filepath.Join(dir, "x.jsonl")
 	if err := os.WriteFile(p, []byte("hello\n"), 0o644); err != nil {
 		t.Fatalf("write session: %v", err)
 	}
+
 	sum, err := fileSHA256Hex(p)
 	if err != nil {
 		t.Fatalf("fileSHA256Hex: %v", err)
@@ -28,6 +30,7 @@ func TestSHA256SidecarChecker(t *testing.T) {
 	if err := os.WriteFile(p+".sha256", []byte(sum+"  "+filepath.Base(p)+"\n"), 0o644); err != nil {
 		t.Fatalf("write sidecar: %v", err)
 	}
+
 	res = SHA256SidecarChecker(Session{Path: p})
 	if !res.Verified || !res.Match {
 		t.Fatalf("expected verified match, got %+v", res)
@@ -38,6 +41,7 @@ func TestSHA256SidecarChecker(t *testing.T) {
 	if err := os.WriteFile(p+".sha256", []byte(bad+"\n"), 0o644); err != nil {
 		t.Fatalf("write bad sidecar: %v", err)
 	}
+
 	res = SHA256SidecarChecker(Session{Path: p})
 	if !res.Verified || res.Match {
 		t.Fatalf("expected verified mismatch, got %+v", res)

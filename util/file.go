@@ -11,9 +11,11 @@ func MoveFile(src, dst string) error {
 	if err := os.Rename(src, dst); err == nil {
 		return nil
 	}
+
 	if err := CopyFile(src, dst); err != nil {
 		return err
 	}
+
 	return os.Remove(src)
 }
 
@@ -23,6 +25,7 @@ func CopyFile(src, dst string) (retErr error) {
 	if err != nil {
 		return err
 	}
+
 	defer func() {
 		if closeErr := in.Close(); closeErr != nil {
 			if retErr == nil {
@@ -37,6 +40,7 @@ func CopyFile(src, dst string) (retErr error) {
 	if err != nil {
 		return err
 	}
+
 	defer func() {
 		if closeErr := out.Close(); closeErr != nil {
 			if retErr == nil {
@@ -51,9 +55,11 @@ func CopyFile(src, dst string) (retErr error) {
 		retErr = err
 		return
 	}
+
 	if err := out.Sync(); err != nil {
 		retErr = err
 		return
 	}
+
 	return
 }

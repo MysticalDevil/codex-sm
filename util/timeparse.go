@@ -18,20 +18,25 @@ func ParseOlderThan(input string) (time.Duration, error) {
 	if v == "" {
 		return 0, nil
 	}
+
 	if d, err := time.ParseDuration(v); err == nil {
 		if d < 0 {
 			return 0, fmt.Errorf("duration must be non-negative")
 		}
+
 		return d, nil
 	}
+
 	m := simpleDurationRe.FindStringSubmatch(v)
 	if m == nil {
 		return 0, fmt.Errorf("invalid duration %q (examples: 30d, 12h)", input)
 	}
+
 	n, err := strconv.ParseInt(m[1], 10, 64)
 	if err != nil {
 		return 0, fmt.Errorf("parse duration number: %w", err)
 	}
+
 	switch strings.ToLower(m[2]) {
 	case "d":
 		return time.Duration(n) * 24 * time.Hour, nil

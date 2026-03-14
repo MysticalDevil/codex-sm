@@ -35,23 +35,28 @@ func TestGenSeededSessionsScriptExtremeModes(t *testing.T) {
 		"--output-root", outputRoot,
 	)
 	cmd.Dir = repoRoot
+
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("run generator: %v\n%s", err, out)
 	}
+
 	text := string(out)
 	if !strings.Contains(text, "oversize_user=1") || !strings.Contains(text, "unicode_wide=1") {
 		t.Fatalf("unexpected generator summary: %s", text)
 	}
 
 	filesByPrefix := map[string]string{}
+
 	if err := filepath.WalkDir(outputRoot, func(path string, d os.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
 		}
+
 		if d.IsDir() {
 			return nil
 		}
+
 		base := filepath.Base(path)
 		for _, prefix := range []string{
 			"large-session-",
@@ -66,6 +71,7 @@ func TestGenSeededSessionsScriptExtremeModes(t *testing.T) {
 				filesByPrefix[prefix] = path
 			}
 		}
+
 		return nil
 	}); err != nil {
 		t.Fatalf("walk output: %v", err)
@@ -89,6 +95,7 @@ func TestGenSeededSessionsScriptExtremeModes(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read no-newline file: %v", err)
 	}
+
 	if len(noNewlineBytes) == 0 || noNewlineBytes[len(noNewlineBytes)-1] == '\n' {
 		t.Fatalf("expected no trailing newline in %s", filesByPrefix["no-newline-"])
 	}
@@ -97,10 +104,12 @@ func TestGenSeededSessionsScriptExtremeModes(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read oversize-user file: %v", err)
 	}
+
 	oversizeUserText := string(oversizeUserBytes)
 	if !strings.Contains(oversizeUserText, `"text":"USER-LONG-START`) {
 		t.Fatalf("expected text-only payload in oversize-user fixture: %s", oversizeUserText)
 	}
+
 	if strings.Contains(oversizeUserText, `"content":[`) {
 		t.Fatalf("did not expect content array in text-only payload: %s", oversizeUserText)
 	}

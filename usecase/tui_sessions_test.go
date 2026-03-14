@@ -17,8 +17,10 @@ func (r stubTUIRepo) ScanSessions(_ string) ([]session.Session, error) {
 	if r.err != nil {
 		return nil, r.err
 	}
+
 	out := make([]session.Session, len(r.items))
 	copy(out, r.items)
+
 	return out, nil
 }
 
@@ -30,9 +32,11 @@ func (healthRiskEvaluator) Evaluate(s session.Session, _ session.IntegrityChecke
 		return session.Risk{Level: session.RiskHigh}
 	case session.HealthMissingMeta:
 		return session.Risk{Level: session.RiskMedium}
-	default:
+	case session.HealthOK:
 		return session.Risk{Level: session.RiskNone}
 	}
+
+	return session.Risk{Level: session.RiskNone}
 }
 
 func TestLoadTUISessionsRiskSortAndLimits(t *testing.T) {
@@ -43,6 +47,7 @@ func TestLoadTUISessionsRiskSortAndLimits(t *testing.T) {
 		{SessionID: "mid-mid", UpdatedAt: now.Add(-1 * time.Minute), Health: session.HealthMissingMeta},
 		{SessionID: "ok-old", UpdatedAt: now.Add(-3 * time.Minute), Health: session.HealthOK},
 	}
+
 	out, err := LoadTUISessions(LoadTUISessionsInput{
 		SessionsRoot: "/tmp/sessions",
 		ScanLimit:    3,
@@ -53,15 +58,19 @@ func TestLoadTUISessionsRiskSortAndLimits(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LoadTUISessions: %v", err)
 	}
+
 	if out.Total != 4 {
 		t.Fatalf("unexpected total: %d", out.Total)
 	}
+
 	if len(out.Items) != 2 {
 		t.Fatalf("unexpected item count: %d", len(out.Items))
 	}
+
 	if out.Items[0].SessionID != "high-old" {
 		t.Fatalf("expected high risk first, got %q", out.Items[0].SessionID)
 	}
+
 	if out.Items[1].SessionID != "mid-mid" {
 		t.Fatalf("expected medium risk second, got %q", out.Items[1].SessionID)
 	}
@@ -69,6 +78,7 @@ func TestLoadTUISessionsRiskSortAndLimits(t *testing.T) {
 
 func TestLoadTUISessionsRepositoryError(t *testing.T) {
 	want := errors.New("scan failed")
+
 	_, err := LoadTUISessions(LoadTUISessionsInput{
 		SessionsRoot: "/tmp/sessions",
 		Repository:   stubTUIRepo{err: want},

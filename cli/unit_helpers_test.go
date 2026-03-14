@@ -23,14 +23,17 @@ func TestListHelpers(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parseListColumns default table: %v", err)
 	}
+
 	if len(cols) == 0 || cols[0].Key != "id" {
 		t.Fatalf("unexpected default columns: %+v", cols)
 	}
+
 	if _, err := parseListColumns("bad", false, "table"); err == nil {
 		t.Fatal("expected invalid column error")
 	}
 
 	home := "/tmp/home-sim"
+
 	s := session.Session{
 		SessionID: "11111111-1111-1111-1111-111111111111",
 		CreatedAt: time.Date(2026, 3, 1, 1, 2, 3, 0, time.UTC),
@@ -44,21 +47,27 @@ func TestListHelpers(t *testing.T) {
 	if got := listColumnValue("host", s, home, 8, true); got != "~/work" {
 		t.Fatalf("unexpected host value: %q", got)
 	}
+
 	if got := listColumnValue("head", s, home, 8, true); got != "this is ..." {
 		t.Fatalf("unexpected truncated head: %q", got)
 	}
+
 	if got := truncateDisplayText("abc", 0); got != "abc" {
 		t.Fatalf("truncate with 0 should keep full text, got: %q", got)
 	}
+
 	if got := core.ShortID(s.SessionID); got != "11111111-111" {
 		t.Fatalf("unexpected short id: %q", got)
 	}
+
 	if got := core.FormatBytesIEC(1536); got != "1.5KiB" {
 		t.Fatalf("unexpected size: %q", got)
 	}
+
 	if !hasHealthColumn([]listColumn{{Key: "id"}, {Key: "health"}}) {
 		t.Fatal("expected hasHealthColumn=true")
 	}
+
 	if stripANSI("\x1b[31mred\x1b[0m") != "red" {
 		t.Fatal("stripANSI failed")
 	}
@@ -76,6 +85,7 @@ func TestRenderAndDelimited(t *testing.T) {
 		},
 	}
 	cols := []listColumn{{Key: "id", Header: "ID"}, {Key: "health", Header: "HEALTH"}, {Key: "host", Header: "HOST"}}
+
 	out, err := renderTable(sessions, 1, listRenderOptions{
 		NoHeader:  false,
 		ColorMode: "never",
@@ -86,6 +96,7 @@ func TestRenderAndDelimited(t *testing.T) {
 	if err != nil {
 		t.Fatalf("renderTable: %v", err)
 	}
+
 	if !strings.Contains(out, "ID") || !strings.Contains(out, "showing 1 of 1") {
 		t.Fatalf("unexpected table output: %q", out)
 	}
@@ -94,6 +105,7 @@ func TestRenderAndDelimited(t *testing.T) {
 	if err := writeListDelimited(buf, sessions, ',', false, cols); err != nil {
 		t.Fatalf("writeListDelimited csv: %v", err)
 	}
+
 	if !strings.Contains(buf.String(), "id,health,host") {
 		t.Fatalf("missing csv header: %q", buf.String())
 	}
@@ -103,6 +115,7 @@ func TestColorAndSelectorHelpers(t *testing.T) {
 	if !shouldUseColor("always", &bytes.Buffer{}) {
 		t.Fatal("always should enable color")
 	}
+
 	if shouldUseColor("never", &bytes.Buffer{}) {
 		t.Fatal("never should disable color")
 	}
@@ -110,13 +123,16 @@ func TestColorAndSelectorHelpers(t *testing.T) {
 	if _, err := buildSelector("", "", "", "", "", "bad", ""); err == nil {
 		t.Fatal("expected older-than parse error")
 	}
+
 	if _, err := buildSelector("", "", "", "", "", "", "bad"); err == nil {
 		t.Fatal("expected health parse error")
 	}
+
 	sel, err := buildSelector("id", "pre", " host ", " /sessions ", " fixture ", "1h", "ok")
 	if err != nil {
 		t.Fatalf("buildSelector valid: %v", err)
 	}
+
 	if sel.ID != "id" || sel.IDPrefix != "pre" || sel.HostContains != "host" || sel.PathContains != "/sessions" || sel.HeadContains != "fixture" || !sel.HasOlderThan || !sel.HasHealth {
 		t.Fatalf("unexpected selector: %+v", sel)
 	}
@@ -124,15 +140,19 @@ func TestColorAndSelectorHelpers(t *testing.T) {
 	if _, err := parseHealth("bad"); err == nil {
 		t.Fatal("expected parseHealth error")
 	}
+
 	if got, err := ops.ParsePreviewMode("sample"); err != nil || got != ops.PreviewSample {
 		t.Fatalf("ParsePreviewMode(sample) got=%q err=%v", got, err)
 	}
+
 	if got, err := ops.ParsePreviewMode("full"); err != nil || got != ops.PreviewFull {
 		t.Fatalf("ParsePreviewMode(full) got=%q err=%v", got, err)
 	}
+
 	if got, err := ops.ParsePreviewMode("none"); err != nil || got != ops.PreviewNone {
 		t.Fatalf("ParsePreviewMode(none) got=%q err=%v", got, err)
 	}
+
 	if _, err := ops.ParsePreviewMode("bad"); err == nil {
 		t.Fatal("expected ParsePreviewMode error")
 	}
@@ -141,19 +161,24 @@ func TestColorAndSelectorHelpers(t *testing.T) {
 func TestErrorAndLoggingHelpers(t *testing.T) {
 	base := errors.New("x")
 	wrapped := WithExitCode(base, 9)
+
 	var ex *ExitError
 	if !errors.As(wrapped, &ex) {
 		t.Fatal("expected ExitError")
 	}
+
 	if ex.ExitCode() != 9 {
 		t.Fatalf("unexpected exit code: %d", ex.ExitCode())
 	}
+
 	if WithExitCode(nil, 1) != nil {
 		t.Fatal("WithExitCode(nil) should be nil")
 	}
+
 	if (&ExitError{}).ExitCode() != 1 {
 		t.Fatal("zero ExitError should default to code 1")
 	}
+
 	if (&ExitError{Code: -2, Err: base}).ExitCode() != 1 {
 		t.Fatal("negative ExitError code should default to 1")
 	}
@@ -161,9 +186,11 @@ func TestErrorAndLoggingHelpers(t *testing.T) {
 	if _, err := parseLogLevel("bad"); err == nil {
 		t.Fatal("expected parseLogLevel error")
 	}
+
 	if err := configureLogger("bad", "info", &bytes.Buffer{}); err == nil {
 		t.Fatal("expected configureLogger format error")
 	}
+
 	if err := configureLogger("json", "debug", &bytes.Buffer{}); err != nil {
 		t.Fatalf("configureLogger valid: %v", err)
 	}
@@ -172,11 +199,14 @@ func TestErrorAndLoggingHelpers(t *testing.T) {
 func TestDeleteRestoreHelperPaths(t *testing.T) {
 	cmd := &cobra.Command{}
 	cmd.SetIn(bytes.NewBufferString("yes\n"))
+
 	errBuf := &bytes.Buffer{}
 	cmd.SetErr(errBuf)
+
 	if ok, err := interactiveConfirmDelete(cmd, 1, false); err == nil || ok {
 		t.Fatalf("expected non-interactive delete confirm error, got ok=%v err=%v", ok, err)
 	}
+
 	if ok, err := interactiveConfirmRestore(cmd, 1); err == nil || ok {
 		t.Fatalf("expected non-interactive restore confirm error, got ok=%v err=%v", ok, err)
 	}
@@ -209,10 +239,12 @@ func TestDeleteRestorePreviewHelpersEdgeCases(t *testing.T) {
 		errBuf := &bytes.Buffer{}
 		cmd.SetErr(errBuf)
 		printDeletePreview(cmd, items, true, ops.PreviewFull, -1)
+
 		got := errBuf.String()
 		if !strings.Contains(got, "preview action=hard-delete matched=2") {
 			t.Fatalf("unexpected delete preview header: %q", got)
 		}
+
 		if !strings.Contains(got, core.ShortID("s1")) || !strings.Contains(got, core.ShortID("s2")) {
 			t.Fatalf("expected all preview rows in full mode, got: %q", got)
 		}
@@ -223,10 +255,12 @@ func TestDeleteRestorePreviewHelpersEdgeCases(t *testing.T) {
 		errBuf := &bytes.Buffer{}
 		cmd.SetErr(errBuf)
 		printDeletePreview(cmd, items, false, ops.PreviewSample, -3)
+
 		got := errBuf.String()
 		if strings.Contains(got, core.ShortID("s1")) || strings.Contains(got, core.ShortID("s2")) {
 			t.Fatalf("did not expect item rows with negative sample limit, got: %q", got)
 		}
+
 		if !strings.Contains(got, "... and 2 more") {
 			t.Fatalf("expected remainder notice, got: %q", got)
 		}
@@ -237,10 +271,12 @@ func TestDeleteRestorePreviewHelpersEdgeCases(t *testing.T) {
 		errBuf := &bytes.Buffer{}
 		cmd.SetErr(errBuf)
 		printRestorePreview(cmd, items, ops.PreviewFull, -1)
+
 		got := errBuf.String()
 		if !strings.Contains(got, "preview action=restore matched=2") {
 			t.Fatalf("unexpected restore preview header: %q", got)
 		}
+
 		if !strings.Contains(got, core.ShortID("s1")) || !strings.Contains(got, core.ShortID("s2")) {
 			t.Fatalf("expected all restore preview rows in full mode, got: %q", got)
 		}
@@ -251,10 +287,12 @@ func TestDeleteRestorePreviewHelpersEdgeCases(t *testing.T) {
 		errBuf := &bytes.Buffer{}
 		cmd.SetErr(errBuf)
 		printRestorePreview(cmd, items, ops.PreviewSample, -1)
+
 		got := errBuf.String()
 		if strings.Contains(got, core.ShortID("s1")) || strings.Contains(got, core.ShortID("s2")) {
 			t.Fatalf("did not expect restore item rows with negative sample limit, got: %q", got)
 		}
+
 		if !strings.Contains(got, "... and 2 more") {
 			t.Fatalf("expected restore remainder notice, got: %q", got)
 		}
@@ -263,21 +301,27 @@ func TestDeleteRestorePreviewHelpersEdgeCases(t *testing.T) {
 
 func TestRestoreMoveFileAndCopy(t *testing.T) {
 	workspace := testsupport.PrepareFixtureSandbox(t, "rich")
+
 	root := filepath.Join(workspace, "tmp-files")
 	if err := os.MkdirAll(root, 0o755); err != nil {
 		t.Fatalf("mkdir test root: %v", err)
 	}
+
 	src := filepath.Join(root, "src.txt")
 	dst := filepath.Join(root, "dst.txt")
+
 	if err := os.WriteFile(src, []byte("abc"), 0o644); err != nil {
 		t.Fatal(err)
 	}
+
 	if err := util.MoveFile(src, dst); err != nil {
 		t.Fatalf("MoveFile: %v", err)
 	}
+
 	if _, err := os.Stat(src); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("src should be moved, err=%v", err)
 	}
+
 	data, err := os.ReadFile(dst)
 	if err != nil || string(data) != "abc" {
 		t.Fatalf("dst content mismatch err=%v data=%q", err, string(data))
@@ -285,12 +329,15 @@ func TestRestoreMoveFileAndCopy(t *testing.T) {
 
 	src2 := filepath.Join(root, "src2.txt")
 	dst2 := filepath.Join(root, "dst2.txt")
+
 	if err := os.WriteFile(src2, []byte("xyz"), 0o644); err != nil {
 		t.Fatal(err)
 	}
+
 	if err := util.CopyFile(src2, dst2); err != nil {
 		t.Fatalf("CopyFile: %v", err)
 	}
+
 	data2, err := os.ReadFile(dst2)
 	if err != nil || string(data2) != "xyz" {
 		t.Fatalf("dst2 content mismatch err=%v data=%q", err, string(data2))
@@ -299,13 +346,16 @@ func TestRestoreMoveFileAndCopy(t *testing.T) {
 
 func TestGroupRenderHelpers(t *testing.T) {
 	stats := []groupStat{{Group: "ok", Count: 2, SizeBytes: 1024, Latest: "2026-03-02 10:00:00"}}
+
 	table, err := renderGroupTable(stats, "health", "never", &bytes.Buffer{})
 	if err != nil {
 		t.Fatalf("renderGroupTable: %v", err)
 	}
+
 	if !strings.Contains(table, "GROUP") || !strings.Contains(table, "groups=1 by=health") {
 		t.Fatalf("unexpected group table: %q", table)
 	}
+
 	colored := colorizeGroupedTable(table)
 	if !strings.Contains(colored, "\x1b[") {
 		t.Fatalf("expected ANSI colorized output: %q", colored)
@@ -315,10 +365,12 @@ func TestGroupRenderHelpers(t *testing.T) {
 func TestAdditionalListAndResolveCoverage(t *testing.T) {
 	// writeWithPager should behave as passthrough when pager is disabled.
 	src := "line1\nline2\n"
+
 	out := &bytes.Buffer{}
 	if err := writeWithPager(out, src, false, 10, true); err != nil {
 		t.Fatalf("writeWithPager passthrough: %v", err)
 	}
+
 	if out.String() != src {
 		t.Fatalf("unexpected passthrough output: %q", out.String())
 	}
@@ -334,9 +386,11 @@ func TestAdditionalListAndResolveCoverage(t *testing.T) {
 	if err != nil {
 		t.Fatalf("resolveOrDefault explicit: %v", err)
 	}
+
 	if !strings.HasSuffix(got, "/x") {
 		t.Fatalf("unexpected explicit resolved value: %q", got)
 	}
+
 	got, err = resolveOrDefault("", func() (string, error) { return "/fallback", nil })
 	if err != nil || got != "/fallback" {
 		t.Fatalf("resolveOrDefault fallback got=%q err=%v", got, err)

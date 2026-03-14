@@ -22,10 +22,12 @@ func TestFilterSessions(t *testing.T) {
 		Health:       HealthOK,
 		HasHealth:    true,
 	}
+
 	got := FilterSessions(sessions, sel, now)
 	if len(got) != 1 {
 		t.Fatalf("expected 1 got %d", len(got))
 	}
+
 	if got[0].SessionID != "abc-1" {
 		t.Fatalf("unexpected id %s", got[0].SessionID)
 	}
@@ -35,9 +37,11 @@ func TestSelectorHasAnyFilter_WithContainsFilters(t *testing.T) {
 	if !(Selector{HostContains: "/workspace"}).HasAnyFilter() {
 		t.Fatal("expected host filter to count as active selector")
 	}
+
 	if !(Selector{PathContains: "rollout"}).HasAnyFilter() {
 		t.Fatal("expected path filter to count as active selector")
 	}
+
 	if !(Selector{HeadContains: "fixture"}).HasAnyFilter() {
 		t.Fatal("expected head filter to count as active selector")
 	}
@@ -79,6 +83,7 @@ func TestFilterSessions_MultilingualAndEmojiHeadContains(t *testing.T) {
 			if len(got) != 1 {
 				t.Fatalf("expected one match for %q, got %d", tc.q, len(got))
 			}
+
 			if got[0].SessionID != tc.id {
 				t.Fatalf("unexpected id for %q: %s", tc.q, got[0].SessionID)
 			}

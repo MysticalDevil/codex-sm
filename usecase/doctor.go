@@ -57,10 +57,12 @@ func DoctorRisk(in DoctorRiskInput) (DoctorRiskReport, error) {
 	if repo == nil {
 		repo = core.ScannerRepository{}
 	}
+
 	evaluator := in.Evaluator
 	if evaluator == nil {
 		evaluator = core.SessionRiskEvaluator{}
 	}
+
 	limit := in.SampleLimit
 	if limit <= 0 {
 		limit = 10
@@ -70,7 +72,9 @@ func DoctorRisk(in DoctorRiskInput) (DoctorRiskReport, error) {
 	if err != nil {
 		return DoctorRiskReport{}, err
 	}
+
 	items := q.Items
+
 	var checker session.IntegrityChecker
 	if in.IntegrityCheck {
 		checker = session.SHA256SidecarChecker
@@ -80,26 +84,33 @@ func DoctorRisk(in DoctorRiskInput) (DoctorRiskReport, error) {
 	riskByKey := make(map[string]session.Risk, len(items))
 	highCount := 0
 	mediumCount := 0
+
 	for _, s := range items {
 		r := evaluator.Evaluate(s, checker)
 		if r.Level == session.RiskNone {
 			continue
 		}
+
 		risky = append(risky, s)
+
 		riskByKey[riskySessionKey(s)] = r
-		switch r.Level {
-		case session.RiskHigh:
-			highCount++
-		case session.RiskMedium:
-			mediumCount++
+			switch r.Level {
+			case session.RiskHigh:
+				highCount++
+			case session.RiskMedium:
+				mediumCount++
+			case session.RiskNone:
+				// already filtered above
+			}
 		}
-	}
+
 	core.SortSessionsByRisk(risky, evaluator, checker)
 
 	rate := 0.0
 	if len(items) > 0 {
 		rate = float64(len(risky)) / float64(len(items)) * 100
 	}
+
 	report := DoctorRiskReport{
 		SessionsTotal:  len(items),
 		RiskTotal:      len(risky),
@@ -114,6 +125,7 @@ func DoctorRisk(in DoctorRiskInput) (DoctorRiskReport, error) {
 		if i >= limit {
 			break
 		}
+
 		risk := riskByKey[riskySessionKey(item)]
 		report.Samples = append(report.Samples, DoctorRiskSample{
 			Level:     risk.Level,
@@ -124,6 +136,7 @@ func DoctorRisk(in DoctorRiskInput) (DoctorRiskReport, error) {
 			Detail:    risk.Detail,
 		})
 	}
+
 	return report, nil
 }
 
@@ -138,10 +151,12 @@ func CheckSessionHostPaths(in DoctorHostPathInput) DoctorCheck {
 	if in.SessionsErr != nil {
 		return DoctorCheck{Name: "session_host_paths", Level: DoctorWarn, Detail: "skipped: sessions_root unresolved"}
 	}
+
 	if _, err := os.Stat(in.SessionsRoot); err != nil {
 		if os.IsNotExist(err) {
 			return DoctorCheck{Name: "session_host_paths", Level: DoctorWarn, Detail: "skipped: sessions_root missing"}
 		}
+
 		return DoctorCheck{Name: "session_host_paths", Level: DoctorFail, Detail: err.Error()}
 	}
 
@@ -149,10 +164,12 @@ func CheckSessionHostPaths(in DoctorHostPathInput) DoctorCheck {
 	if repo == nil {
 		repo = core.ScannerRepository{}
 	}
+
 	q, err := core.QuerySessions(repo, in.SessionsRoot, core.QuerySpec{})
 	if err != nil {
 		return DoctorCheck{Name: "session_host_paths", Level: DoctorFail, Detail: err.Error()}
 	}
+
 	items := q.Items
 	if len(items) == 0 {
 		return DoctorCheck{Name: "session_host_paths", Level: DoctorPass, Detail: "no sessions found"}
@@ -160,12 +177,15 @@ func CheckSessionHostPaths(in DoctorHostPathInput) DoctorCheck {
 
 	withHost := 0
 	missingCountByHost := make(map[string]int)
+
 	for _, s := range items {
 		host := strings.TrimSpace(s.HostDir)
 		if host == "" {
 			continue
 		}
+
 		withHost++
+
 		if _, statErr := os.Stat(host); statErr == nil {
 			continue
 		} else if os.IsNotExist(statErr) {
@@ -174,6 +194,7 @@ func CheckSessionHostPaths(in DoctorHostPathInput) DoctorCheck {
 			return DoctorCheck{Name: "session_host_paths", Level: DoctorFail, Detail: fmt.Sprintf("stat host %s: %v", host, statErr)}
 		}
 	}
+
 	if len(missingCountByHost) == 0 {
 		return DoctorCheck{
 			Name:   "session_host_paths",
@@ -186,7 +207,9 @@ func CheckSessionHostPaths(in DoctorHostPathInput) DoctorCheck {
 	for host := range missingCountByHost {
 		hosts = append(hosts, host)
 	}
+
 	slices.Sort(hosts)
+
 	displayHosts := hosts
 	if len(displayHosts) > 3 {
 		displayHosts = displayHosts[:3]
@@ -197,12 +220,14 @@ func CheckSessionHostPaths(in DoctorHostPathInput) DoctorCheck {
 		home, _ := os.UserHomeDir()
 		compact = func(v string, _ int) string { return core.CompactHomePath(v, home) }
 	}
+
 	hostLines := make([]string, 0, len(displayHosts))
 	for _, host := range displayHosts {
 		hostLines = append(hostLines, fmt.Sprintf("- %s (%d)", compact(host, 56), missingCountByHost[host]))
 	}
 
 	suggestHost := displayHosts[0]
+
 	return DoctorCheck{
 		Name:  "session_host_paths",
 		Level: DoctorWarn,

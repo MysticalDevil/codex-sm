@@ -76,6 +76,7 @@ func newSelectorRecord(sel session.Selector) selectorRecord {
 	if sel.HasOlderThan {
 		out.OlderThan = sel.OlderThan.String()
 	}
+
 	return out
 }
 
@@ -109,18 +110,23 @@ func WriteActionLog(logFile string, rec ActionRecord) error {
 		if closeErr := f.Close(); closeErr != nil {
 			return errors.Join(writeErr, fmt.Errorf("close log file: %w", closeErr))
 		}
+
 		return writeErr
 	}
+
 	if _, err := f.Write(append(b, '\n')); err != nil {
 		writeErr := fmt.Errorf("write log line: %w", err)
 		if closeErr := f.Close(); closeErr != nil {
 			return errors.Join(writeErr, fmt.Errorf("close log file: %w", closeErr))
 		}
+
 		return writeErr
 	}
+
 	if err := f.Close(); err != nil {
 		return fmt.Errorf("close log file: %w", err)
 	}
+
 	return nil
 }
 
@@ -130,6 +136,7 @@ func NewBatchID() (string, error) {
 	if _, err := rand.Read(b[:]); err != nil {
 		return "", fmt.Errorf("generate batch id: %w", err)
 	}
+
 	return fmt.Sprintf("b-%s-%x", time.Now().UTC().Format("20060102T150405Z"), b[:]), nil
 }
 
@@ -139,6 +146,7 @@ func SessionIDsForBatchRollback(logFile, batchID string) ([]string, error) {
 	if batchID == "" {
 		return nil, errors.New("batch id is required")
 	}
+
 	records, err := readActionLog(logFile)
 	if err != nil {
 		return nil, err
@@ -146,32 +154,42 @@ func SessionIDsForBatchRollback(logFile, batchID string) ([]string, error) {
 
 	seenBatch := false
 	ids := map[string]struct{}{}
+
 	for _, rec := range records {
 		if strings.TrimSpace(rec.BatchID) != batchID {
 			continue
 		}
+
 		seenBatch = true
+
 		if rec.Simulation || rec.Action != "soft-delete" {
 			continue
 		}
+
 		for _, r := range rec.Results {
 			if r.Status != "deleted" || r.Destination == "" || strings.TrimSpace(r.SessionID) == "" {
 				continue
 			}
+
 			ids[r.SessionID] = struct{}{}
 		}
 	}
+
 	if !seenBatch {
 		return nil, fmt.Errorf("batch id %q not found in log", batchID)
 	}
+
 	if len(ids) == 0 {
 		return nil, fmt.Errorf("batch id %q has no restorable soft-delete results", batchID)
 	}
+
 	out := make([]string, 0, len(ids))
 	for id := range ids {
 		out = append(out, id)
 	}
+
 	slices.Sort(out)
+
 	return out, nil
 }
 
@@ -181,55 +199,77 @@ func readActionLog(logFile string) ([]ActionRecord, error) {
 		if errors.Is(err, os.ErrNotExist) {
 			return nil, nil
 		}
+
 		return nil, fmt.Errorf("open log file: %w", err)
 	}
-	defer f.Close()
 
-	records := make([]ActionRecord, 0, 64)
-	sc := bufio.NewScanner(f)
-	lineNo := 0
-	for sc.Scan() {
-		lineNo++
-		line := strings.TrimSpace(sc.Text())
-		if line == "" {
-			continue
-		}
-		var raw actionRecordJSON
-		if err := json.Unmarshal([]byte(line), &raw); err != nil {
-			return nil, fmt.Errorf("parse log line %d: %w", lineNo, err)
-		}
-		sel := session.Selector{
-			ID:           raw.Selector.ID,
-			IDPrefix:     raw.Selector.IDPrefix,
-			HostContains: raw.Selector.HostContains,
-			PathContains: raw.Selector.PathContains,
-			HeadContains: raw.Selector.HeadContains,
-			HasOlderThan: raw.Selector.HasOlderThan,
-			Health:       raw.Selector.Health,
-			HasHealth:    raw.Selector.HasHealth,
-		}
-		if raw.Selector.HasOlderThan && strings.TrimSpace(raw.Selector.OlderThan) != "" {
-			d, err := time.ParseDuration(raw.Selector.OlderThan)
-			if err != nil {
-				return nil, fmt.Errorf("parse log line %d older_than: %w", lineNo, err)
+	records, readErr := func() ([]ActionRecord, error) {
+		records := make([]ActionRecord, 0, 64)
+		sc := bufio.NewScanner(f)
+
+		lineNo := 0
+		for sc.Scan() {
+			lineNo++
+
+			line := strings.TrimSpace(sc.Text())
+			if line == "" {
+				continue
 			}
-			sel.OlderThan = d
+
+			var raw actionRecordJSON
+			if err := json.Unmarshal([]byte(line), &raw); err != nil {
+				return nil, fmt.Errorf("parse log line %d: %w", lineNo, err)
+			}
+
+			sel := session.Selector{
+				ID:           raw.Selector.ID,
+				IDPrefix:     raw.Selector.IDPrefix,
+				HostContains: raw.Selector.HostContains,
+				PathContains: raw.Selector.PathContains,
+				HeadContains: raw.Selector.HeadContains,
+				HasOlderThan: raw.Selector.HasOlderThan,
+				Health:       raw.Selector.Health,
+				HasHealth:    raw.Selector.HasHealth,
+			}
+			if raw.Selector.HasOlderThan && strings.TrimSpace(raw.Selector.OlderThan) != "" {
+				d, err := time.ParseDuration(raw.Selector.OlderThan)
+				if err != nil {
+					return nil, fmt.Errorf("parse log line %d older_than: %w", lineNo, err)
+				}
+
+				sel.OlderThan = d
+			}
+
+			records = append(records, ActionRecord{
+				BatchID:       raw.BatchID,
+				Timestamp:     raw.Timestamp,
+				Action:        raw.Action,
+				Simulation:    raw.Simulation,
+				Selector:      sel,
+				MatchedCount:  raw.MatchedCount,
+				AffectedBytes: raw.AffectedBytes,
+				Sessions:      raw.Sessions,
+				Results:       raw.Results,
+				ErrorSummary:  raw.ErrorSummary,
+			})
 		}
-		records = append(records, ActionRecord{
-			BatchID:       raw.BatchID,
-			Timestamp:     raw.Timestamp,
-			Action:        raw.Action,
-			Simulation:    raw.Simulation,
-			Selector:      sel,
-			MatchedCount:  raw.MatchedCount,
-			AffectedBytes: raw.AffectedBytes,
-			Sessions:      raw.Sessions,
-			Results:       raw.Results,
-			ErrorSummary:  raw.ErrorSummary,
-		})
+
+		if err := sc.Err(); err != nil && !errors.Is(err, io.EOF) {
+			return nil, fmt.Errorf("read log file: %w", err)
+		}
+
+		return records, nil
+	}()
+
+	closeErr := f.Close()
+
+	if readErr != nil {
+		return nil, readErr
 	}
-	if err := sc.Err(); err != nil && !errors.Is(err, io.EOF) {
-		return nil, fmt.Errorf("read log file: %w", err)
+
+	if closeErr != nil {
+		return nil, fmt.Errorf("close log file: %w", closeErr)
 	}
+
 	return records, nil
 }

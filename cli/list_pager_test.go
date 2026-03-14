@@ -11,6 +11,7 @@ func TestApplyPagerChoice(t *testing.T) {
 		wantPage int
 		wantAct  pagerAction
 	}
+
 	cases := []tc{
 		{name: "next j", page: 0, pages: 5, in: "j\n", wantPage: 1, wantAct: pagerActionContinue},
 		{name: "next enter", page: 0, pages: 5, in: "\n", wantPage: 1, wantAct: pagerActionContinue},

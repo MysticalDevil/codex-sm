@@ -95,6 +95,7 @@ func newListCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
+
 			filtered := result.Items
 			total := result.Total
 
@@ -102,6 +103,7 @@ func newListCmd() *cobra.Command {
 			if formatMode == "" {
 				formatMode = "table"
 			}
+
 			if formatMode == "json" && (noHeader || strings.TrimSpace(column) != "") {
 				return fmt.Errorf("--no-header and --column are only supported with table/csv/tsv")
 			}
@@ -114,6 +116,7 @@ func newListCmd() *cobra.Command {
 			switch formatMode {
 			case "table":
 				out := cmd.OutOrStdout()
+
 				table, err := renderTable(filtered, total, listRenderOptions{
 					Detailed:  detailed,
 					NoHeader:  noHeader,
@@ -125,15 +128,18 @@ func newListCmd() *cobra.Command {
 				if err != nil {
 					return err
 				}
+
 				return writeWithPager(out, table, pager, pageSize, !noHeader)
 			case "json":
 				b, err := json.Marshal(filtered)
 				if err != nil {
 					return err
 				}
+
 				if _, err := cmd.OutOrStdout().Write(append(b, '\n')); err != nil {
 					return err
 				}
+
 				return nil
 			case "csv":
 				return writeListDelimited(cmd.OutOrStdout(), filtered, ',', noHeader, columns)
@@ -174,12 +180,15 @@ func renderTable(sessions []session.Session, total int, opts listRenderOptions) 
 	home, _ := os.UserHomeDir()
 
 	var buf bytes.Buffer
+
 	w := tabwriter.NewWriter(&buf, 2, 4, 2, ' ', 0)
+
 	if !opts.NoHeader {
 		headers := make([]string, 0, len(opts.Columns))
 		for _, c := range opts.Columns {
 			headers = append(headers, c.Header)
 		}
+
 		_, _ = fmt.Fprintln(w, strings.Join(headers, "\t"))
 	}
 
@@ -188,6 +197,7 @@ func renderTable(sessions []session.Session, total int, opts listRenderOptions) 
 		for _, c := range opts.Columns {
 			values = append(values, listColumnValue(c.Key, s, home, opts.HeadWidth, true))
 		}
+
 		_, _ = fmt.Fprintln(w, strings.Join(values, "\t"))
 	}
 
@@ -196,15 +206,19 @@ func renderTable(sessions []session.Session, total int, opts listRenderOptions) 
 	}
 
 	shown := len(sessions)
+
 	footer := fmt.Sprintf("showing %d of %d", shown, total)
 	if shown < total {
 		footer += " (use --limit 0 for all)"
 	}
+
 	_, _ = fmt.Fprintf(&buf, "%s\n", footer)
+
 	rendered := buf.String()
 	if useColor {
 		rendered = colorizeRenderedTable(rendered, sessions, opts.NoHeader, hasHealthColumn(opts.Columns))
 	}
+
 	return rendered, nil
 }
 
@@ -222,6 +236,7 @@ func buildSelector(id, idPrefix, hostContains, pathContains, headContains, older
 		if err != nil {
 			return sel, err
 		}
+
 		sel.OlderThan = d
 		sel.HasOlderThan = true
 	}
@@ -231,6 +246,7 @@ func buildSelector(id, idPrefix, hostContains, pathContains, headContains, older
 		if err != nil {
 			return sel, err
 		}
+
 		sel.Health = h
 		sel.HasHealth = true
 	}

@@ -23,6 +23,7 @@ func TestDoctorCommandNonStrict(t *testing.T) {
 	cmd := NewRootCmd()
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
+
 	cmd.SetOut(stdout)
 	cmd.SetErr(stderr)
 	cmd.SetArgs([]string{"doctor"})
@@ -30,6 +31,7 @@ func TestDoctorCommandNonStrict(t *testing.T) {
 	if err := cmd.Execute(); err != nil {
 		t.Fatalf("doctor execute: %v", err)
 	}
+
 	out := stdout.String()
 	if !strings.Contains(out, "CHECK") || !strings.Contains(out, "sessions_root") {
 		t.Fatalf("unexpected doctor output: %q", out)
@@ -65,10 +67,12 @@ func TestDoctorRiskCommandReturnsFailureWhenRiskFound(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected risk command to fail when risky sessions exist")
 	}
+
 	var ex *ExitError
 	if !errors.As(err, &ex) || ex.ExitCode() != 1 {
 		t.Fatalf("expected exit code 1, got err=%v", err)
 	}
+
 	out := stdout.String()
 	if !strings.Contains(out, "RISK SUMMARY") || !strings.Contains(out, "risk_total=") {
 		t.Fatalf("unexpected risk output: %q", out)
@@ -85,9 +89,11 @@ func TestDoctorRiskCommandPassesWhenNoRiskFound(t *testing.T) {
 	cmd.SetOut(stdout)
 	cmd.SetErr(&bytes.Buffer{})
 	cmd.SetArgs([]string{"doctor", "risk", "--sessions-root", sessionsRoot})
+
 	if err := cmd.Execute(); err != nil {
 		t.Fatalf("doctor risk execute: %v", err)
 	}
+
 	if !strings.Contains(stdout.String(), "no risky sessions found") {
 		t.Fatalf("expected no-risk output, got: %q", stdout.String())
 	}
@@ -101,6 +107,7 @@ func TestDoctorRiskCommandJSONFormat(t *testing.T) {
 	cmd.SetOut(stdout)
 	cmd.SetErr(&bytes.Buffer{})
 	cmd.SetArgs([]string{"doctor", "risk", "--sessions-root", root, "--format", "json", "--sample-limit", "2"})
+
 	err := cmd.Execute()
 	if err == nil {
 		t.Fatal("expected non-zero when risky sessions exist")
@@ -118,9 +125,11 @@ func TestDoctorRiskCommandJSONFormat(t *testing.T) {
 	if unmarshalErr := json.Unmarshal(stdout.Bytes(), &payload); unmarshalErr != nil {
 		t.Fatalf("json unmarshal: %v output=%q", unmarshalErr, stdout.String())
 	}
+
 	if payload.SessionsTotal == 0 || payload.RiskTotal == 0 {
 		t.Fatalf("unexpected json payload: %+v", payload)
 	}
+
 	if payload.SampleLimit != 2 {
 		t.Fatalf("expected sample limit=2, got %+v", payload)
 	}
@@ -130,6 +139,7 @@ func TestDoctorRiskCommandIntegrityMismatchIsRisk(t *testing.T) {
 	sessionsRoot := t.TempDir()
 	host := t.TempDir()
 	writeDoctorSessionFixture(t, sessionsRoot, "oksha", host)
+
 	p := filepath.Join(sessionsRoot, "2026", "03", "08", "oksha.jsonl")
 	if err := os.WriteFile(p+".sha256", []byte(strings.Repeat("0", 64)+"  oksha.jsonl\n"), 0o644); err != nil {
 		t.Fatalf("write sidecar: %v", err)
@@ -140,6 +150,7 @@ func TestDoctorRiskCommandIntegrityMismatchIsRisk(t *testing.T) {
 	cmd.SetOut(stdout)
 	cmd.SetErr(&bytes.Buffer{})
 	cmd.SetArgs([]string{"doctor", "risk", "--sessions-root", sessionsRoot, "--format", "json", "--integrity-check=true"})
+
 	err := cmd.Execute()
 	if err == nil {
 		t.Fatal("expected risk detection")
@@ -152,6 +163,7 @@ func TestDoctorRiskCommandIntegrityMismatchIsRisk(t *testing.T) {
 	if unmarshalErr := json.Unmarshal(stdout.Bytes(), &payload); unmarshalErr != nil {
 		t.Fatalf("json unmarshal: %v output=%q", unmarshalErr, stdout.String())
 	}
+
 	if payload.RiskTotal == 0 || payload.High == 0 {
 		t.Fatalf("expected high risk from integrity mismatch, got %+v", payload)
 	}
@@ -180,12 +192,15 @@ func TestDoctorRiskCommandExtremeStaticJSON(t *testing.T) {
 	if unmarshalErr := json.Unmarshal(stdout.Bytes(), &payload); unmarshalErr != nil {
 		t.Fatalf("json unmarshal: %v output=%q", unmarshalErr, stdout.String())
 	}
+
 	if payload.SessionsTotal != 6 {
 		t.Fatalf("expected 6 sessions, got %+v", payload)
 	}
+
 	if payload.RiskTotal == 0 {
 		t.Fatalf("expected non-zero risk total, got %+v", payload)
 	}
+
 	if payload.SampleLimit != 4 {
 		t.Fatalf("expected sample limit=4, got %+v", payload)
 	}
@@ -203,9 +218,11 @@ func TestCheckSessionHostPathsWarnsWhenHostMissing(t *testing.T) {
 	if got.Level != doctorWarn {
 		t.Fatalf("expected warn, got %s detail=%q", got.Level, got.Detail)
 	}
+
 	if !strings.Contains(got.Detail, "recommended_actions:") {
 		t.Fatalf("expected action block in detail, got: %q", got.Detail)
 	}
+
 	if !strings.Contains(got.Detail, "migrate (soft-delete): codexsm delete --host-contains") {
 		t.Fatalf("expected delete suggestion in detail, got: %q", got.Detail)
 	}
@@ -223,6 +240,7 @@ func TestCheckSessionHostPathsPassWhenAllHostsExist(t *testing.T) {
 	if got.Level != doctorPass {
 		t.Fatalf("expected pass, got %s detail=%q", got.Level, got.Detail)
 	}
+
 	if !strings.Contains(got.Detail, "all host paths exist") {
 		t.Fatalf("unexpected pass detail: %q", got.Detail)
 	}
@@ -230,11 +248,14 @@ func TestCheckSessionHostPathsPassWhenAllHostsExist(t *testing.T) {
 
 func writeDoctorSessionFixture(t *testing.T, sessionsRoot, id, host string) {
 	t.Helper()
+
 	dir := filepath.Join(sessionsRoot, "2026", "03", "08")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatalf("mkdir sessions fixture: %v", err)
 	}
+
 	path := filepath.Join(dir, id+".jsonl")
+
 	line := fmt.Sprintf(
 		`{"type":"session_meta","payload":{"id":"%s","cwd":"%s","timestamp":"%s"}}`+"\n",
 		id,

@@ -44,16 +44,21 @@ func TestConversationHeadFromLine_MultilingualAndEmoji(t *testing.T) {
 
 func TestReadConversationHead_LargeConversation(t *testing.T) {
 	var b strings.Builder
+
 	target := "请帮我实现多语言 session restore 支持吗？"
 
 	for i := 0; i < 8; i++ {
 		fmt.Fprintf(&b, "%s\n", responseItemJSON("user", fmt.Sprintf("status update %03d", i)))
 	}
+
 	fmt.Fprintf(&b, "%s\n", responseItemJSON("user", target))
+
 	for i := 8; i < 280; i++ {
 		fmt.Fprintf(&b, "%s\n", responseItemJSON("user", fmt.Sprintf("status update %03d", i)))
 	}
+
 	fmt.Fprintf(&b, "%s\n", responseItemJSON("assistant", "ack"))
+
 	for i := 281; i < 420; i++ {
 		fmt.Fprintf(&b, "%s\n", responseItemJSON("user", fmt.Sprintf("note %03d", i)))
 	}
@@ -66,6 +71,7 @@ func TestReadConversationHead_LargeConversation(t *testing.T) {
 
 func TestReadConversationHead_SkipsOverlongLine(t *testing.T) {
 	var b strings.Builder
+
 	huge := strings.Repeat("x", maxSessionHeadLineBytes+128)
 	target := "please keep this head after oversized line"
 

@@ -36,9 +36,11 @@ func TestSelectDeleteCandidates(t *testing.T) {
 	if err != nil {
 		t.Fatalf("SelectDeleteCandidates: %v", err)
 	}
+
 	if len(res.Candidates) != 1 {
 		t.Fatalf("expected 1 candidate, got %d", len(res.Candidates))
 	}
+
 	if res.AffectedBytes <= 0 {
 		t.Fatalf("expected affected bytes > 0, got %d", res.AffectedBytes)
 	}
@@ -94,9 +96,11 @@ func TestEffectiveMaxBatch(t *testing.T) {
 	if got := EffectiveMaxBatch(false, 777, true); got != DefaultMaxBatchDryRun {
 		t.Fatalf("unexpected dry-run default max-batch: %d", got)
 	}
+
 	if got := EffectiveMaxBatch(false, 777, false); got != DefaultMaxBatchReal {
 		t.Fatalf("unexpected real default max-batch: %d", got)
 	}
+
 	if got := EffectiveMaxBatch(true, 123, true); got != 123 {
 		t.Fatalf("expected configured max-batch override, got %d", got)
 	}
@@ -106,9 +110,11 @@ func TestEffectiveMaxBatchWithDefaults(t *testing.T) {
 	if got := EffectiveMaxBatchWithDefaults(false, 999, false, 100, 1000); got != 100 {
 		t.Fatalf("expected real default, got %d", got)
 	}
+
 	if got := EffectiveMaxBatchWithDefaults(false, 999, true, 100, 1000); got != 1000 {
 		t.Fatalf("expected dry-run default, got %d", got)
 	}
+
 	if got := EffectiveMaxBatchWithDefaults(true, 321, true, 100, 1000); got != 321 {
 		t.Fatalf("expected explicit max-batch, got %d", got)
 	}
@@ -116,6 +122,7 @@ func TestEffectiveMaxBatchWithDefaults(t *testing.T) {
 
 func TestRunDeleteAndRestoreActionApplyBatchDefaults(t *testing.T) {
 	sel := session.Selector{ID: "a-1"}
+
 	delOut, delErr := RunDeleteAction(DeleteActionInput{
 		Candidates:      []session.Session{{SessionID: "a-1", Path: "/tmp/a-1.jsonl"}},
 		Selector:        sel,
@@ -132,6 +139,7 @@ func TestRunDeleteAndRestoreActionApplyBatchDefaults(t *testing.T) {
 	if delErr != nil {
 		t.Fatalf("RunDeleteAction(dry-run): %v", delErr)
 	}
+
 	if delOut.AppliedMaxBatch != 1000 {
 		t.Fatalf("unexpected delete applied max batch: %d", delOut.AppliedMaxBatch)
 	}
@@ -153,6 +161,7 @@ func TestRunDeleteAndRestoreActionApplyBatchDefaults(t *testing.T) {
 	if restoreErr != nil {
 		t.Fatalf("RunRestoreAction(dry-run): %v", restoreErr)
 	}
+
 	if restoreOut.AppliedMaxBatch != 1000 {
 		t.Fatalf("unexpected restore applied max batch: %d", restoreOut.AppliedMaxBatch)
 	}
@@ -192,15 +201,18 @@ func (s *stubAuditSink) NewBatchID() (string, error) {
 	if s.batchErr != nil {
 		return "", s.batchErr
 	}
+
 	if s.batchID == "" {
 		return "b-test", nil
 	}
+
 	return s.batchID, nil
 }
 
 func (s *stubAuditSink) WriteActionLog(logFile string, rec audit.ActionRecord) error {
 	s.writtenLog = logFile
 	s.writtenRec = rec
+
 	return s.writeErr
 }
 
@@ -208,6 +220,7 @@ func TestRunDeleteAndRestoreActionUseInjectedExecutors(t *testing.T) {
 	delExec := &stubDeleteExecutor{
 		summary: session.DeleteSummary{Action: "dry-run", Simulation: true},
 	}
+
 	delOut, err := RunDeleteAction(DeleteActionInput{
 		Candidates:      []session.Session{{SessionID: "x", Path: "/tmp/x.jsonl"}},
 		Selector:        session.Selector{ID: "x"},
@@ -221,9 +234,11 @@ func TestRunDeleteAndRestoreActionUseInjectedExecutors(t *testing.T) {
 	if err != nil {
 		t.Fatalf("RunDeleteAction(injected): %v", err)
 	}
+
 	if delOut.Summary.Action != "dry-run" {
 		t.Fatalf("unexpected delete summary: %+v", delOut.Summary)
 	}
+
 	if delExec.opts.MaxBatch != 77 {
 		t.Fatalf("expected injected delete opts max-batch=77, got %d", delExec.opts.MaxBatch)
 	}
@@ -231,6 +246,7 @@ func TestRunDeleteAndRestoreActionUseInjectedExecutors(t *testing.T) {
 	restoreExec := &stubRestoreExecutor{
 		summary: session.RestoreSummary{Action: "restore-dry-run", Simulation: true},
 	}
+
 	restoreOut, err := RunRestoreAction(RestoreActionInput{
 		Candidates:         []session.Session{{SessionID: "x", Path: "/tmp/trash/sessions/x.jsonl"}},
 		Selector:           session.Selector{ID: "x"},
@@ -245,9 +261,11 @@ func TestRunDeleteAndRestoreActionUseInjectedExecutors(t *testing.T) {
 	if err != nil {
 		t.Fatalf("RunRestoreAction(injected): %v", err)
 	}
+
 	if restoreOut.Summary.Action != "restore-dry-run" {
 		t.Fatalf("unexpected restore summary: %+v", restoreOut.Summary)
 	}
+
 	if restoreExec.opts.MaxBatch != 66 {
 		t.Fatalf("expected injected restore opts max-batch=66, got %d", restoreExec.opts.MaxBatch)
 	}
@@ -258,6 +276,7 @@ func TestRunDeleteActionWritesAuditViaSink(t *testing.T) {
 		summary: session.DeleteSummary{Action: "dry-run", Simulation: true},
 	}
 	sink := &stubAuditSink{batchID: "b-del"}
+
 	out, err := RunDeleteAction(DeleteActionInput{
 		Candidates:      []session.Session{{SessionID: "a-1", Path: "/tmp/a-1.jsonl"}},
 		Selector:        session.Selector{ID: "a-1"},
@@ -274,12 +293,15 @@ func TestRunDeleteActionWritesAuditViaSink(t *testing.T) {
 	if err != nil {
 		t.Fatalf("RunDeleteAction with audit sink: %v", err)
 	}
+
 	if out.BatchID != "b-del" {
 		t.Fatalf("unexpected delete batch id: %q", out.BatchID)
 	}
+
 	if out.LogError != nil {
 		t.Fatalf("unexpected delete log error: %v", out.LogError)
 	}
+
 	if sink.writtenLog != "/tmp/actions.log" || sink.writtenRec.BatchID != "b-del" {
 		t.Fatalf("unexpected sink write: log=%q rec=%+v", sink.writtenLog, sink.writtenRec)
 	}
@@ -290,6 +312,7 @@ func TestRunRestoreActionPropagatesAuditWriteError(t *testing.T) {
 		summary: session.RestoreSummary{Action: "restore-dry-run", Simulation: true},
 	}
 	sink := &stubAuditSink{batchID: "b-res", writeErr: fmt.Errorf("write failed")}
+
 	out, err := RunRestoreAction(RestoreActionInput{
 		Candidates:         []session.Session{{SessionID: "a-1", Path: "/tmp/trash/sessions/a-1.jsonl"}},
 		Selector:           session.Selector{ID: "a-1"},
@@ -307,9 +330,11 @@ func TestRunRestoreActionPropagatesAuditWriteError(t *testing.T) {
 	if err != nil {
 		t.Fatalf("RunRestoreAction with audit write error should keep run err nil, got %v", err)
 	}
+
 	if out.BatchID != "b-res" {
 		t.Fatalf("unexpected restore batch id: %q", out.BatchID)
 	}
+
 	if out.LogError == nil || !strings.Contains(out.LogError.Error(), "write failed") {
 		t.Fatalf("expected restore log error, got %v", out.LogError)
 	}
@@ -317,11 +342,14 @@ func TestRunRestoreActionPropagatesAuditWriteError(t *testing.T) {
 
 func writeSessionFixture(t *testing.T, sessionsRoot, id, host string) {
 	t.Helper()
+
 	dir := filepath.Join(sessionsRoot, "2026", "03", "08")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatalf("mkdir sessions fixture: %v", err)
 	}
+
 	path := filepath.Join(dir, id+".jsonl")
+
 	line := fmt.Sprintf(
 		`{"type":"session_meta","payload":{"id":"%s","cwd":"%s","timestamp":"%s"}}`+"\n",
 		id,

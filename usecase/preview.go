@@ -30,24 +30,30 @@ func ExtractPreviewMessages(path string, maxMessages int) ([]PreviewMessage, err
 	if err != nil {
 		return nil, err
 	}
+
 	defer func() { _ = f.Close() }()
 
 	out := make([]PreviewMessage, 0, maxMessages)
 	sc := bufio.NewScanner(f)
 	sc.Buffer(make([]byte, 0, 64*1024), defaultPreviewMaxLineSize)
+
 	for sc.Scan() && len(out) < maxMessages {
 		role, text := ParsePreviewLine(sc.Text())
 		if strings.TrimSpace(text) == "" || IsPreviewNoiseText(text) {
 			continue
 		}
+
 		out = append(out, PreviewMessage{Role: role, Text: text})
 	}
+
 	if err := sc.Err(); err != nil {
 		if errors.Is(err, bufio.ErrTooLong) {
 			return out, ErrPreviewEntryTooLong
 		}
+
 		return out, err
 	}
+
 	return out, nil
 }
 
@@ -63,13 +69,16 @@ func ParsePreviewLine(line string) (role string, text string) {
 			} `json:"content"`
 		} `json:"payload"`
 	}
+
 	raw := []byte(strings.TrimSpace(line))
 	if len(raw) == 0 || !jsontext.Value(raw).IsValid() {
 		return "", ""
 	}
+
 	if err := json.Unmarshal(raw, &item); err != nil {
 		return "", ""
 	}
+
 	if item.Type != "response_item" || item.Payload.Type != "message" {
 		return "", ""
 	}
@@ -79,6 +88,7 @@ func ParsePreviewLine(line string) (role string, text string) {
 			return item.Payload.Role, v
 		}
 	}
+
 	return item.Payload.Role, compactPreviewText(item.Payload.Text)
 }
 
@@ -87,6 +97,7 @@ func IsPreviewNoiseText(v string) bool {
 	if l == "" {
 		return true
 	}
+
 	noise := []string{
 		"agents.md",
 		"instructions for",
@@ -102,6 +113,7 @@ func IsPreviewNoiseText(v string) bool {
 			return true
 		}
 	}
+
 	return false
 }
 
@@ -110,5 +122,6 @@ func compactPreviewText(v string) string {
 	if v == "" {
 		return ""
 	}
+
 	return strings.Join(strings.Fields(v), " ")
 }

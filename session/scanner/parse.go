@@ -32,15 +32,19 @@ type responseItemLine struct {
 
 func conversationHeadFromLine(line []byte) string {
 	var item responseItemLine
+
 	if !jsontext.Value(line).IsValid() {
 		return ""
 	}
+
 	if err := json.Unmarshal(line, &item); err != nil {
 		return ""
 	}
+
 	if item.Type != "response_item" {
 		return ""
 	}
+
 	if item.Payload.Type != "message" || item.Payload.Role != "user" {
 		return ""
 	}
@@ -50,6 +54,7 @@ func conversationHeadFromLine(line []byte) string {
 			return v
 		}
 	}
+
 	return compactText(item.Payload.Text)
 }
 
@@ -58,6 +63,7 @@ func compactText(v string) string {
 	if v == "" {
 		return ""
 	}
+
 	return strings.Join(strings.Fields(v), " ")
 }
 
@@ -66,5 +72,6 @@ func sessionIDFromFilename(base string) string {
 	if len(m) != 2 {
 		return ""
 	}
+
 	return m[1]
 }

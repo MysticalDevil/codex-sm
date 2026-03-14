@@ -20,19 +20,24 @@ func TestExtremeStaticFixtureJSONLShape(t *testing.T) {
 
 func runFixtureJSONLShape(t *testing.T, fixtureName string, minFiles int) {
 	t.Helper()
+
 	fixtureRoot := filepath.Join(TestdataRoot(), "fixtures", fixtureName)
+
 	var jsonlFiles []string
 
 	if err := filepath.WalkDir(fixtureRoot, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
+
 		if d.IsDir() {
 			return nil
 		}
+
 		if filepath.Ext(path) == ".jsonl" {
 			jsonlFiles = append(jsonlFiles, path)
 		}
+
 		return nil
 	}); err != nil {
 		t.Fatalf("walk fixture root: %v", err)
@@ -52,10 +57,12 @@ func runFixtureJSONLShape(t *testing.T, fixtureName string, minFiles int) {
 
 func checkFixtureFile(t *testing.T, path string) {
 	t.Helper()
+
 	f, err := os.Open(path)
 	if err != nil {
 		t.Fatalf("open fixture: %v", err)
 	}
+
 	defer func() { _ = f.Close() }()
 
 	base := filepath.Base(path)
@@ -66,18 +73,22 @@ func checkFixtureFile(t *testing.T, path string) {
 
 	lineNo := 0
 	seenNonEmpty := false
+
 	for scanner.Scan() {
 		lineNo++
+
 		line := strings.TrimSpace(scanner.Text())
 		if line == "" {
 			continue
 		}
+
 		seenNonEmpty = true
 
 		if isExpectedCorrupted {
 			if jsontext.Value([]byte(line)).IsValid() {
 				t.Fatalf("corrupted fixture should contain invalid json at line %d", lineNo)
 			}
+
 			return
 		}
 
@@ -96,20 +107,25 @@ func checkFixtureFile(t *testing.T, path string) {
 			if err := json.Unmarshal([]byte(line), &meta); err != nil {
 				t.Fatalf("unmarshal first line: %v", err)
 			}
+
 			if meta.Type != "session_meta" {
 				t.Fatalf("first line should be session_meta, got %q", meta.Type)
 			}
+
 			if strings.TrimSpace(meta.Payload.ID) == "" {
 				t.Fatal("session_meta payload.id is required")
 			}
+
 			if strings.TrimSpace(meta.Payload.Timestamp) == "" {
 				t.Fatal("session_meta payload.timestamp is required")
 			}
 		}
 	}
+
 	if err := scanner.Err(); err != nil {
 		t.Fatalf("scan fixture: %v", err)
 	}
+
 	if !seenNonEmpty {
 		t.Fatal("fixture file is empty")
 	}
