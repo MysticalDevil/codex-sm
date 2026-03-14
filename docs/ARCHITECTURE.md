@@ -20,49 +20,53 @@ External/runtime:
 - cobra
 - bubbletea / lipgloss / go-runewidth
 
-                                     +----------------------+
-                                     | config/*             |
-                                     | path/config resolve  |
-                                     +----------+-----------+
-                                                |
-                                                v
-+------------------+     +----------------------+----------------------+
-| main.go          | --> | cli/*                                        |
-| cli/root.go      |     | list/group/delete/restore/doctor/tui/config |
-+------------------+     +----------------------+----------------------+
-                             |                |                 |
-                             |                |                 +------> cobra
-                             |                |
-                             |                +------------------------> Go std + jsonv2
-                             |
-                             v
-                +----------------------+----------------------+
-                |                                             |
-                v                                             v
-        +-------------------+                         +-------------------+
-        | tui/*             |                         | audit/*           |
-        | state/view/action |                         | batch/action logs |
-        +---------+---------+                         +-------------------+
-                  |
-                  +------------------------------------------> bubbletea / lipgloss / go-runewidth
-                  |
-                  v
-        +-------------------+
-        | usecase/*         |
-        | list/group/action |
-        | preview/doctor    |
-        +---------+---------+
-                  |
-                  v
-        +-------------------+     +-------------------+
-        | session/*         | --> | session/scanner/* |
-        | model/risk/select |     | scan/head/parse   |
-        | delete/restore    |     +-------------------+
-        +---------+---------+
-                  |
-                  +-----------------------> session/migrate/* (exec/index/rollout/sql/batch)
-                  |
-                  +-----------------------> Go std + jsonv2
+                         +----------------------+
+                         | config/*             |
+                         | path/config resolve  |
+                         +----------+-----------+
+                                    |
+                                    v
++------------------+      +----------------------+----------------------+
+| main.go          | ---> | cli/*                                        |
+| cli/root.go      |      | list/group/delete/restore/doctor/tui/config |
++------------------+      +----------------------+----------------------+
+                                    |                 |
+                                    |                 +-----------------> cobra
+                                    |
+                                    v
+                         +----------+-----------+
+                         | usecase/*            |
+                         | list/group/action    |
+                         | preview/doctor/tui   |
+                         +----------+-----------+
+                                    |                   +-------------------+
+                                    |                   | audit/*           |
+                                    +------------------> | batch/action logs |
+                                    |                   +-------------------+
+                                    v
+              +---------------------+----------------------+
+              | session/*                                  |
+              | model/selector/risk/integrity/delete/restore |
+              +---------------------+----------------------+
+                                    |                  |
+                     +--------------+                  +-------------------+
+                     v                                                     v
+          +-------------------------+                           +-------------------------+
+          | session/scanner/*       |                           | session/migrate/*       |
+          | scan/head/parse/io      |                           | exec/batch/index/...    |
+          +-------------------------+                           +-------------------------+
+
++-----------------------------+      +----------------------------------+
+| tui/*                       | ---> | tui/preview/*                    |
+| command/view/state/actions  |      | build/index/model                |
+| layout/render/theme/text    |      +----------------------------------+
++-----------------------------+
+            |
+            +-----------------------------------------> bubbletea / lipgloss / go-runewidth
+
+All layers may use:
+- Go std + encoding/json/v2
+- util/file.go (file move/copy helpers)
 ```
 
 1. Entry and command wiring:

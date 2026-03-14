@@ -15,6 +15,7 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 - Consolidated file move/copy helpers under `util/file.go` and removed now-empty legacy internal bridge package paths.
 - Moved restore execution into `session` and removed the extra restore execution bridge layer so usecase/action flow is more direct.
 - Updated architecture, command, release, and README documentation to match the current module layout and the `v0.3.1` release examples.
+- Reworked the architecture ASCII dependency diagram to reflect the current layered topology (`cli -> usecase -> session`, plus `session/scanner`, `session/migrate`, and `tui/preview` submodules).
 - Tightened local/CI docs checks (`just docs-check`, CI docs consistency step) to reject stale references to removed internal paths.
 
 ## [v0.3.0] - 2026-03-10
