@@ -27,5 +27,7 @@ func (defaultAuditSink) WriteActionLog(logFile string, rec audit.ActionRecord) e
 	return audit.WriteActionLog(logFile, rec)
 }
 
-var runtimeClock clock = systemClock{}
-var runtimeAuditSink usecase.AuditSink = defaultAuditSink{}
+var (
+	runtimeClock     clock             = systemClock{}
+	runtimeAuditSink usecase.AuditSink = defaultAuditSink{}
+)

@@ -174,6 +174,7 @@ func newRestoreCmd() *cobra.Command {
 
 	return cmd
 }
+
 func printRestoreSummary(cmd *cobra.Command, s usecase.RestoreSummary) {
 	out := cmd.OutOrStdout()
 	_, _ = fmt.Fprintf(out, "action=%s simulation=%t matched=%d succeeded=%d failed=%d skipped=%d affected_bytes=%d\n",
