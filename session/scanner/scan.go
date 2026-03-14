@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/MysticalDevil/codexsm/session"
+	"github.com/MysticalDevil/codexsm/util"
 )
 
 // ScanSessions walks the sessions root and parses each .jsonl file into Session metadata.
@@ -169,7 +170,7 @@ func scanOne(path string) (session.Session, error) {
 
 	r := bufio.NewReader(f)
 
-	line, truncated, err := readBoundedLine(r, maxSessionMetaLineBytes)
+	line, truncated, err := util.ReadBoundedLine(r, maxSessionMetaLineBytes)
 	if err != nil && !errors.Is(err, io.EOF) {
 		s.Health = session.HealthCorrupted
 		if s.CreatedAt.IsZero() {

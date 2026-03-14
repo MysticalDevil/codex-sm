@@ -4,6 +4,8 @@ import (
 	"bufio"
 	"bytes"
 	"testing"
+
+	"github.com/MysticalDevil/codexsm/util"
 )
 
 func TestReadBoundedLine_AllowsLinesLargerThanReaderBuffer(t *testing.T) {
@@ -12,7 +14,7 @@ func TestReadBoundedLine_AllowsLinesLargerThanReaderBuffer(t *testing.T) {
 
 	r := bufio.NewReaderSize(bytes.NewReader(lineBytes), 4<<10)
 
-	line, truncated, err := readBoundedLine(r, maxSessionMetaLineBytes)
+	line, truncated, err := util.ReadBoundedLine(r, maxSessionMetaLineBytes)
 	if err != nil {
 		t.Fatalf("readBoundedLine: %v", err)
 	}

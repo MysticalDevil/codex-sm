@@ -11,6 +11,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/MysticalDevil/codexsm/util"
 )
 
 type migrateMeta struct {
@@ -70,7 +72,7 @@ func readMigrationMeta(path string) (meta migrateMeta, ok bool, err error) {
 
 	r := bufio.NewReader(f)
 
-	line, truncated, err := readBoundedLine(r, maxSessionMetaLineBytes)
+	line, truncated, err := util.ReadBoundedLine(r, maxSessionMetaLineBytes)
 	if err != nil && !errors.Is(err, io.EOF) {
 		return migrateMeta{}, false, err
 	}

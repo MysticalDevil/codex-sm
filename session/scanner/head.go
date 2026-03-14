@@ -7,6 +7,8 @@ import (
 	"slices"
 	"strings"
 	"unicode/utf8"
+
+	"github.com/MysticalDevil/codexsm/util"
 )
 
 func readConversationHead(r *bufio.Reader) string {
@@ -18,7 +20,7 @@ func readConversationHead(r *bufio.Reader) string {
 	candidates := make([]string, 0, maxCandidates)
 
 	for i := 0; i < maxLines; i++ {
-		line, truncated, err := readBoundedLine(r, maxSessionHeadLineBytes)
+		line, truncated, err := util.ReadBoundedLine(r, maxSessionHeadLineBytes)
 		if err != nil && !errors.Is(err, io.EOF) {
 			break
 		}
