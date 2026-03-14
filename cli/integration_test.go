@@ -14,6 +14,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/MysticalDevil/codexsm/internal/core"
 	"github.com/MysticalDevil/codexsm/internal/testsupport"
 	"github.com/spf13/cobra"
 )
@@ -769,7 +770,7 @@ func TestDelete_RealDeletePreviewFullShowsAll(t *testing.T) {
 	if strings.Contains(errOut, "... and") {
 		t.Fatalf("full mode should not truncate preview, got: %q", errOut)
 	}
-	if !strings.Contains(errOut, shortID("33333333-3333-3333-3333-333333333333")) || !strings.Contains(errOut, shortID("33333333-3333-3333-3333-aaaaaaaaaaaa")) {
+	if !strings.Contains(errOut, core.ShortID("33333333-3333-3333-3333-333333333333")) || !strings.Contains(errOut, core.ShortID("33333333-3333-3333-3333-aaaaaaaaaaaa")) {
 		t.Fatalf("full mode should show all matched IDs, got: %q", errOut)
 	}
 }

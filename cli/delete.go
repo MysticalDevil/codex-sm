@@ -227,7 +227,7 @@ func printDeletePreview(cmd *cobra.Command, candidates []session.Session, hard b
 		if i >= sampleLimit {
 			break
 		}
-		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "  - %s %s\n", shortID(s.SessionID), s.Path)
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "  - %s %s\n", core.ShortID(s.SessionID), s.Path)
 	}
 	if mode == ops.PreviewSample && len(candidates) > sampleLimit {
 		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "  ... and %d more\n", len(candidates)-sampleLimit)

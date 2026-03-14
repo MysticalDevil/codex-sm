@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/MysticalDevil/codexsm/internal/core"
 	"github.com/MysticalDevil/codexsm/session"
 	"github.com/charmbracelet/lipgloss"
 )
@@ -81,7 +82,7 @@ func (m *tuiModel) rebuildTree() {
 		for _, i := range grouped[group] {
 			m.tree = append(m.tree, treeItem{
 				kind:        treeItemSession,
-				label:       shortID(m.sessions[i].SessionID),
+				label:       core.ShortID(m.sessions[i].SessionID),
 				month:       group,
 				index:       i,
 				indent:      1,
@@ -102,7 +103,7 @@ func (m *tuiModel) groupKeyForSession(s session.Session, mode string) string {
 		}
 		return s.UpdatedAt.Local().Format("2006-01-02")
 	case "host":
-		host := compactHomePath(s.HostDir, m.home)
+		host := core.CompactHomePath(s.HostDir, m.home)
 		if strings.TrimSpace(host) == "" {
 			return "unknown-host"
 		}
@@ -185,7 +186,7 @@ func (m *tuiModel) sessionHostMissing(s session.Session) bool {
 }
 
 func (m *tuiModel) detailRows(selected session.Session, rightW int) (header string, values string) {
-	host := compactHomePath(selected.HostDir, m.home)
+	host := core.CompactHomePath(selected.HostDir, m.home)
 	if strings.TrimSpace(host) == "" {
 		host = "-"
 	}
@@ -200,16 +201,16 @@ func (m *tuiModel) detailRows(selected session.Session, rightW int) (header stri
 		w    int
 	}
 	cols := []col{
-		{name: "ID", val: shortID(selected.SessionID), w: 12},
-		{name: "UPDATED", val: formatDisplayTime(selected.UpdatedAt), w: 19},
-		{name: "SIZE", val: formatBytesIEC(selected.SizeBytes), w: 8},
+		{name: "ID", val: core.ShortID(selected.SessionID), w: 12},
+		{name: "UPDATED", val: core.FormatDisplayTime(selected.UpdatedAt), w: 19},
+		{name: "SIZE", val: core.FormatBytesIEC(selected.SizeBytes), w: 8},
 		{name: "HEALTH", val: strings.ToUpper(string(selected.Health)), w: 12},
 		{name: "HOST", val: previewHostPath(host, hostW), w: hostW},
 	}
 	if contentWidth < 88 {
 		hostW = max(16, contentWidth-12-12-4)
 		cols = []col{
-			{name: "ID", val: shortID(selected.SessionID), w: 12},
+			{name: "ID", val: core.ShortID(selected.SessionID), w: 12},
 			{name: "HEALTH", val: strings.ToUpper(string(selected.Health)), w: 12},
 			{name: "HOST", val: previewHostPath(host, hostW), w: hostW},
 		}
@@ -217,7 +218,7 @@ func (m *tuiModel) detailRows(selected session.Session, rightW int) (header stri
 	if contentWidth < 64 {
 		hostW = max(14, contentWidth-12-3)
 		cols = []col{
-			{name: "ID", val: shortID(selected.SessionID), w: 12},
+			{name: "ID", val: core.ShortID(selected.SessionID), w: 12},
 			{name: "HOST", val: previewHostPath(host, hostW), w: hostW},
 		}
 	}

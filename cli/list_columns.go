@@ -74,7 +74,7 @@ func parseListColumns(input string, detailed bool, format string) ([]listColumn,
 func listColumnValue(key string, s session.Session, home string, headWidth int, truncateHead bool) string {
 	switch key {
 	case "id":
-		return shortID(s.SessionID)
+		return core.ShortID(s.SessionID)
 	case "session_id":
 		return s.SessionID
 	case "created_at":

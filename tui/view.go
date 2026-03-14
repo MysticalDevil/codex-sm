@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/MysticalDevil/codexsm/internal/core"
 	"github.com/MysticalDevil/codexsm/internal/tui/layout"
 	"github.com/MysticalDevil/codexsm/session"
 	"github.com/charmbracelet/lipgloss"
@@ -297,7 +298,7 @@ func (m tuiModel) renderBottomLine(width int) string {
 	if m.pendingAction == "" {
 		return renderKeysLine(width, m.theme)
 	}
-	target := shortID(strings.TrimSpace(m.pendingID))
+	target := core.ShortID(strings.TrimSpace(m.pendingID))
 	if target == "" {
 		target = "-"
 	}

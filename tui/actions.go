@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/MysticalDevil/codexsm/audit"
+	"github.com/MysticalDevil/codexsm/internal/core"
 	"github.com/MysticalDevil/codexsm/session"
 	"github.com/MysticalDevil/codexsm/usecase"
 )
@@ -35,7 +36,7 @@ func (m *tuiModel) requestDelete() {
 	if !m.dryRun && !m.yes {
 		m.pendingAction = "delete"
 		m.pendingID = selected.SessionID
-		m.status = fmt.Sprintf("Confirm delete %s: press y to continue, n to cancel.", shortID(selected.SessionID))
+		m.status = fmt.Sprintf("Confirm delete %s: press y to continue, n to cancel.", core.ShortID(selected.SessionID))
 		return
 	}
 	m.runDelete(selected)
@@ -108,7 +109,7 @@ func (m *tuiModel) runDelete(selected session.Session) {
 		"delete: action=%s matched=%d affected=%s",
 		sum.Action,
 		sum.MatchedCount,
-		formatBytesIEC(sum.AffectedBytes),
+		core.FormatBytesIEC(sum.AffectedBytes),
 	)
 	if !m.dryRun && sum.Succeeded > 0 {
 		m.removeSelectedSession()
@@ -158,7 +159,7 @@ func (m *tuiModel) runHostMigrate(host string, candidates []session.Session) {
 		"migrate-host: action=%s matched=%d affected=%s",
 		sum.Action,
 		sum.MatchedCount,
-		formatBytesIEC(sum.AffectedBytes),
+		core.FormatBytesIEC(sum.AffectedBytes),
 	)
 	if !m.dryRun && sum.Succeeded > 0 {
 		m.removeSessionsByID(candidates)
@@ -182,7 +183,7 @@ func (m *tuiModel) requestRestore() {
 	if !m.dryRun && !m.yes {
 		m.pendingAction = "restore"
 		m.pendingID = selected.SessionID
-		m.status = fmt.Sprintf("Confirm restore %s: press y to continue, n to cancel.", shortID(selected.SessionID))
+		m.status = fmt.Sprintf("Confirm restore %s: press y to continue, n to cancel.", core.ShortID(selected.SessionID))
 		return
 	}
 	m.runRestore(selected)
@@ -216,7 +217,7 @@ func (m *tuiModel) runRestore(selected session.Session) {
 		"restore: action=%s matched=%d affected=%s",
 		sum.Action,
 		sum.MatchedCount,
-		formatBytesIEC(sum.AffectedBytes),
+		core.FormatBytesIEC(sum.AffectedBytes),
 	)
 	if !m.dryRun && sum.Succeeded > 0 {
 		m.removeSelectedSession()

@@ -47,7 +47,7 @@ func TestListHelpers(t *testing.T) {
 	if got := truncateDisplayText("abc", 0); got != "abc" {
 		t.Fatalf("truncate with 0 should keep full text, got: %q", got)
 	}
-	if got := shortID(s.SessionID); got != "11111111-111" {
+	if got := core.ShortID(s.SessionID); got != "11111111-111" {
 		t.Fatalf("unexpected short id: %q", got)
 	}
 	if got := core.FormatBytesIEC(1536); got != "1.5KiB" {
@@ -213,7 +213,7 @@ func TestDeleteRestorePreviewHelpersEdgeCases(t *testing.T) {
 		if !strings.Contains(got, "preview action=hard-delete matched=2") {
 			t.Fatalf("unexpected delete preview header: %q", got)
 		}
-		if !strings.Contains(got, shortID("s1")) || !strings.Contains(got, shortID("s2")) {
+		if !strings.Contains(got, core.ShortID("s1")) || !strings.Contains(got, core.ShortID("s2")) {
 			t.Fatalf("expected all preview rows in full mode, got: %q", got)
 		}
 	})
@@ -224,7 +224,7 @@ func TestDeleteRestorePreviewHelpersEdgeCases(t *testing.T) {
 		cmd.SetErr(errBuf)
 		printDeletePreview(cmd, items, false, previewSample, -3)
 		got := errBuf.String()
-		if strings.Contains(got, shortID("s1")) || strings.Contains(got, shortID("s2")) {
+		if strings.Contains(got, core.ShortID("s1")) || strings.Contains(got, core.ShortID("s2")) {
 			t.Fatalf("did not expect item rows with negative sample limit, got: %q", got)
 		}
 		if !strings.Contains(got, "... and 2 more") {
@@ -241,7 +241,7 @@ func TestDeleteRestorePreviewHelpersEdgeCases(t *testing.T) {
 		if !strings.Contains(got, "preview action=restore matched=2") {
 			t.Fatalf("unexpected restore preview header: %q", got)
 		}
-		if !strings.Contains(got, shortID("s1")) || !strings.Contains(got, shortID("s2")) {
+		if !strings.Contains(got, core.ShortID("s1")) || !strings.Contains(got, core.ShortID("s2")) {
 			t.Fatalf("expected all restore preview rows in full mode, got: %q", got)
 		}
 	})
@@ -252,7 +252,7 @@ func TestDeleteRestorePreviewHelpersEdgeCases(t *testing.T) {
 		cmd.SetErr(errBuf)
 		printRestorePreview(cmd, items, previewSample, -1)
 		got := errBuf.String()
-		if strings.Contains(got, shortID("s1")) || strings.Contains(got, shortID("s2")) {
+		if strings.Contains(got, core.ShortID("s1")) || strings.Contains(got, core.ShortID("s2")) {
 			t.Fatalf("did not expect restore item rows with negative sample limit, got: %q", got)
 		}
 		if !strings.Contains(got, "... and 2 more") {

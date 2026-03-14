@@ -6,7 +6,6 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/MysticalDevil/codexsm/internal/core"
 	"github.com/MysticalDevil/codexsm/session"
 )
 
@@ -101,8 +100,4 @@ func colorizeRenderedTable(text string, sessions []session.Session, noHeader, ha
 		out += "\n"
 	}
 	return out
-}
-
-func shortID(id string) string {
-	return core.ShortID(id)
 }
