@@ -46,9 +46,116 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *tuiModel) handleKey(key string) bool {
-	switch key {
-	case "q", "ctrl+c":
+	if key == "q" || key == "ctrl+c" {
 		return true
+	}
+
+	if IsUltraWidth(m.width) {
+		switch key {
+		case "tab", "ctrl+i", "shift+tab", "backtab":
+			if m.ultraPane == ultraPaneTree {
+				m.ultraPane = ultraPanePreview
+				m.focus = focusPreview
+			} else {
+				m.ultraPane = ultraPaneTree
+				m.focus = focusTree
+			}
+		case "left", "h", "t", "1":
+			m.ultraPane = ultraPaneTree
+			m.focus = focusTree
+		case "right", "l", "p", "2":
+			m.ultraPane = ultraPanePreview
+			m.focus = focusPreview
+		case "j", "down":
+			if m.ultraPane == ultraPaneTree {
+				if m.cursor < len(m.tree)-1 {
+					m.cursor++
+				}
+
+				m.syncPreviewSelection()
+				m.clampOffset()
+			} else {
+				m.previewOffset++
+			}
+		case "k", "up":
+			if m.ultraPane == ultraPaneTree {
+				if m.cursor > 0 {
+					m.cursor--
+				}
+
+				m.syncPreviewSelection()
+				m.clampOffset()
+			} else {
+				m.previewOffset--
+				if m.previewOffset < 0 {
+					m.previewOffset = 0
+				}
+			}
+		case "g":
+			if m.ultraPane == ultraPaneTree {
+				m.cursor = 0
+				m.syncPreviewSelection()
+				m.clampOffset()
+			} else {
+				m.previewOffset = 0
+			}
+		case "G":
+			if m.ultraPane == ultraPaneTree {
+				if len(m.tree) > 0 {
+					m.cursor = len(m.tree) - 1
+				}
+
+				m.syncPreviewSelection()
+				m.clampOffset()
+			} else {
+				m.previewOffset = 1 << 30
+			}
+		case "z":
+			if m.ultraPane == ultraPaneTree {
+				group, ok := m.currentCursorGroup()
+				if !ok {
+					m.status = "No group selected."
+					return false
+				}
+
+				if !m.toggleSelectedGroupCollapsed() {
+					m.status = "No group selected."
+					return false
+				}
+
+				m.rebuildTree()
+
+				if idx, found := m.findGroupIndex(group); found {
+					m.cursor = idx
+					m.syncPreviewSelection()
+				}
+
+				m.clampOffset()
+			}
+		case "Z":
+			if m.ultraPane == ultraPaneTree && m.expandAllGroups() {
+				m.rebuildTree()
+				m.clampOffset()
+			}
+		case "ctrl+d":
+			if m.ultraPane == ultraPanePreview {
+				m.previewOffset += m.previewPageStep()
+			}
+		case "ctrl+u":
+			if m.ultraPane == ultraPanePreview {
+				m.previewOffset -= m.previewPageStep()
+				if m.previewOffset < 0 {
+					m.previewOffset = 0
+				}
+			}
+		case "d", "m", "r", "y", "n", "esc":
+			m.status = "Actions disabled in ultra mode. Expand terminal width."
+		}
+
+		return false
+	}
+
+	switch key {
 	case "tab", "ctrl+i":
 		if m.focus == focusTree {
 			m.focus = focusPreview
@@ -234,7 +341,13 @@ func (m *tuiModel) currentPreviewRequestDims() (int, int) {
 	metrics := Compute(m.width, m.height)
 	rightBase := lipgloss.NewStyle().Border(lipgloss.NormalBorder()).Padding(0, 1)
 	rightW := max(12, metrics.RightOuterW-rightBase.GetHorizontalFrameSize())
+
 	previewInnerH := max(2, metrics.PreviewOuterH-rightBase.GetVerticalFrameSize())
+	if metrics.Tier == layoutTierUltra {
+		rightW = max(12, metrics.TotalW-rightBase.GetHorizontalFrameSize())
+		previewInnerH = max(2, metrics.MainAreaH-rightBase.GetVerticalFrameSize())
+	}
+
 	// Keep in sync with appendSelectedSessionPreview fixed-row budget.
 	previewContentHeight := max(1, previewInnerH-5)
 	previewTextWidth := max(8, rightW-8)

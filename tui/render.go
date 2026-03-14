@@ -121,6 +121,77 @@ func renderCompactKeysLine(width int, theme tuiTheme) string {
 	return truncateDisplay(renderKeysSegments(variants[len(variants)-1], theme), width)
 }
 
+func renderUltraKeysLine(width int, theme tuiTheme, pane ultraPane) string {
+	var variants [][]keysSegment
+	if pane == ultraPanePreview {
+		variants = [][]keysSegment{
+			{
+				{label: "[ULTRA PREVIEW]", kind: keysLabel},
+				{label: " j/k ", kind: keysKey},
+				{label: "scroll", kind: keysText},
+				{label: " | ", kind: keysSep},
+				{label: "Ctrl+d/u ", kind: keysKey},
+				{label: "page", kind: keysText},
+				{label: " | ", kind: keysSep},
+				{label: "Tab/1 ", kind: keysKey},
+				{label: "tree", kind: keysText},
+				{label: " | ", kind: keysSep},
+				{label: "q ", kind: keysKey},
+				{label: "quit", kind: keysText},
+			},
+			{
+				{label: "[U-PREVIEW]", kind: keysLabel},
+				{label: " j/k Ctrl+d/u Tab q ", kind: keysKey},
+			},
+			{
+				{label: "[U]", kind: keysLabel},
+				{label: " j/k ^d/^u Tab q ", kind: keysKey},
+			},
+		}
+	} else {
+		variants = [][]keysSegment{
+			{
+				{label: "[ULTRA TREE]", kind: keysLabel},
+				{label: " j/k ", kind: keysKey},
+				{label: "move", kind: keysText},
+				{label: " | ", kind: keysSep},
+				{label: "g/G ", kind: keysKey},
+				{label: "top/bottom", kind: keysText},
+				{label: " | ", kind: keysSep},
+				{label: "z/Z ", kind: keysKey},
+				{label: "fold", kind: keysText},
+				{label: " | ", kind: keysSep},
+				{label: "Tab/2 ", kind: keysKey},
+				{label: "preview", kind: keysText},
+				{label: " | ", kind: keysSep},
+				{label: "q ", kind: keysKey},
+				{label: "quit", kind: keysText},
+			},
+			{
+				{label: "[U-TREE]", kind: keysLabel},
+				{label: " j/k g/G z/Z Tab q ", kind: keysKey},
+			},
+			{
+				{label: "[U]", kind: keysLabel},
+				{label: " j/k z/Z Tab q ", kind: keysKey},
+			},
+		}
+	}
+
+	if width <= 0 {
+		return renderKeysSegments(variants[len(variants)-1], theme)
+	}
+
+	for _, variant := range variants {
+		line := renderKeysSegments(variant, theme)
+		if lipgloss.Width(line) <= width {
+			return line
+		}
+	}
+
+	return truncateDisplay(renderKeysSegments(variants[len(variants)-1], theme), width)
+}
+
 type keysSegmentKind int
 
 const (

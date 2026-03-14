@@ -94,7 +94,8 @@ func (m tuiModel) View() string {
 	leftW := max(12, metrics.LeftOuterW-leftBase.GetHorizontalFrameSize())
 	rightW := max(12, metrics.RightOuterW-rightBase.GetHorizontalFrameSize())
 
-	_, previewLines, infoLines := m.buildPanelLinesForMode(rightW, statusColor, metrics.Compact)
+	isUltra := metrics.Tier == layoutTierUltra
+	_, previewLines, infoLines := m.buildPanelLinesForMode(rightW, statusColor, metrics.Compact, isUltra)
 
 	selected, ok := m.selectedSession()
 	if ok {
@@ -127,7 +128,15 @@ func (m tuiModel) View() string {
 		Width(leftW).
 		Height(max(2, treeOuterH-leftBase.GetVerticalFrameSize())).
 		BorderForeground(lipgloss.Color(leftBorder)).
-		Render(m.renderTreePaneContentForMode(leftW, max(2, treeOuterH-leftBase.GetVerticalFrameSize()), statusColor, metrics.Compact))
+		Render(
+			m.renderTreePaneContentForMode(
+				leftW,
+				max(2, treeOuterH-leftBase.GetVerticalFrameSize()),
+				statusColor,
+				metrics.Compact,
+				isUltra,
+			),
+		)
 
 	previewInnerH := max(2, metrics.PreviewOuterH-rightBase.GetVerticalFrameSize())
 	previewPane := rightBase.
@@ -148,6 +157,57 @@ func (m tuiModel) View() string {
 		Height(infoInnerH).
 		BorderForeground(lipgloss.Color(infoBorder)).
 		Render(strings.Join(infoLines[:min(len(infoLines), 3)], "\n"))
+
+	if isUltra {
+		paneW := max(12, metrics.TotalW-rightBase.GetHorizontalFrameSize())
+		paneH := max(2, metrics.MainAreaH-rightBase.GetVerticalFrameSize())
+		mainArea := ""
+
+		if m.ultraPane == ultraPanePreview {
+			_, previewUltraLines, _ := m.buildPanelLinesForMode(paneW, statusColor, true, true)
+
+			selectedUltra, okUltra := m.selectedSession()
+			if okUltra {
+				tmp := make([]string, 0, 2)
+				m.appendSelectedSessionPreview(&previewUltraLines, &tmp, selectedUltra, paneW)
+			} else {
+				previewUltraLines = append(previewUltraLines, " Select a session node")
+			}
+
+			previewBorder := borderColor
+			if m.focus == focusPreview {
+				previewBorder = borderFocusColor
+			}
+
+			mainArea = rightBase.
+				Width(paneW).
+				Height(paneH).
+				BorderForeground(lipgloss.Color(previewBorder)).
+				Render(strings.Join(previewUltraLines, "\n"))
+		} else {
+			treeBorder := borderColor
+			if m.focus == focusTree {
+				treeBorder = borderFocusColor
+			}
+
+			mainArea = rightBase.
+				Width(paneW).
+				Height(paneH).
+				BorderForeground(lipgloss.Color(treeBorder)).
+				Render(m.renderTreePaneContentForMode(paneW, paneH, statusColor, false, false))
+		}
+
+		mainOuterW := lipgloss.Width(mainArea)
+		mainArea = lipgloss.NewStyle().Width(mainOuterW).MaxWidth(mainOuterW).Render(mainArea)
+		keybar := renderKeysBar(mainOuterW)
+
+		return lipgloss.NewStyle().
+			Width(metrics.TotalW).
+			MaxWidth(metrics.TotalW).
+			AlignHorizontal(lipgloss.Center).
+			Foreground(lipgloss.Color(fgColor)).
+			Render(lipgloss.JoinVertical(lipgloss.Left, mainArea, keybar))
+	}
 
 	rightBlock := lipgloss.JoinVertical(lipgloss.Left, infoPane, previewPane)
 	mainArea := lipgloss.JoinHorizontal(
@@ -170,15 +230,20 @@ func (m tuiModel) View() string {
 	return mainContainer
 }
 
-func (m tuiModel) buildPanelLinesForMode(rightW int, statusColor string, compact bool) ([]string, []string, []string) {
+func (m tuiModel) buildPanelLinesForMode(rightW int, statusColor string, compact bool, ultra bool) ([]string, []string, []string) {
 	leftTitleText := "SESSIONS"
-	if compact {
+	if ultra {
+		leftTitleText = "TREE [U]"
+	} else if compact {
 		leftTitleText = "SES [C]"
 	} else if gb := strings.ToLower(strings.TrimSpace(m.groupBy)); gb != "" && gb != "none" {
 		leftTitleText = fmt.Sprintf("SESSIONS (By %s)", strings.ToUpper(gb[:1])+gb[1:])
 	}
 
 	rightTitleText := "PREVIEW"
+	if ultra {
+		rightTitleText = "PREVIEW [U]"
+	}
 
 	if m.focus == focusTree {
 		leftTitleText += " *"
@@ -238,12 +303,14 @@ func (m tuiModel) buildPanelLinesForMode(rightW int, statusColor string, compact
 }
 
 func (m tuiModel) renderTreeLines(leftW int, statusColor string) []string {
-	return m.renderTreeLinesForMode(leftW, statusColor, m.compactMode())
+	return m.renderTreeLinesForMode(leftW, statusColor, m.compactMode(), IsUltraWidth(m.width))
 }
 
-func (m tuiModel) renderTreeLinesForMode(leftW int, statusColor string, compact bool) []string {
+func (m tuiModel) renderTreeLinesForMode(leftW int, statusColor string, compact bool, ultra bool) []string {
 	leftTitleText := "SESSIONS"
-	if compact {
+	if ultra {
+		leftTitleText = "TREE [U]"
+	} else if compact {
 		leftTitleText = "SES [C]"
 	} else if gb := strings.ToLower(strings.TrimSpace(m.groupBy)); gb != "" && gb != "none" {
 		leftTitleText = fmt.Sprintf("SESSIONS (By %s)", strings.ToUpper(gb[:1])+gb[1:])
@@ -443,11 +510,11 @@ func (m tuiModel) renderTreeLinesForMode(leftW int, statusColor string, compact 
 }
 
 func (m tuiModel) renderTreePaneContent(leftW, leftInnerH int, statusColor string) string {
-	return m.renderTreePaneContentForMode(leftW, leftInnerH, statusColor, m.compactMode())
+	return m.renderTreePaneContentForMode(leftW, leftInnerH, statusColor, m.compactMode(), IsUltraWidth(m.width))
 }
 
-func (m tuiModel) renderTreePaneContentForMode(leftW, leftInnerH int, statusColor string, compact bool) string {
-	lines := m.renderTreeLinesForMode(leftW, statusColor, compact)
+func (m tuiModel) renderTreePaneContentForMode(leftW, leftInnerH int, statusColor string, compact bool, ultra bool) string {
+	lines := m.renderTreeLinesForMode(leftW, statusColor, compact, ultra)
 
 	footer := m.treeFooterLine(leftW, statusColor, compact)
 	if leftInnerH <= 1 {
@@ -556,7 +623,13 @@ func (m *tuiModel) appendSelectedSessionPreview(
 	selected session.Session,
 	rightW int,
 ) {
-	previewOuterH := Compute(m.width, m.height).PreviewOuterH
+	metrics := Compute(m.width, m.height)
+
+	previewOuterH := metrics.PreviewOuterH
+	if metrics.Tier == layoutTierUltra && m.ultraPane == ultraPanePreview {
+		previewOuterH = metrics.MainAreaH
+	}
+
 	rightBase := lipgloss.NewStyle().Border(lipgloss.NormalBorder()).Padding(0, 1)
 	previewInnerH := max(2, previewOuterH-rightBase.GetVerticalFrameSize())
 	// PREVIEW pane reserves 5 fixed rows: title/status/risk/scroll/bar.
@@ -646,6 +719,10 @@ func compactTreeGroupLabel(v string) string {
 
 func (m tuiModel) renderBottomLine(width int) string {
 	if m.pendingAction == "" {
+		if IsUltraWidth(m.width) {
+			return renderUltraKeysLine(width, m.theme, m.ultraPane)
+		}
+
 		if m.compactMode() {
 			return renderCompactKeysLine(width, m.theme)
 		}
