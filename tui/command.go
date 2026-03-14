@@ -39,6 +39,13 @@ const (
 	focusPreview
 )
 
+type ultraPane int
+
+const (
+	ultraPaneTree ultraPane = iota
+	ultraPanePreview
+)
+
 type tuiModel struct {
 	sessions           []session.Session
 	tree               []treeItem
@@ -63,6 +70,7 @@ type tuiModel struct {
 	indexCap           int
 	lastPath           string
 	focus              tuiFocus
+	ultraPane          ultraPane
 	groupBy            string
 	source             string
 	theme              tuiTheme
@@ -238,17 +246,18 @@ func NewCommand(deps CommandDeps) *cobra.Command {
 				previewIndex = ""
 			}
 
-			m := tuiModel{
-				sessions:           items,
-				collapsedGroups:    make(map[string]bool),
+				m := tuiModel{
+					sessions:           items,
+					collapsedGroups:    make(map[string]bool),
 				home:               home,
 				sessionsRoot:       sessionsRoot,
 				status:             "Ready. Press q to quit.",
 				previewCache:       make(map[string][]string),
 				previewNodes:       make(map[string]*list.Element),
-				previewBytesBudget: 8 << 20,
-				focus:              focusTree,
-				groupBy:            mode,
+					previewBytesBudget: 8 << 20,
+					focus:              focusTree,
+					ultraPane:          ultraPaneTree,
+					groupBy:            mode,
 				source:             source,
 				theme:              theme,
 				previewIndex:       previewIndex,

@@ -1,12 +1,25 @@
 package tui
 
 const (
-	// MinWidth is the minimal terminal width required by TUI in compact mode.
-	MinWidth = 80
+	// MinWidth is the minimal terminal width required by TUI in ultra mode.
+	MinWidth = 64
+	// MinWidthCompact is the preferred minimal terminal width for compact mode.
+	MinWidthCompact = 80
+	// MinWidthMedium is the preferred minimal terminal width for medium mode.
+	MinWidthMedium = 96
 	// MinWidthNormal is the preferred minimal terminal width for normal (non-compact) mode.
 	MinWidthNormal = 118
 	// MinHeight is the minimal terminal height required by TUI.
 	MinHeight = 24
+)
+
+type layoutTier int
+
+const (
+	layoutTierUltra layoutTier = iota
+	layoutTierCompact
+	layoutTierMedium
+	layoutTierFull
 )
 
 // Metrics describes the top-level dimensions used by TUI panels.
@@ -14,6 +27,7 @@ type Metrics struct {
 	TotalW        int
 	TotalH        int
 	Compact       bool
+	Tier          layoutTier
 	KeysOuterH    int
 	MainAreaH     int
 	TreeOuterH    int
@@ -46,13 +60,38 @@ func RenderWidth(width int) int {
 	return width - 1
 }
 
+func tierByWidth(width int) layoutTier {
+	w := RenderWidth(width)
+	switch {
+	case w >= MinWidthNormal:
+		return layoutTierFull
+	case w >= MinWidthMedium:
+		return layoutTierMedium
+	case w >= MinWidthCompact:
+		return layoutTierCompact
+	default:
+		return layoutTierUltra
+	}
+}
+
+// IsUltraWidth reports whether current terminal width should use ultra rendering.
+func IsUltraWidth(width int) bool {
+	if width <= 0 {
+		return false
+	}
+
+	return tierByWidth(width) == layoutTierUltra
+}
+
 // IsCompactWidth reports whether current terminal width should use compact rendering.
 func IsCompactWidth(width int) bool {
 	if width <= 0 {
 		return false
 	}
 
-	return RenderWidth(width) < MinWidthNormal
+	tier := tierByWidth(width)
+
+	return tier == layoutTierCompact || tier == layoutTierUltra
 }
 
 // IsTooSmall reports whether current terminal size is below supported bounds.
@@ -69,30 +108,39 @@ func Compute(width, height int) Metrics {
 	totalW, totalH := NormalizeSize(width, height)
 	totalW = RenderWidth(totalW)
 
-	compact := IsCompactWidth(width)
+	tier := tierByWidth(width)
+	compact := tier == layoutTierCompact || tier == layoutTierUltra
 	keysOuterH := 3
 	mainAreaH := max(8, totalH-keysOuterH)
 
 	if compact {
 		gapW := 0
 
-		leftOuterW := int(float64(totalW) * 0.35)
-		if leftOuterW < 22 {
-			leftOuterW = 22
+		leftMin := 22
+		rightMin := 42
+
+		if tier == layoutTierUltra {
+			leftMin = 20
+			rightMin = 20
 		}
 
-		if leftOuterW > totalW-42-gapW {
-			leftOuterW = max(22, totalW-42-gapW)
+		leftOuterW := int(float64(totalW) * 0.35)
+		if leftOuterW < leftMin {
+			leftOuterW = leftMin
+		}
+
+		if leftOuterW > totalW-rightMin-gapW {
+			leftOuterW = max(leftMin, totalW-rightMin-gapW)
 		}
 
 		rightOuterW := totalW - leftOuterW - gapW
-		if rightOuterW < 42 {
-			rightOuterW = 42
-			leftOuterW = max(22, totalW-rightOuterW-gapW)
+		if rightOuterW < rightMin {
+			rightOuterW = rightMin
+			leftOuterW = max(leftMin, totalW-rightOuterW-gapW)
 		}
 
 		if leftOuterW+gapW+rightOuterW > totalW {
-			rightOuterW = max(42, totalW-leftOuterW-gapW)
+			rightOuterW = max(rightMin, totalW-leftOuterW-gapW)
 		}
 
 		infoOuterH := 4
@@ -110,6 +158,7 @@ func Compute(width, height int) Metrics {
 			TotalW:        totalW,
 			TotalH:        totalH,
 			Compact:       true,
+			Tier:          tier,
 			KeysOuterH:    keysOuterH,
 			MainAreaH:     mainAreaH,
 			TreeOuterH:    mainAreaH,
@@ -160,6 +209,7 @@ func Compute(width, height int) Metrics {
 		TotalW:        totalW,
 		TotalH:        totalH,
 		Compact:       false,
+		Tier:          tier,
 		KeysOuterH:    keysOuterH,
 		MainAreaH:     mainAreaH,
 		TreeOuterH:    mainAreaH,
