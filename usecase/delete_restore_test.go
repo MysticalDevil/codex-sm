@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/MysticalDevil/codexsm/audit"
 	"github.com/MysticalDevil/codexsm/internal/restoreexec"
 	"github.com/MysticalDevil/codexsm/internal/testsupport"
 	"github.com/MysticalDevil/codexsm/session"
@@ -180,6 +181,30 @@ func (s *stubRestoreExecutor) Execute(_ []session.Session, _ session.Selector, o
 	return s.summary, s.err
 }
 
+type stubAuditSink struct {
+	batchID    string
+	batchErr   error
+	writeErr   error
+	writtenLog string
+	writtenRec audit.ActionRecord
+}
+
+func (s *stubAuditSink) NewBatchID() (string, error) {
+	if s.batchErr != nil {
+		return "", s.batchErr
+	}
+	if s.batchID == "" {
+		return "b-test", nil
+	}
+	return s.batchID, nil
+}
+
+func (s *stubAuditSink) WriteActionLog(logFile string, rec audit.ActionRecord) error {
+	s.writtenLog = logFile
+	s.writtenRec = rec
+	return s.writeErr
+}
+
 func TestRunDeleteAndRestoreActionUseInjectedExecutors(t *testing.T) {
 	delExec := &stubDeleteExecutor{
 		summary: session.DeleteSummary{Action: "dry-run", Simulation: true},
@@ -226,6 +251,68 @@ func TestRunDeleteAndRestoreActionUseInjectedExecutors(t *testing.T) {
 	}
 	if restoreExec.opts.MaxBatch != 66 {
 		t.Fatalf("expected injected restore opts max-batch=66, got %d", restoreExec.opts.MaxBatch)
+	}
+}
+
+func TestRunDeleteActionWritesAuditViaSink(t *testing.T) {
+	delExec := &stubDeleteExecutor{
+		summary: session.DeleteSummary{Action: "dry-run", Simulation: true},
+	}
+	sink := &stubAuditSink{batchID: "b-del"}
+	out, err := RunDeleteAction(DeleteActionInput{
+		Candidates:      []session.Session{{SessionID: "a-1", Path: "/tmp/a-1.jsonl"}},
+		Selector:        session.Selector{ID: "a-1"},
+		DryRun:          true,
+		Confirm:         true,
+		Yes:             true,
+		MaxBatch:        1,
+		MaxBatchChanged: true,
+		Executor:        delExec,
+		LogFile:         "/tmp/actions.log",
+		AuditSink:       sink,
+		Now:             time.Date(2026, 3, 14, 1, 2, 3, 0, time.UTC),
+	})
+	if err != nil {
+		t.Fatalf("RunDeleteAction with audit sink: %v", err)
+	}
+	if out.BatchID != "b-del" {
+		t.Fatalf("unexpected delete batch id: %q", out.BatchID)
+	}
+	if out.LogError != nil {
+		t.Fatalf("unexpected delete log error: %v", out.LogError)
+	}
+	if sink.writtenLog != "/tmp/actions.log" || sink.writtenRec.BatchID != "b-del" {
+		t.Fatalf("unexpected sink write: log=%q rec=%+v", sink.writtenLog, sink.writtenRec)
+	}
+}
+
+func TestRunRestoreActionPropagatesAuditWriteError(t *testing.T) {
+	restoreExec := &stubRestoreExecutor{
+		summary: restoreexec.Summary{Action: "restore-dry-run", Simulation: true},
+	}
+	sink := &stubAuditSink{batchID: "b-res", writeErr: fmt.Errorf("write failed")}
+	out, err := RunRestoreAction(RestoreActionInput{
+		Candidates:         []session.Session{{SessionID: "a-1", Path: "/tmp/trash/sessions/a-1.jsonl"}},
+		Selector:           session.Selector{ID: "a-1"},
+		DryRun:             true,
+		Confirm:            true,
+		Yes:                true,
+		MaxBatch:           1,
+		MaxBatchChanged:    true,
+		AllowEmptySelector: false,
+		Executor:           restoreExec,
+		LogFile:            "/tmp/actions.log",
+		AuditSink:          sink,
+		Now:                time.Date(2026, 3, 14, 2, 3, 4, 0, time.UTC),
+	})
+	if err != nil {
+		t.Fatalf("RunRestoreAction with audit write error should keep run err nil, got %v", err)
+	}
+	if out.BatchID != "b-res" {
+		t.Fatalf("unexpected restore batch id: %q", out.BatchID)
+	}
+	if out.LogError == nil || !strings.Contains(out.LogError.Error(), "write failed") {
+		t.Fatalf("expected restore log error, got %v", out.LogError)
 	}
 }
 

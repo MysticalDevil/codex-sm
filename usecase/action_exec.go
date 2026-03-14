@@ -1,6 +1,9 @@
 package usecase
 
 import (
+	"time"
+
+	"github.com/MysticalDevil/codexsm/audit"
 	"github.com/MysticalDevil/codexsm/internal/restoreexec"
 	"github.com/MysticalDevil/codexsm/session"
 )
@@ -24,11 +27,16 @@ type DeleteActionInput struct {
 	RealDefault     int
 	DryRunDefault   int
 	Executor        DeleteExecutor
+	LogFile         string
+	AuditSink       AuditSink
+	Now             time.Time
 }
 
 type DeleteActionResult struct {
 	Summary         session.DeleteSummary
 	AppliedMaxBatch int
+	BatchID         string
+	LogError        error
 }
 
 // DeleteExecutor executes delete workflow over selected sessions.
@@ -42,6 +50,12 @@ type SessionDeleteExecutor struct{}
 // Execute runs the session delete operation.
 func (SessionDeleteExecutor) Execute(candidates []session.Session, sel session.Selector, opts session.DeleteOptions) (session.DeleteSummary, error) {
 	return session.DeleteSessions(candidates, sel, opts)
+}
+
+// AuditSink appends action records and can allocate operation batch IDs.
+type AuditSink interface {
+	NewBatchID() (string, error)
+	WriteActionLog(logFile string, rec audit.ActionRecord) error
 }
 
 func RunDeleteAction(in DeleteActionInput) (DeleteActionResult, error) {
@@ -65,7 +79,34 @@ func RunDeleteAction(in DeleteActionInput) (DeleteActionResult, error) {
 		SessionsRoot: in.SessionsRoot,
 		TrashRoot:    in.TrashRoot,
 	})
-	return DeleteActionResult{Summary: sum, AppliedMaxBatch: applied}, err
+	out := DeleteActionResult{Summary: sum, AppliedMaxBatch: applied}
+	if in.AuditSink == nil || in.LogFile == "" {
+		return out, err
+	}
+	if len(in.Candidates) > 0 {
+		batchID, batchErr := in.AuditSink.NewBatchID()
+		if batchErr != nil {
+			return out, batchErr
+		}
+		out.BatchID = batchID
+	}
+	ts := in.Now
+	if ts.IsZero() {
+		ts = time.Now()
+	}
+	rec := audit.BuildActionRecord(
+		out.BatchID,
+		ts.UTC(),
+		sum.Action,
+		sum.Simulation,
+		in.Selector,
+		in.Candidates,
+		sum.AffectedBytes,
+		sum.Results,
+		sum.ErrorSummary,
+	)
+	out.LogError = in.AuditSink.WriteActionLog(in.LogFile, rec)
+	return out, err
 }
 
 type RestoreActionInput struct {
@@ -82,6 +123,9 @@ type RestoreActionInput struct {
 	DryRunDefault      int
 	AllowEmptySelector bool
 	Executor           RestoreExecutor
+	LogFile            string
+	AuditSink          AuditSink
+	Now                time.Time
 }
 
 // RestoreSummary is restore execution summary.
@@ -90,6 +134,8 @@ type RestoreSummary = restoreexec.Summary
 type RestoreActionResult struct {
 	Summary         RestoreSummary
 	AppliedMaxBatch int
+	BatchID         string
+	LogError        error
 }
 
 // RestoreExecutor executes restore workflow over selected sessions.
@@ -126,5 +172,32 @@ func RunRestoreAction(in RestoreActionInput) (RestoreActionResult, error) {
 		SessionsRoot:       in.SessionsRoot,
 		TrashSessionsRoot:  in.TrashSessionsRoot,
 	})
-	return RestoreActionResult{Summary: sum, AppliedMaxBatch: applied}, err
+	out := RestoreActionResult{Summary: sum, AppliedMaxBatch: applied}
+	if in.AuditSink == nil || in.LogFile == "" {
+		return out, err
+	}
+	if len(in.Candidates) > 0 {
+		batchID, batchErr := in.AuditSink.NewBatchID()
+		if batchErr != nil {
+			return out, batchErr
+		}
+		out.BatchID = batchID
+	}
+	ts := in.Now
+	if ts.IsZero() {
+		ts = time.Now()
+	}
+	rec := audit.BuildActionRecord(
+		out.BatchID,
+		ts.UTC(),
+		sum.Action,
+		sum.Simulation,
+		in.Selector,
+		in.Candidates,
+		sum.AffectedBytes,
+		sum.Results,
+		sum.ErrorSummary,
+	)
+	out.LogError = in.AuditSink.WriteActionLog(in.LogFile, rec)
+	return out, err
 }
