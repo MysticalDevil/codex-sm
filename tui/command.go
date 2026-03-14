@@ -11,6 +11,7 @@ import (
 
 	"github.com/MysticalDevil/codexsm/config"
 	"github.com/MysticalDevil/codexsm/session"
+	"github.com/MysticalDevil/codexsm/tui/preview"
 	"github.com/MysticalDevil/codexsm/usecase"
 )
 
@@ -270,18 +271,15 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.height = msg.Height
 		m.clampOffset()
 		return m, m.ensurePreviewRequest()
-	case previewLoadedMsg:
-		if msg.RequestID != m.previewReqID || msg.Key != m.previewWait {
+	case preview.LoadedMsg:
+		out := preview.HandleLoaded(m.previewReqID, m.previewWait, msg, m.previewIndex, m.indexCap)
+		if !out.Accepted {
 			return m, nil
 		}
-		m.previewWait = ""
-		if msg.Err == "" {
-			m.previewCachePut(msg.Key, msg.Lines)
-			return m, persistPreviewIndexCmd(m.previewIndex, m.indexCap, msg.Record)
-		}
-		m.previewCachePut(msg.Key, []string{" preview load failed: " + msg.Err})
-		return m, nil
-	case previewIndexPersistedMsg:
+		m.previewWait = out.NextWait
+		m.previewCachePut(out.CacheKey, out.CacheLines)
+		return m, out.PersistCmd
+	case preview.IndexPersistedMsg:
 		return m, nil
 	case tea.KeyMsg:
 		if m.handleKey(msg.String()) {

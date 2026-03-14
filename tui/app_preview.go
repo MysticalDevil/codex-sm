@@ -2,8 +2,7 @@ package tui
 
 import (
 	"container/list"
-	"strings"
-	"time"
+	"os"
 
 	tea "github.com/charmbracelet/bubbletea"
 
@@ -12,36 +11,32 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-type previewIndexRecord = preview.IndexRecord
-
 type previewLoadRequest struct {
 	RequestID     uint64
 	Key           string
 	Path          string
 	Width         int
 	Lines         int
-	Theme         tuiTheme
+	Palette       preview.ThemePalette
 	IndexPath     string
 	SizeBytes     int64
 	UpdatedAtUnix int64
-}
-
-type previewLoadedMsg struct {
-	RequestID uint64
-	Key       string
-	Lines     []string
-	Err       string
-	Record    previewIndexRecord
-}
-
-type previewIndexPersistedMsg struct {
-	Err string
 }
 
 type previewLRUEntry struct {
 	Key  string
 	Size int64
 }
+
+type angleTagTone = preview.AngleTagTone
+
+const (
+	angleTagToneDefault   = preview.AngleTagToneDefault
+	angleTagToneSystem    = preview.AngleTagToneSystem
+	angleTagToneLifecycle = preview.AngleTagToneLifecycle
+	angleTagToneDanger    = preview.AngleTagToneDanger
+	angleTagToneSuccess   = preview.AngleTagToneSuccess
+)
 
 func previewCacheKeyForSession(s session.Session, width int) string {
 	return preview.CacheKeyForSession(s.Path, width, s.SizeBytes, s.UpdatedAt.UnixNano())
@@ -72,12 +67,22 @@ func (m *tuiModel) ensurePreviewRequest() tea.Cmd {
 		Path:          selected.Path,
 		Width:         width,
 		Lines:         lines,
-		Theme:         m.theme,
+		Palette:       previewPalette(m.theme),
 		IndexPath:     m.previewIndex,
 		SizeBytes:     selected.SizeBytes,
 		UpdatedAtUnix: selected.UpdatedAt.UnixNano(),
 	}
-	return loadPreviewCmd(req)
+	return preview.EnsureRequest(preview.Request{
+		RequestID:     req.RequestID,
+		Key:           req.Key,
+		Path:          req.Path,
+		Width:         req.Width,
+		Lines:         req.Lines,
+		Palette:       req.Palette,
+		IndexPath:     req.IndexPath,
+		SizeBytes:     req.SizeBytes,
+		UpdatedAtUnix: req.UpdatedAtUnix,
+	})
 }
 
 func (m *tuiModel) currentPreviewRequestDims() (int, int) {
@@ -177,61 +182,46 @@ func (m *tuiModel) previewCachePut(key string, lines []string) {
 	}
 }
 
-func loadPreviewCmd(req previewLoadRequest) tea.Cmd {
-	return func() tea.Msg {
-		if req.Path == "" {
-			return previewLoadedMsg{RequestID: req.RequestID, Key: req.Key, Err: "empty path"}
-		}
-
-		if req.IndexPath != "" {
-			if lines, ok, err := preview.LoadIndexEntry(req.IndexPath, req.Key); err == nil && ok {
-				return previewLoadedMsg{
-					RequestID: req.RequestID,
-					Key:       req.Key,
-					Lines:     lines,
-					Record: previewIndexRecord{
-						Key:           req.Key,
-						Path:          req.Path,
-						Width:         req.Width,
-						SizeBytes:     req.SizeBytes,
-						UpdatedAtUnix: req.UpdatedAtUnix,
-						TouchedAtUnix: time.Now().UnixNano(),
-						Lines:         lines,
-					},
-				}
-			}
-		}
-
-		lines := buildPreviewLines(req.Path, req.Width, req.Lines, req.Theme)
-		return previewLoadedMsg{
-			RequestID: req.RequestID,
-			Key:       req.Key,
-			Lines:     lines,
-			Record: previewIndexRecord{
-				Key:           req.Key,
-				Path:          req.Path,
-				Width:         req.Width,
-				SizeBytes:     req.SizeBytes,
-				UpdatedAtUnix: req.UpdatedAtUnix,
-				TouchedAtUnix: time.Now().UnixNano(),
-				Lines:         lines,
-			},
-		}
-	}
-}
-
-func persistPreviewIndexCmd(indexPath string, cap int, record previewIndexRecord) tea.Cmd {
-	return func() tea.Msg {
-		if strings.TrimSpace(indexPath) == "" || strings.TrimSpace(record.Key) == "" {
-			return previewIndexPersistedMsg{}
-		}
-		if err := preview.UpsertIndex(indexPath, cap, record); err != nil {
-			return previewIndexPersistedMsg{Err: err.Error()}
-		}
-		return previewIndexPersistedMsg{}
-	}
-}
-
 func previewLinesBytes(lines []string) int64 {
 	return preview.LinesBytes(lines)
+}
+
+// previewFor is a synchronous preview helper used by unit tests.
+func (m *tuiModel) previewFor(path string, width, lines int) []string {
+	sizeBytes := int64(0)
+	updatedAtUnix := int64(0)
+	if info, err := os.Stat(path); err == nil {
+		sizeBytes = info.Size()
+		updatedAtUnix = info.ModTime().UnixNano()
+	}
+	key := preview.CacheKeyForSession(path, width, sizeBytes, updatedAtUnix)
+	if cached, ok := m.previewCacheGet(key); ok {
+		return cached
+	}
+	out := buildPreviewLines(path, width, lines, m.theme)
+	m.previewCachePut(key, out)
+	return out
+}
+
+func buildPreviewLines(path string, width, lines int, theme tuiTheme) []string {
+	return preview.BuildLines(path, width, lines, previewPalette(theme))
+}
+
+func previewPalette(theme tuiTheme) preview.ThemePalette {
+	def := builtinThemes[defaultTUIThemeName()]
+	return preview.ThemePalette{
+		PrefixDefault:   theme.hex("prefix_default", def["prefix_default"]),
+		PrefixUser:      theme.hex("prefix_user", def["prefix_user"]),
+		PrefixAssistant: theme.hex("prefix_assistant", def["prefix_assistant"]),
+		PrefixOther:     theme.hex("prefix_other", def["prefix_other"]),
+		TagDanger:       theme.hex("tag_danger", def["tag_danger"]),
+		TagDefault:      theme.hex("tag_default", def["tag_default"]),
+		TagSystem:       theme.hex("tag_system", def["tag_system"]),
+		TagLifecycle:    theme.hex("tag_lifecycle", def["tag_lifecycle"]),
+		TagSuccess:      theme.hex("tag_success", def["tag_success"]),
+	}
+}
+
+func classifyAngleTag(tag string) angleTagTone {
+	return preview.ClassifyAngleTag(tag)
 }

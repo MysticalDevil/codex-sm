@@ -116,7 +116,7 @@ func TestEnsurePreviewRequestAndUpdatePipeline(t *testing.T) {
 		t.Fatal("expected preview load cmd")
 	}
 	msg := cmd()
-	loaded, ok := msg.(previewLoadedMsg)
+	loaded, ok := msg.(preview.LoadedMsg)
 	if !ok {
 		t.Fatalf("unexpected msg type: %T", msg)
 	}
