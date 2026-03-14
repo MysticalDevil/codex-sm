@@ -6,6 +6,23 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 
 ## [Unreleased]
 
+## [v0.3.2] - 2026-03-15
+
+### Changed
+
+- Refactored CLI command layout to subpackages (`cli/config`, `cli/delete`, `cli/doctor`, `cli/list`, `cli/restore`, `cli/util`) and moved related tests into those package boundaries.
+- Renamed session migration command implementation files from `session_migrate*` to `migrate*` while preserving `codexsm session migrate` behavior and flags.
+- Split usecase delete/restore orchestration into focused files (`usecase/delete.go`, `usecase/restore.go`, `usecase/action_exec.go`, `usecase/batch_policy.go`) and removed the prior mixed file.
+- Renamed delete/restore action input naming from `Candidates` to `Sessions` across usecase, CLI, and TUI call paths for clearer semantics.
+- Removed non-essential pass-through aliases/wrappers in CLI/TUI layers and standardized direct type usage where no boundary semantics were added.
+- Refreshed architecture documentation and dependency diagram to match current module topology and package responsibilities.
+- Updated release/documentation examples for `v0.3.2` and validated coverage gate status for release readiness.
+
+### Added
+
+- Added focused tests for `cli/delete`, `cli/restore`, `cli/util`, and `tui/preview` to strengthen command-path and preview/index behavior coverage.
+- Added pager interaction tests in `cli/pager_test.go` and parser coverage for migration `--since` handling.
+
 ## [v0.3.1] - 2026-03-14
 
 ### Changed
