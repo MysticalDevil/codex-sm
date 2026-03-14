@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/MysticalDevil/codexsm/internal/testsupport"
+	"github.com/MysticalDevil/codexsm/usecase"
 )
 
 const groupFixtureName = "rich"
@@ -34,7 +35,7 @@ func TestGroupByHealthJSON(t *testing.T) {
 		t.Fatalf("group execute: %v", err)
 	}
 
-	var got []groupStat
+	var got []usecase.GroupStat
 	if err := json.Unmarshal(stdout.Bytes(), &got); err != nil {
 		t.Fatalf("unmarshal output: %v", err)
 	}
@@ -104,7 +105,7 @@ func TestGroupSortAndLimit(t *testing.T) {
 		t.Fatalf("group execute: %v", err)
 	}
 
-	var got []groupStat
+	var got []usecase.GroupStat
 	if err := json.Unmarshal(stdout.Bytes(), &got); err != nil {
 		t.Fatalf("unmarshal output: %v", err)
 	}
@@ -155,7 +156,7 @@ func TestGroupOffsetAndLimit(t *testing.T) {
 		t.Fatalf("group execute: %v", err)
 	}
 
-	var got []groupStat
+	var got []usecase.GroupStat
 	if err := json.Unmarshal(stdout.Bytes(), &got); err != nil {
 		t.Fatalf("unmarshal output: %v", err)
 	}

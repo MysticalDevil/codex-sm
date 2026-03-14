@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"fmt"
 	"strings"
+
+	"github.com/MysticalDevil/codexsm/usecase"
 )
 
 const (
@@ -22,7 +24,7 @@ func colorize(v, color string, enabled bool) string {
 	return color + v + ansiReset
 }
 
-func renderChecks(checks []check, color bool) string {
+func renderChecks(checks []usecase.DoctorCheck, color bool) string {
 	var buf bytes.Buffer
 
 	checkW := len("CHECK")

@@ -349,7 +349,7 @@ func TestRestoreMoveFileAndCopy(t *testing.T) {
 }
 
 func TestGroupRenderHelpers(t *testing.T) {
-	stats := []groupStat{{Group: "ok", Count: 2, SizeBytes: 1024, Latest: "2026-03-02 10:00:00"}}
+	stats := []usecase.GroupStat{{Group: "ok", Count: 2, SizeBytes: 1024, Latest: "2026-03-02 10:00:00"}}
 
 	table, err := renderGroupTable(stats, "health", "never", &bytes.Buffer{})
 	if err != nil {

@@ -15,8 +15,6 @@ const (
 	Fail = usecase.DoctorFail
 )
 
-type check = usecase.DoctorCheck
-
 // NewCommand builds the doctor command tree.
 func NewCommand(
 	resolveSessionsRoot func() (string, error),

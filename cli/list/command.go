@@ -17,15 +17,13 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type renderOptions struct {
+type RenderOptions struct {
 	NoHeader  bool
 	ColorMode string
 	Out       io.Writer
 	Columns   []Column
 	HeadWidth int
 }
-
-type RenderOptions = renderOptions
 
 // NewCommand builds the list command.
 func NewCommand(resolveSessionsRoot func() (string, error)) *cobra.Command {
@@ -119,7 +117,7 @@ func NewCommand(resolveSessionsRoot func() (string, error)) *cobra.Command {
 			case "table":
 				out := cmd.OutOrStdout()
 
-				table, err := RenderTable(filtered, total, renderOptions{
+				table, err := RenderTable(filtered, total, RenderOptions{
 					NoHeader:  noHeader,
 					ColorMode: colorMode,
 					Out:       out,
@@ -176,7 +174,7 @@ func NewCommand(resolveSessionsRoot func() (string, error)) *cobra.Command {
 	return cmd
 }
 
-func RenderTable(sessions []session.Session, total int, opts renderOptions) (string, error) {
+func RenderTable(sessions []session.Session, total int, opts RenderOptions) (string, error) {
 	useColor := cliutil.ShouldUseColor(opts.ColorMode, opts.Out)
 	home, _ := os.UserHomeDir()
 

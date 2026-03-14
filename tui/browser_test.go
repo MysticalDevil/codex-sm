@@ -299,15 +299,15 @@ func TestPreviewForUsesSessionStyleCacheKey(t *testing.T) {
 func TestClassifyAngleTag(t *testing.T) {
 	tests := []struct {
 		tag  string
-		want angleTagTone
+		want preview.AngleTagTone
 	}{
-		{tag: "<turn_aborted>", want: angleTagToneDanger},
-		{tag: "</turn_aborted>", want: angleTagToneDanger},
-		{tag: "<environment_context>", want: angleTagToneSystem},
-		{tag: "<collaboration_mode>", want: angleTagToneSystem},
-		{tag: "<session_meta>", want: angleTagToneLifecycle},
-		{tag: "<operation_done>", want: angleTagToneSuccess},
-		{tag: "<generic_tag>", want: angleTagToneDefault},
+		{tag: "<turn_aborted>", want: preview.AngleTagToneDanger},
+		{tag: "</turn_aborted>", want: preview.AngleTagToneDanger},
+		{tag: "<environment_context>", want: preview.AngleTagToneSystem},
+		{tag: "<collaboration_mode>", want: preview.AngleTagToneSystem},
+		{tag: "<session_meta>", want: preview.AngleTagToneLifecycle},
+		{tag: "<operation_done>", want: preview.AngleTagToneSuccess},
+		{tag: "<generic_tag>", want: preview.AngleTagToneDefault},
 	}
 
 	for _, tt := range tests {

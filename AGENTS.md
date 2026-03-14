@@ -11,6 +11,8 @@
 - For structural code queries (e.g. pass-through wrappers, thin adapters, duplicated call patterns), prefer `ast-grep` (`sg`) first.
 - Use `rg` as a supplement for plain text lookups, file discovery, and quick keyword filtering.
 - Do not introduce pass-through wrappers/thin pass-through encapsulations that only forward calls without adding meaningful behavior (e.g., validation, error context, policy, or domain semantics).
+- Do not introduce pass-through type aliases (`type A = B`) unless the alias is a stable cross-package DTO boundary with clear semantic value.
+- Before adding new wrappers/adapters, run targeted `sg` checks to confirm they are not thin forwarding layers.
 
 ## Lint Rules
 

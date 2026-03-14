@@ -160,16 +160,6 @@ type previewLRUEntry struct {
 	Size int64
 }
 
-type angleTagTone = preview.AngleTagTone
-
-const (
-	angleTagToneDefault   = preview.AngleTagToneDefault
-	angleTagToneSystem    = preview.AngleTagToneSystem
-	angleTagToneLifecycle = preview.AngleTagToneLifecycle
-	angleTagToneDanger    = preview.AngleTagToneDanger
-	angleTagToneSuccess   = preview.AngleTagToneSuccess
-)
-
 func (m *tuiModel) ensurePreviewRequest() tea.Cmd {
 	selected, ok := m.selectedSession()
 	if !ok {

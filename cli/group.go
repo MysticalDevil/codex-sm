@@ -16,8 +16,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type groupStat = usecase.GroupStat
-
 func newGroupCmd() *cobra.Command {
 	var (
 		sessionsRoot string
@@ -123,7 +121,7 @@ func newGroupCmd() *cobra.Command {
 	return cmd
 }
 
-func renderGroupTable(stats []groupStat, by, colorMode string, out io.Writer) (string, error) {
+func renderGroupTable(stats []usecase.GroupStat, by, colorMode string, out io.Writer) (string, error) {
 	useColor := cliutil.ShouldUseColor(colorMode, out)
 
 	var buf bytes.Buffer
@@ -180,7 +178,7 @@ func colorizeGroupedTable(text string) string {
 	return out
 }
 
-func writeGroupDelimited(out io.Writer, stats []groupStat, sep rune) error {
+func writeGroupDelimited(out io.Writer, stats []usecase.GroupStat, sep rune) error {
 	w := csv.NewWriter(out)
 
 	w.Comma = sep
