@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/MysticalDevil/codexsm/audit"
-	"github.com/MysticalDevil/codexsm/internal/restoreexec"
 	"github.com/MysticalDevil/codexsm/session"
 )
 
@@ -129,7 +128,7 @@ type RestoreActionInput struct {
 }
 
 // RestoreSummary is restore execution summary.
-type RestoreSummary = restoreexec.Summary
+type RestoreSummary = session.RestoreSummary
 
 type RestoreActionResult struct {
 	Summary         RestoreSummary
@@ -140,15 +139,15 @@ type RestoreActionResult struct {
 
 // RestoreExecutor executes restore workflow over selected sessions.
 type RestoreExecutor interface {
-	Execute(candidates []session.Session, sel session.Selector, opts restoreexec.Options) (restoreexec.Summary, error)
+	Execute(candidates []session.Session, sel session.Selector, opts session.RestoreOptions) (session.RestoreSummary, error)
 }
 
 // SessionRestoreExecutor is the default restore executor.
 type SessionRestoreExecutor struct{}
 
 // Execute runs the restore operation.
-func (SessionRestoreExecutor) Execute(candidates []session.Session, sel session.Selector, opts restoreexec.Options) (restoreexec.Summary, error) {
-	return restoreexec.Execute(candidates, sel, opts)
+func (SessionRestoreExecutor) Execute(candidates []session.Session, sel session.Selector, opts session.RestoreOptions) (session.RestoreSummary, error) {
+	return session.RestoreSessions(candidates, sel, opts)
 }
 
 func RunRestoreAction(in RestoreActionInput) (RestoreActionResult, error) {
@@ -163,7 +162,7 @@ func RunRestoreAction(in RestoreActionInput) (RestoreActionResult, error) {
 	if executor == nil {
 		executor = SessionRestoreExecutor{}
 	}
-	sum, err := executor.Execute(in.Candidates, in.Selector, restoreexec.Options{
+	sum, err := executor.Execute(in.Candidates, in.Selector, session.RestoreOptions{
 		DryRun:             in.DryRun,
 		Confirm:            in.Confirm,
 		Yes:                in.Yes,

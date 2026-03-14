@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/MysticalDevil/codexsm/audit"
-	"github.com/MysticalDevil/codexsm/internal/restoreexec"
 	"github.com/MysticalDevil/codexsm/internal/testsupport"
 	"github.com/MysticalDevil/codexsm/session"
 )
@@ -171,12 +170,12 @@ func (s *stubDeleteExecutor) Execute(_ []session.Session, _ session.Selector, op
 }
 
 type stubRestoreExecutor struct {
-	summary restoreexec.Summary
+	summary session.RestoreSummary
 	err     error
-	opts    restoreexec.Options
+	opts    session.RestoreOptions
 }
 
-func (s *stubRestoreExecutor) Execute(_ []session.Session, _ session.Selector, opts restoreexec.Options) (restoreexec.Summary, error) {
+func (s *stubRestoreExecutor) Execute(_ []session.Session, _ session.Selector, opts session.RestoreOptions) (session.RestoreSummary, error) {
 	s.opts = opts
 	return s.summary, s.err
 }
@@ -230,7 +229,7 @@ func TestRunDeleteAndRestoreActionUseInjectedExecutors(t *testing.T) {
 	}
 
 	restoreExec := &stubRestoreExecutor{
-		summary: restoreexec.Summary{Action: "restore-dry-run", Simulation: true},
+		summary: session.RestoreSummary{Action: "restore-dry-run", Simulation: true},
 	}
 	restoreOut, err := RunRestoreAction(RestoreActionInput{
 		Candidates:         []session.Session{{SessionID: "x", Path: "/tmp/trash/sessions/x.jsonl"}},
@@ -288,7 +287,7 @@ func TestRunDeleteActionWritesAuditViaSink(t *testing.T) {
 
 func TestRunRestoreActionPropagatesAuditWriteError(t *testing.T) {
 	restoreExec := &stubRestoreExecutor{
-		summary: restoreexec.Summary{Action: "restore-dry-run", Simulation: true},
+		summary: session.RestoreSummary{Action: "restore-dry-run", Simulation: true},
 	}
 	sink := &stubAuditSink{batchID: "b-res", writeErr: fmt.Errorf("write failed")}
 	out, err := RunRestoreAction(RestoreActionInput{

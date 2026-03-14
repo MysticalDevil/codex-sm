@@ -1,4 +1,4 @@
-package restoreexec
+package session
 
 import (
 	"errors"
@@ -8,60 +8,53 @@ import (
 	"testing"
 
 	"github.com/MysticalDevil/codexsm/internal/testsupport"
-	"github.com/MysticalDevil/codexsm/session"
 )
 
-func TestActionName(t *testing.T) {
-	if got := ActionName(true); got != "restore-dry-run" {
-		t.Fatalf("unexpected dry action: %q", got)
-	}
-	if got := ActionName(false); got != "restore" {
-		t.Fatalf("unexpected real action: %q", got)
-	}
-}
-
-func TestExecuteValidations(t *testing.T) {
-	_, err := Execute(nil, session.Selector{}, Options{})
+func TestRestoreSessionsValidations(t *testing.T) {
+	_, err := RestoreSessions(nil, Selector{}, RestoreOptions{})
 	if err == nil || !strings.Contains(err.Error(), "requires at least one selector") {
 		t.Fatalf("expected selector validation error, got: %v", err)
 	}
 
-	sel := session.Selector{ID: "x"}
-	_, err = Execute([]session.Session{{SessionID: "x", Path: "/tmp/x"}}, sel, Options{DryRun: false})
+	sel := Selector{ID: "x"}
+	_, err = RestoreSessions([]Session{{SessionID: "x", Path: "/tmp/x"}}, sel, RestoreOptions{DryRun: false})
 	if err == nil || !strings.Contains(err.Error(), "--confirm") {
 		t.Fatalf("expected confirm validation error, got: %v", err)
 	}
 
-	_, err = Execute(
-		[]session.Session{{SessionID: "x", Path: "/tmp/x"}, {SessionID: "y", Path: "/tmp/y"}},
+	_, err = RestoreSessions(
+		[]Session{{SessionID: "x", Path: "/tmp/x"}, {SessionID: "y", Path: "/tmp/y"}},
 		sel,
-		Options{DryRun: false, Confirm: true, MaxBatch: 50},
+		RestoreOptions{DryRun: false, Confirm: true, MaxBatch: 50},
 	)
 	if err == nil || !strings.Contains(err.Error(), "--yes") {
 		t.Fatalf("expected yes validation error, got: %v", err)
 	}
 }
 
-func TestExecuteDryRunAndReal(t *testing.T) {
+func TestRestoreSessionsDryRunAndReal(t *testing.T) {
 	workspace := testsupport.PrepareFixtureSandbox(t, "rich")
 	sessionsRoot := filepath.Join(workspace, "sessions")
 	trashRoot := filepath.Join(workspace, "trash", "sessions")
 	src := filepath.Join(trashRoot, "2026", "03", "02", "rollout-r1.jsonl")
 
-	candidates := []session.Session{{
+	candidates := []Session{{
 		SessionID: "99990000-1111-2222-3333-444444444444",
 		Path:      src,
 		SizeBytes: 10,
 	}}
-	sel := session.Selector{ID: candidates[0].SessionID}
+	sel := Selector{ID: candidates[0].SessionID}
 
-	dry, err := Execute(candidates, sel, Options{
+	dry, err := RestoreSessions(candidates, sel, RestoreOptions{
 		DryRun:            true,
 		SessionsRoot:      sessionsRoot,
 		TrashSessionsRoot: trashRoot,
 	})
 	if err != nil {
-		t.Fatalf("dry-run execute: %v", err)
+		t.Fatalf("dry-run restore: %v", err)
+	}
+	if dry.Action != "restore-dry-run" {
+		t.Fatalf("unexpected dry action: %q", dry.Action)
 	}
 	if dry.Skipped != 1 || dry.Succeeded != 0 || dry.Failed != 0 {
 		t.Fatalf("unexpected dry summary: %+v", dry)
@@ -70,7 +63,7 @@ func TestExecuteDryRunAndReal(t *testing.T) {
 		t.Fatalf("source should remain after dry-run: %v", err)
 	}
 
-	real, err := Execute(candidates, sel, Options{
+	real, err := RestoreSessions(candidates, sel, RestoreOptions{
 		DryRun:            false,
 		Confirm:           true,
 		Yes:               true,
@@ -78,7 +71,10 @@ func TestExecuteDryRunAndReal(t *testing.T) {
 		TrashSessionsRoot: trashRoot,
 	})
 	if err != nil {
-		t.Fatalf("real execute: %v", err)
+		t.Fatalf("real restore: %v", err)
+	}
+	if real.Action != "restore" {
+		t.Fatalf("unexpected real action: %q", real.Action)
 	}
 	if real.Succeeded != 1 || real.Failed != 0 {
 		t.Fatalf("unexpected real summary: %+v", real)

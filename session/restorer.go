@@ -1,5 +1,4 @@
-// Package restoreexec contains restore operation execution logic.
-package restoreexec
+package session
 
 import (
 	"errors"
@@ -9,24 +8,10 @@ import (
 	"strings"
 
 	"github.com/MysticalDevil/codexsm/internal/fileutil"
-	"github.com/MysticalDevil/codexsm/session"
 )
 
-// Summary describes restore operation result.
-type Summary struct {
-	Action        string
-	Simulation    bool
-	MatchedCount  int
-	Succeeded     int
-	Failed        int
-	Skipped       int
-	AffectedBytes int64
-	Results       []session.DeleteResult
-	ErrorSummary  string
-}
-
-// Options controls restore behavior.
-type Options struct {
+// RestoreOptions controls restore behavior.
+type RestoreOptions struct {
 	DryRun             bool
 	Confirm            bool
 	Yes                bool
@@ -36,13 +21,26 @@ type Options struct {
 	TrashSessionsRoot  string
 }
 
-// Execute runs restore over selected candidates.
-func Execute(candidates []session.Session, sel session.Selector, opts Options) (Summary, error) {
-	summary := Summary{
-		Action:       ActionName(opts.DryRun),
+// RestoreSummary describes restore operation result.
+type RestoreSummary struct {
+	Action        string         `json:"action"`
+	Simulation    bool           `json:"simulation"`
+	MatchedCount  int            `json:"matched_count"`
+	Succeeded     int            `json:"succeeded"`
+	Failed        int            `json:"failed"`
+	Skipped       int            `json:"skipped"`
+	AffectedBytes int64          `json:"affected_bytes"`
+	Results       []DeleteResult `json:"results"`
+	ErrorSummary  string         `json:"error_summary,omitempty"`
+}
+
+// RestoreSessions runs restore over selected candidates.
+func RestoreSessions(candidates []Session, sel Selector, opts RestoreOptions) (RestoreSummary, error) {
+	summary := RestoreSummary{
+		Action:       restoreActionName(opts.DryRun),
 		Simulation:   opts.DryRun,
 		MatchedCount: len(candidates),
-		Results:      make([]session.DeleteResult, 0, len(candidates)),
+		Results:      make([]DeleteResult, 0, len(candidates)),
 	}
 	if !sel.HasAnyFilter() && !opts.AllowEmptySelector {
 		summary.ErrorSummary = "restore requires at least one selector (--id/--id-prefix/--host-contains/--path-contains/--head-contains/--older-than/--health or --batch-id)"
@@ -76,7 +74,7 @@ func Execute(candidates []session.Session, sel session.Selector, opts Options) (
 
 		if opts.DryRun {
 			summary.Skipped++
-			summary.Results = append(summary.Results, session.DeleteResult{
+			summary.Results = append(summary.Results, DeleteResult{
 				SessionID:   s.SessionID,
 				Path:        s.Path,
 				Destination: dst,
@@ -87,7 +85,7 @@ func Execute(candidates []session.Session, sel session.Selector, opts Options) (
 
 		if _, err := os.Stat(dst); err == nil {
 			summary.Failed++
-			summary.Results = append(summary.Results, session.DeleteResult{
+			summary.Results = append(summary.Results, DeleteResult{
 				SessionID: s.SessionID,
 				Path:      s.Path,
 				Status:    "failed",
@@ -97,7 +95,7 @@ func Execute(candidates []session.Session, sel session.Selector, opts Options) (
 		}
 		if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
 			summary.Failed++
-			summary.Results = append(summary.Results, session.DeleteResult{
+			summary.Results = append(summary.Results, DeleteResult{
 				SessionID: s.SessionID,
 				Path:      s.Path,
 				Status:    "failed",
@@ -107,7 +105,7 @@ func Execute(candidates []session.Session, sel session.Selector, opts Options) (
 		}
 		if err := fileutil.MoveFile(s.Path, dst); err != nil {
 			summary.Failed++
-			summary.Results = append(summary.Results, session.DeleteResult{
+			summary.Results = append(summary.Results, DeleteResult{
 				SessionID: s.SessionID,
 				Path:      s.Path,
 				Status:    "failed",
@@ -116,7 +114,7 @@ func Execute(candidates []session.Session, sel session.Selector, opts Options) (
 			continue
 		}
 		summary.Succeeded++
-		summary.Results = append(summary.Results, session.DeleteResult{
+		summary.Results = append(summary.Results, DeleteResult{
 			SessionID:   s.SessionID,
 			Path:        s.Path,
 			Destination: dst,
@@ -130,8 +128,7 @@ func Execute(candidates []session.Session, sel session.Selector, opts Options) (
 	return summary, nil
 }
 
-// ActionName returns action label used in audit output.
-func ActionName(dryRun bool) string {
+func restoreActionName(dryRun bool) string {
 	if dryRun {
 		return "restore-dry-run"
 	}

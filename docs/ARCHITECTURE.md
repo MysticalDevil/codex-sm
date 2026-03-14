@@ -94,7 +94,6 @@ External/runtime:
 - `config/*` for path and app config resolution
 - `internal/ops/*` for shared operation helpers (`preview mode`, interactive confirms)
 - `internal/fileutil/*` for move/copy file helpers
-- `internal/restoreexec/*` and `internal/deleteexec/*` for operation execution wrappers
 - `internal/tui/layout/*` for TUI layout metrics
 
 5. Test support:
