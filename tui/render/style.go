@@ -1,12 +1,27 @@
-package tui
+package render
 
 import (
 	"strings"
 
+	"github.com/MysticalDevil/codexsm/tui/theme"
 	"github.com/charmbracelet/lipgloss"
 )
 
-func renderKeysLine(width int, theme tuiTheme) string {
+type keysSegmentKind int
+
+const (
+	keysLabel keysSegmentKind = iota
+	keysKey
+	keysText
+	keysSep
+)
+
+type keysSegment struct {
+	label string
+	kind  keysSegmentKind
+}
+
+func RenderKeysLine(width int, th theme.Theme) string {
 	variants := [][]keysSegment{
 		{
 			{label: "[KEYS]", kind: keysLabel},
@@ -64,49 +79,36 @@ func renderKeysLine(width int, theme tuiTheme) string {
 	}
 
 	if width <= 0 {
-		return renderKeysSegments(variants[len(variants)-1], theme)
+		return renderKeysSegments(variants[len(variants)-1], th)
 	}
 	for _, variant := range variants {
-		line := renderKeysSegments(variant, theme)
+		line := renderKeysSegments(variant, th)
 		if lipgloss.Width(line) <= width {
 			return line
 		}
 	}
-	return truncateDisplay(renderKeysSegments(variants[len(variants)-1], theme), width)
+	return truncateDisplay(renderKeysSegments(variants[len(variants)-1], th), width)
 }
 
-type keysSegmentKind int
-
-const (
-	keysLabel keysSegmentKind = iota
-	keysKey
-	keysText
-	keysSep
-)
-
-type keysSegment struct {
-	label string
-	kind  keysSegmentKind
-}
-
-func renderKeysSegments(segments []keysSegment, theme tuiTheme) string {
+func renderKeysSegments(segments []keysSegment, th theme.Theme) string {
 	parts := make([]string, 0, len(segments))
+	def := theme.BuiltinThemes[theme.DefaultThemeName()]
 	for _, segment := range segments {
 		switch segment.kind {
 		case keysLabel:
-			parts = append(parts, lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(theme.hex("keys_label", builtinThemes[defaultTUIThemeName()]["keys_label"]))).Render(segment.label))
+			parts = append(parts, lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(th.Hex("keys_label", def["keys_label"]))).Render(segment.label))
 		case keysKey:
-			parts = append(parts, lipgloss.NewStyle().Foreground(lipgloss.Color(theme.hex("keys_key", builtinThemes[defaultTUIThemeName()]["keys_key"]))).Render(segment.label))
+			parts = append(parts, lipgloss.NewStyle().Foreground(lipgloss.Color(th.Hex("keys_key", def["keys_key"]))).Render(segment.label))
 		case keysText:
-			parts = append(parts, lipgloss.NewStyle().Foreground(lipgloss.Color(theme.hex("keys_text", builtinThemes[defaultTUIThemeName()]["keys_text"]))).Render(segment.label))
+			parts = append(parts, lipgloss.NewStyle().Foreground(lipgloss.Color(th.Hex("keys_text", def["keys_text"]))).Render(segment.label))
 		case keysSep:
-			parts = append(parts, lipgloss.NewStyle().Foreground(lipgloss.Color(theme.hex("keys_sep", builtinThemes[defaultTUIThemeName()]["keys_sep"]))).Render(segment.label))
+			parts = append(parts, lipgloss.NewStyle().Foreground(lipgloss.Color(th.Hex("keys_sep", def["keys_sep"]))).Render(segment.label))
 		}
 	}
 	return strings.Join(parts, "")
 }
 
-func buildPreviewScrollBar(start, end, total, width int) string {
+func BuildPreviewScrollBar(start, end, total, width int) string {
 	if width < 8 {
 		width = 8
 	}
@@ -142,14 +144,19 @@ func buildPreviewScrollBar(start, end, total, width int) string {
 	return b.String()
 }
 
-func (m tuiModel) colorHex(key string) string {
-	theme := m.theme
-	if strings.TrimSpace(theme.Name) == "" || len(theme.Colors) == 0 {
-		theme = tuiTheme{
-			Name:   defaultTUIThemeName(),
-			Colors: cloneColorMap(builtinThemes[defaultTUIThemeName()]),
-		}
+func truncateDisplay(s string, maxWidth int) string {
+	if maxWidth <= 0 {
+		return ""
 	}
-	fallback := builtinThemes[defaultTUIThemeName()][key]
-	return theme.hex(key, fallback)
+	if lipgloss.Width(s) <= maxWidth {
+		return s
+	}
+	r := []rune(s)
+	for len(r) > 0 && lipgloss.Width(string(r)+"…") > maxWidth {
+		r = r[:len(r)-1]
+	}
+	if len(r) == 0 {
+		return "…"
+	}
+	return string(r) + "…"
 }

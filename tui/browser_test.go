@@ -330,10 +330,10 @@ func TestRebuildTreeGroupingModes(t *testing.T) {
 			groupCount := 0
 			sessionCount := 0
 			for _, n := range m.tree {
-				if n.kind == treeItemMonth {
+				if n.Kind == treeItemMonth {
 					groupCount++
 				}
-				if n.kind == treeItemSession {
+				if n.Kind == treeItemSession {
 					sessionCount++
 				}
 			}
@@ -366,14 +366,14 @@ func TestRebuildTreeHostGroupingDoesNotDuplicateHeaders(t *testing.T) {
 	groupHeaderCount := 0
 	seenHeaders := map[string]struct{}{}
 	for _, item := range m.tree {
-		if item.kind != treeItemMonth {
+		if item.Kind != treeItemMonth {
 			continue
 		}
 		groupHeaderCount++
-		if _, exists := seenHeaders[item.month]; exists {
-			t.Fatalf("duplicate group header found for host %q", item.month)
+		if _, exists := seenHeaders[item.Month]; exists {
+			t.Fatalf("duplicate group header found for host %q", item.Month)
 		}
-		seenHeaders[item.month] = struct{}{}
+		seenHeaders[item.Month] = struct{}{}
 	}
 	if groupHeaderCount != 2 {
 		t.Fatalf("expected 2 host group headers, got %d", groupHeaderCount)
@@ -768,10 +768,10 @@ func TestRemoveSelectedSessionKeepsCursorAndMovesToNext(t *testing.T) {
 
 	findCursorByID := func(id string) int {
 		for i, item := range m.tree {
-			if item.kind != treeItemSession || item.index < 0 || item.index >= len(m.sessions) {
+			if item.Kind != treeItemSession || item.Index < 0 || item.Index >= len(m.sessions) {
 				continue
 			}
-			if m.sessions[item.index].SessionID == id {
+			if m.sessions[item.Index].SessionID == id {
 				return i
 			}
 		}

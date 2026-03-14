@@ -74,19 +74,19 @@ func (m *tuiModel) rebuildTree() {
 
 	for _, group := range groupOrder {
 		m.tree = append(m.tree, treeItem{
-			kind:   treeItemMonth,
-			label:  "▾ " + group,
-			month:  group,
-			indent: 0,
+			Kind:   treeItemMonth,
+			Label:  "▾ " + group,
+			Month:  group,
+			Indent: 0,
 		})
 		for _, i := range grouped[group] {
 			m.tree = append(m.tree, treeItem{
-				kind:        treeItemSession,
-				label:       core.ShortID(m.sessions[i].SessionID),
-				month:       group,
-				index:       i,
-				indent:      1,
-				hostMissing: m.sessionHostMissing(m.sessions[i]),
+				Kind:        treeItemSession,
+				Label:       core.ShortID(m.sessions[i].SessionID),
+				Month:       group,
+				Index:       i,
+				Indent:      1,
+				HostMissing: m.sessionHostMissing(m.sessions[i]),
 			})
 		}
 	}
@@ -142,7 +142,7 @@ func (m *tuiModel) skipToSelectable(step int) {
 		m.cursor = len(m.tree) - 1
 	}
 	for m.cursor >= 0 && m.cursor < len(m.tree) {
-		if m.tree[m.cursor].kind == treeItemSession {
+		if m.tree[m.cursor].Kind == treeItemSession {
 			return
 		}
 		m.cursor += step
@@ -159,10 +159,10 @@ func (m *tuiModel) selectedSession() (session.Session, bool) {
 		return session.Session{}, false
 	}
 	item := m.tree[m.cursor]
-	if item.kind != treeItemSession || item.index < 0 || item.index >= len(m.sessions) {
+	if item.Kind != treeItemSession || item.Index < 0 || item.Index >= len(m.sessions) {
 		return session.Session{}, false
 	}
-	return m.sessions[item.index], true
+	return m.sessions[item.Index], true
 }
 
 func (m *tuiModel) selectedSessionHostMissing() bool {
@@ -170,10 +170,10 @@ func (m *tuiModel) selectedSessionHostMissing() bool {
 		return false
 	}
 	item := m.tree[m.cursor]
-	if item.kind != treeItemSession {
+	if item.Kind != treeItemSession {
 		return false
 	}
-	return item.hostMissing
+	return item.HostMissing
 }
 
 func (m *tuiModel) sessionHostMissing(s session.Session) bool {

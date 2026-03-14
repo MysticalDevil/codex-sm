@@ -292,10 +292,10 @@ func (m *tuiModel) removeSelectedSession() {
 	}
 	prevCursor := m.cursor
 	item := m.tree[m.cursor]
-	if item.kind != treeItemSession || item.index < 0 || item.index >= len(m.sessions) {
+	if item.Kind != treeItemSession || item.Index < 0 || item.Index >= len(m.sessions) {
 		return
 	}
-	m.sessions = append(m.sessions[:item.index], m.sessions[item.index+1:]...)
+	m.sessions = append(m.sessions[:item.Index], m.sessions[item.Index+1:]...)
 	m.rebuildTree()
 	if len(m.tree) == 0 {
 		m.cursor = 0
@@ -307,10 +307,10 @@ func (m *tuiModel) removeSelectedSession() {
 		prevCursor = len(m.tree) - 1
 	}
 	m.cursor = max(0, prevCursor)
-	if m.tree[m.cursor].kind != treeItemSession {
+	if m.tree[m.cursor].Kind != treeItemSession {
 		anchor := m.cursor
 		m.skipToSelectable(1)
-		if m.cursor < 0 || m.cursor >= len(m.tree) || m.tree[m.cursor].kind != treeItemSession {
+		if m.cursor < 0 || m.cursor >= len(m.tree) || m.tree[m.cursor].Kind != treeItemSession {
 			m.cursor = anchor
 			m.skipToSelectable(-1)
 		}
@@ -347,10 +347,10 @@ func (m *tuiModel) removeSessionsByID(items []session.Session) {
 		prevCursor = len(m.tree) - 1
 	}
 	m.cursor = max(0, prevCursor)
-	if m.tree[m.cursor].kind != treeItemSession {
+	if m.tree[m.cursor].Kind != treeItemSession {
 		anchor := m.cursor
 		m.skipToSelectable(1)
-		if m.cursor < 0 || m.cursor >= len(m.tree) || m.tree[m.cursor].kind != treeItemSession {
+		if m.cursor < 0 || m.cursor >= len(m.tree) || m.tree[m.cursor].Kind != treeItemSession {
 			m.cursor = anchor
 			m.skipToSelectable(-1)
 		}

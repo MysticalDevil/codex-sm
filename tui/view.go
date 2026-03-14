@@ -191,23 +191,23 @@ func (m tuiModel) renderTreeLines(leftW int, statusColor string) []string {
 	start, end := m.visibleRange()
 	for i := start; i < end; i++ {
 		item := m.tree[i]
-		if item.kind == treeItemMonth {
-			line := truncateDisplay(item.label, leftW-4)
+		if item.Kind == treeItemMonth {
+			line := truncateDisplay(item.Label, leftW-4)
 			line = lipgloss.NewStyle().Foreground(lipgloss.Color(m.colorHex("group"))).Render(line)
 			leftLines = append(leftLines, "  "+line)
 			continue
 		}
 		connector := "├─"
-		if i+1 >= len(m.tree) || m.tree[i+1].kind == treeItemMonth {
+		if i+1 >= len(m.tree) || m.tree[i+1].Kind == treeItemMonth {
 			connector = "└─"
 		}
 		connectorPart := lipgloss.NewStyle().Foreground(lipgloss.Color(statusColor)).Render("  " + connector + " ")
 		idWidth := max(4, leftW-10)
-		idText := truncateDisplay(item.label, idWidth)
+		idText := truncateDisplay(item.Label, idWidth)
 		healthSymbol := "●"
 		healthColor := m.colorHex("status")
-		if item.index >= 0 && item.index < len(m.sessions) {
-			symbol, color, nonHealthy := m.treeHealthVisual(m.sessions[item.index].Health, item.hostMissing)
+		if item.Index >= 0 && item.Index < len(m.sessions) {
+			symbol, color, nonHealthy := m.treeHealthVisual(m.sessions[item.Index].Health, item.HostMissing)
 			healthSymbol = symbol
 			healthColor = color
 			if nonHealthy {

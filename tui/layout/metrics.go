@@ -1,10 +1,7 @@
-package tui
+package layout
 
 const (
 	// MinWidth is the minimal terminal width required by TUI.
-	// This is driven by the main panes, not the keybar. The keybar can degrade
-	// to shorter variants at narrower widths, so the minimum should reflect the
-	// actual split-pane layout requirement plus the terminal-edge safety margin.
 	MinWidth = 118
 	// MinHeight is the minimal terminal height required by TUI.
 	MinHeight = 24
@@ -34,8 +31,7 @@ func NormalizeSize(width, height int) (int, int) {
 	return width, height
 }
 
-// RenderWidth returns a width safe for rendering without hitting the terminal's
-// last column, which can trigger autowrap and break borders in some terminals.
+// RenderWidth returns a width safe for rendering without hitting the terminal's last column.
 func RenderWidth(width int) int {
 	if width <= 1 {
 		return width
@@ -79,7 +75,7 @@ func Compute(width, height int) Metrics {
 		rightOuterW = max(36, totalW-leftOuterW-gapW)
 	}
 
-	infoOuterH := 4 // border + exactly 2 content rows
+	infoOuterH := 4
 	if infoOuterH >= mainAreaH-4 {
 		infoOuterH = max(3, mainAreaH/4)
 	}

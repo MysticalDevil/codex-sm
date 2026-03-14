@@ -1,4 +1,4 @@
-package tui
+package theme
 
 import (
 	"fmt"
@@ -6,12 +6,12 @@ import (
 	"strings"
 )
 
-type tuiTheme struct {
+type Theme struct {
 	Name   string
 	Colors map[string]string
 }
 
-func (t tuiTheme) hex(key, fallback string) string {
+func (t Theme) Hex(key, fallback string) string {
 	if t.Colors != nil {
 		if v := strings.TrimSpace(t.Colors[key]); v != "" {
 			return v
@@ -20,7 +20,7 @@ func (t tuiTheme) hex(key, fallback string) string {
 	return fallback
 }
 
-func (t tuiTheme) merge(overrides map[string]string) tuiTheme {
+func (t Theme) merge(overrides map[string]string) Theme {
 	if len(overrides) == 0 {
 		return t
 	}
@@ -36,47 +36,47 @@ func (t tuiTheme) merge(overrides map[string]string) tuiTheme {
 	return t
 }
 
-func defaultTUIThemeName() string {
+func DefaultThemeName() string {
 	return "tokyonight"
 }
 
-func availableTUIThemes() []string {
-	names := make([]string, 0, len(builtinThemes))
-	for name := range builtinThemes {
+func AvailableThemeNames() []string {
+	names := make([]string, 0, len(BuiltinThemes))
+	for name := range BuiltinThemes {
 		names = append(names, name)
 	}
 	slices.Sort(names)
 	return names
 }
 
-func resolveTUITheme(cfgName string, cfgColors map[string]string, flagName string, flagColors []string) (tuiTheme, error) {
+func Resolve(cfgName string, cfgColors map[string]string, flagName string, flagColors []string) (Theme, error) {
 	name := strings.ToLower(strings.TrimSpace(flagName))
 	if name == "" {
 		name = strings.ToLower(strings.TrimSpace(cfgName))
 	}
 	if name == "" || name == "custom" {
-		name = defaultTUIThemeName()
+		name = DefaultThemeName()
 	}
 
-	base, ok := builtinThemes[name]
+	base, ok := BuiltinThemes[name]
 	if !ok {
-		return tuiTheme{}, fmt.Errorf("unknown theme %q (available: %s)", name, strings.Join(availableTUIThemes(), ", "))
+		return Theme{}, fmt.Errorf("unknown theme %q (available: %s)", name, strings.Join(AvailableThemeNames(), ", "))
 	}
-	theme := tuiTheme{
+	out := Theme{
 		Name:   name,
-		Colors: cloneColorMap(base),
+		Colors: CloneColorMap(base),
 	}
-	theme = theme.merge(cfgColors)
+	out = out.merge(cfgColors)
 
-	flagOverride, err := parseThemeOverrides(flagColors)
+	flagOverride, err := ParseOverrides(flagColors)
 	if err != nil {
-		return tuiTheme{}, err
+		return Theme{}, err
 	}
-	theme = theme.merge(flagOverride)
-	return theme, nil
+	out = out.merge(flagOverride)
+	return out, nil
 }
 
-func parseThemeOverrides(items []string) (map[string]string, error) {
+func ParseOverrides(items []string) (map[string]string, error) {
 	if len(items) == 0 {
 		return nil, nil
 	}
@@ -100,7 +100,7 @@ func parseThemeOverrides(items []string) (map[string]string, error) {
 	return out, nil
 }
 
-func cloneColorMap(m map[string]string) map[string]string {
+func CloneColorMap(m map[string]string) map[string]string {
 	out := make(map[string]string, len(m))
 	for k, v := range m {
 		out[k] = v
@@ -108,16 +108,12 @@ func cloneColorMap(m map[string]string) map[string]string {
 	return out
 }
 
-func DefaultThemeName() string {
-	return defaultTUIThemeName()
-}
-
-func ValidateTheme(cfgName string, cfgColors map[string]string, flagName string, flagColors []string) error {
-	_, err := resolveTUITheme(cfgName, cfgColors, flagName, flagColors)
+func Validate(cfgName string, cfgColors map[string]string, flagName string, flagColors []string) error {
+	_, err := Resolve(cfgName, cfgColors, flagName, flagColors)
 	return err
 }
 
-var builtinThemes = map[string]map[string]string{
+var BuiltinThemes = map[string]map[string]string{
 	"tokyonight": {
 		"bg":               "#1a1b26",
 		"fg":               "#c0caf5",

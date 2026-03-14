@@ -12,25 +12,18 @@ import (
 	"github.com/MysticalDevil/codexsm/config"
 	"github.com/MysticalDevil/codexsm/session"
 	"github.com/MysticalDevil/codexsm/tui/preview"
+	treepkg "github.com/MysticalDevil/codexsm/tui/tree"
 	"github.com/MysticalDevil/codexsm/usecase"
 )
 
-type treeItemKind int
+type treeItemKind = treepkg.Kind
 
 const (
-	treeItemMonth treeItemKind = iota
-	treeItemSession
+	treeItemMonth = treepkg.ItemMonth
+	treeItemSession = treepkg.ItemSession
 )
 
-type treeItem struct {
-	kind   treeItemKind
-	label  string
-	month  string
-	index  int
-	indent int
-	// hostMissing marks sessions whose host path does not exist on local filesystem.
-	hostMissing bool
-}
+type treeItem = treepkg.Item
 
 type tuiFocus int
 
