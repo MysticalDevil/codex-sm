@@ -10,7 +10,7 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 
 ### Added
 
-- Added adaptive TUI width tiers (`full`, `compact`, `ultra`) with mode-aware rendering and key hints.
+- Added adaptive TUI width tiers (`full`, `medium`, `compact`, `ultra`) with mode-aware rendering and key hints.
 - Added ultra single-pane navigation so narrow terminals can switch between tree and preview with shared state.
 - Added focused TUI regression tests covering ultra tier behavior and preview request/render key consistency.
 
@@ -19,6 +19,8 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 - Refined compact tree presentation toward lower visual density (reduced connector noise, color-first emphasis).
 - Updated TUI footer status summary format to `index/total | WARN: X RISK: X` and aligned semantic token usage.
 - Updated ultra keybar copy to keep consistent short labels across width variants (`[U-TREE]`, `[U-PREVIEW]`).
+- Updated docs for `v0.3.3` release alignment (README install/build examples, command guide examples, release checklist).
+- Refreshed architecture notes with current package boundaries and preserved boxed ASCII architecture diagram style.
 
 ### Fixed
 
