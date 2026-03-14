@@ -16,12 +16,12 @@ func TestPrintDeleteSummaryIncludesResultError(t *testing.T) {
 	cmd.SetOut(stdout)
 
 	PrintDeleteSummary(cmd, session.DeleteSummary{
-		Action:      "delete",
-		Simulation:  true,
+		Action:       "delete",
+		Simulation:   true,
 		MatchedCount: 1,
-		Succeeded:   0,
-		Failed:      1,
-		Skipped:     0,
+		Succeeded:    0,
+		Failed:       1,
+		Skipped:      0,
 		Results: []session.DeleteResult{
 			{
 				Status:    "failed",

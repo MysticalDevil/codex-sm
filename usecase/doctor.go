@@ -94,15 +94,15 @@ func DoctorRisk(in DoctorRiskInput) (DoctorRiskReport, error) {
 		risky = append(risky, s)
 
 		riskByKey[riskySessionKey(s)] = r
-			switch r.Level {
-			case session.RiskHigh:
-				highCount++
-			case session.RiskMedium:
-				mediumCount++
-			case session.RiskNone:
-				// already filtered above
-			}
+		switch r.Level {
+		case session.RiskHigh:
+			highCount++
+		case session.RiskMedium:
+			mediumCount++
+		case session.RiskNone:
+			// already filtered above
 		}
+	}
 
 	core.SortSessionsByRisk(risky, evaluator, checker)
 

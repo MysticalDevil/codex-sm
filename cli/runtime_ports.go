@@ -15,6 +15,4 @@ func (defaultAuditSink) WriteActionLog(logFile string, rec audit.ActionRecord) e
 	return audit.WriteActionLog(logFile, rec)
 }
 
-var (
-	runtimeAuditSink usecase.AuditSink = defaultAuditSink{}
-)
+var runtimeAuditSink usecase.AuditSink = defaultAuditSink{}
