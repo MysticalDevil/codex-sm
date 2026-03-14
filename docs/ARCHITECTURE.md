@@ -58,9 +58,17 @@ External/runtime:
 
 +-----------------------------+      +----------------------------------+
 | tui/*                       | ---> | tui/preview/*                    |
-| command/view/state/actions  |      | build/index/model                |
-| layout/render/theme/text    |      +----------------------------------+
+| command/app/state/actions   |      | build/index/model/service/types  |
+| text + thin adapters        |      +----------------------------------+
 +-----------------------------+
+            |
+            +-----------------------------------------> tui/layout/*
+            |
+            +-----------------------------------------> tui/render/*
+            |
+            +-----------------------------------------> tui/theme/*
+            |
+            +-----------------------------------------> tui/tree/*
             |
             +-----------------------------------------> bubbletea / lipgloss / go-runewidth
 
@@ -87,15 +95,19 @@ All layers may use:
 
 3. TUI package:
 - `tui/command.go`
+- `tui/app_preview.go`
 - `tui/view.go`
 - `tui/state.go`
 - `tui/actions.go`
-- `tui/preview.go`
 - `tui/preview/*`
-- `tui/render.go`
-- `tui/theme.go`
+- `tui/layout/*`
+- `tui/render/*`
+- `tui/theme/*`
+- `tui/tree/*`
 - `tui/text.go`
-- `tui/layout.go`
+- `tui/layout_model.go`
+- `tui/render_model.go`
+- `tui/theme_model.go`
 
 4. Domain and storage logic:
 - `session/*` for model/filter/risk/delete/restore operations
@@ -122,6 +134,7 @@ Boundary intent:
 
 - `cli/*` should stay thin orchestration and output adaptation.
 - `tui/*` should own interaction state, key handling, and rendering.
+- `tui/layout/*`, `tui/tree/*`, `tui/render/*`, and `tui/theme/*` are leaf utility packages and must not depend on `tui/command` or `tui/app` orchestration files.
 - `session/*`, `audit/*`, and `config/*` should remain reusable by both CLI and TUI.
 
 Shared session-processing boundaries:
