@@ -27,13 +27,13 @@ export GOEXPERIMENT=jsonv2
 ## Install
 
 ```bash
-GOEXPERIMENT=jsonv2 go install github.com/MysticalDevil/codexsm@v0.3.2
+GOEXPERIMENT=jsonv2 go install github.com/MysticalDevil/codexsm@v0.3.3
 ```
 
 Or with `mise`:
 
 ```bash
-GOEXPERIMENT=jsonv2 mise install go:github.com/MysticalDevil/codexsm@v0.3.2
+GOEXPERIMENT=jsonv2 mise install go:github.com/MysticalDevil/codexsm@v0.3.3
 ```
 
 ## Quick Start
@@ -138,7 +138,9 @@ TUI note:
 - `bg` remains available for local emphasis, such as highlighted action prompts
 - semantic state tokens are available for status UI: `status_ok`, `status_warn`, `status_risk`, `status_info`, `accent_group`
 - group tree supports folding with `z` (toggle selected session group) and `Z` (expand all groups)
-- narrow terminals auto-enable compact mode (supported minimum: 81x24 runtime size), and tree title shows `[COMPACT]`
+- layout is adaptive by width tier: `full` (`>=118`), `medium` (`96-117`), `compact` (`80-95`), `ultra` (`65-79`)
+- `ultra` mode switches to a single active pane (`tree`/`preview`) with `Tab` or `1`/`2`, while keeping shared selection state
+- minimum supported runtime size is `65x24`
 
 ## Build And Dev
 
@@ -155,7 +157,7 @@ just stress-cli
 codexsm doctor risk --sessions-root ./testdata/fixtures/risky-static/sessions --format json --sample-limit 5
 just gen-sessions-extreme
 just gen-sessions-large
-just check-release 0.3.2
+just check-release 0.3.3
 ```
 
 Fixture note:
@@ -169,7 +171,7 @@ Fixture note:
 Release build example:
 
 ```bash
-GOEXPERIMENT=jsonv2 go build -ldflags="-X main.version=0.3.2" -o codexsm .
+GOEXPERIMENT=jsonv2 go build -ldflags="-X main.version=0.3.3" -o codexsm .
 ```
 
 ## License

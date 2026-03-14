@@ -205,7 +205,10 @@ Rendering note:
 - main panes inherit the terminal's default background instead of painting the theme `bg`
 - theme `bg` is reserved for local contrast needs such as foreground-on-accent combinations
 - grouped tree supports runtime fold state: `z` toggles the selected session's group, `Z` expands all groups
-- widths below normal threshold automatically switch to compact mode (minimum runtime width: 81 columns), using stacked panes and compact key/tree/footer text
+- TUI width is tiered: `full` (`>=118`), `medium` (`96-117`), `compact` (`80-95`), `ultra` (`65-79`)
+- `compact` tier keeps split panes with reduced visual density and shorter key/footer text
+- `ultra` tier uses one active pane (`tree`/`preview`) with shared selection state; `Tab` and `1`/`2` switch panes
+- minimum supported runtime width is 65 columns (with `RenderWidth` last-column safety), minimum height stays 24
 
 ## Third-Party Packages
 

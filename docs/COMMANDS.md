@@ -87,6 +87,7 @@ TUI keys (default):
 >
 > When a destructive action is pending, the bottom `KEYS` row is replaced by a high-visibility one-line confirm prompt (`Y` continue / `N` cancel).
 > After a delete succeeds, selection advances to the next available session instead of jumping back to the top.
+> Width is adaptive by tier: `full` (`>=118`), `medium` (`96-117`), `compact` (`80-95`), `ultra` (`65-79`, single active pane with `Tab`/`1`/`2`).
 
 ## Delete And Restore
 
@@ -190,5 +191,5 @@ just cover-gate
 just bench-tui
 just bench-gate
 just check
-just check-release 0.3.2
+just check-release 0.3.3
 ```
