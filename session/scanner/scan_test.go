@@ -1,4 +1,4 @@
-package session
+package scanner
 
 import (
 	"os"
@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/MysticalDevil/codexsm/internal/testsupport"
+	"github.com/MysticalDevil/codexsm/session"
 )
 
 func TestScanSessionsHealthAndID(t *testing.T) {
@@ -28,7 +29,7 @@ func TestScanSessionsHealthAndID(t *testing.T) {
 		switch s.Path {
 		case okFile:
 			foundOK = true
-			if s.Health != HealthOK {
+			if s.Health != session.HealthOK {
 				t.Fatalf("ok file health=%s", s.Health)
 			}
 			if s.SessionID != "019cadee-e315-7b91-8b5d-c0b52770cca6" {
@@ -42,12 +43,12 @@ func TestScanSessionsHealthAndID(t *testing.T) {
 			}
 		case missingMeta:
 			foundMissing = true
-			if s.Health != HealthMissingMeta {
+			if s.Health != session.HealthMissingMeta {
 				t.Fatalf("missing file health=%s", s.Health)
 			}
 		case corrupted:
 			foundCorrupted = true
-			if s.Health != HealthCorrupted {
+			if s.Health != session.HealthCorrupted {
 				t.Fatalf("bad file health=%s", s.Health)
 			}
 		}
@@ -98,7 +99,7 @@ func TestScanSessionsMarksOverlongMetaLineCorrupted(t *testing.T) {
 	if len(list) != 1 {
 		t.Fatalf("expected 1 scanned session, got %d", len(list))
 	}
-	if list[0].Health != HealthCorrupted {
+	if list[0].Health != session.HealthCorrupted {
 		t.Fatalf("expected corrupted health for oversize meta line, got %s", list[0].Health)
 	}
 }
@@ -107,7 +108,7 @@ func TestScanSessionsLimitedKeepsTopNByComparator(t *testing.T) {
 	workspace := testsupport.PrepareFixtureSandbox(t, "rich")
 	root := filepath.Join(workspace, "sessions")
 
-	items, err := ScanSessionsLimited(root, 2, func(a, b Session) bool {
+	items, err := ScanSessionsLimited(root, 2, func(a, b session.Session) bool {
 		if c := b.UpdatedAt.Compare(a.UpdatedAt); c != 0 {
 			return c < 0
 		}
@@ -136,18 +137,18 @@ func TestScanSessionsExtremeStaticFixtureHealth(t *testing.T) {
 		t.Fatalf("expected 6 sessions, got %d", len(list))
 	}
 
-	byBase := make(map[string]Session, len(list))
+	byBase := make(map[string]session.Session, len(list))
 	for _, item := range list {
 		byBase[filepath.Base(item.Path)] = item
 	}
 
-	if got := byBase["mixed-corrupt-and-huge-001.jsonl"].Health; got != HealthCorrupted {
+	if got := byBase["mixed-corrupt-and-huge-001.jsonl"].Health; got != session.HealthCorrupted {
 		t.Fatalf("mixed-corrupt health=%s", got)
 	}
-	if got := byBase["single-line-no-newline-001.jsonl"].Health; got != HealthMissingMeta {
+	if got := byBase["single-line-no-newline-001.jsonl"].Health; got != session.HealthMissingMeta {
 		t.Fatalf("single-line-no-newline health=%s", got)
 	}
-	if got := byBase["oversize-meta-line-001.jsonl"].Health; got != HealthOK {
+	if got := byBase["oversize-meta-line-001.jsonl"].Health; got != session.HealthOK {
 		t.Fatalf("oversize-meta health=%s", got)
 	}
 	if head := byBase["unicode-wide-long-001.jsonl"].Head; !strings.Contains(head, "超长宽字符会话") {

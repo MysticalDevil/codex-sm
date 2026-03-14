@@ -1,4 +1,4 @@
-package session
+package migrate
 
 import (
 	"database/sql"

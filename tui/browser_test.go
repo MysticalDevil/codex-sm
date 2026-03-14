@@ -15,6 +15,7 @@ import (
 	"github.com/MysticalDevil/codexsm/internal/core"
 	"github.com/MysticalDevil/codexsm/internal/testsupport"
 	"github.com/MysticalDevil/codexsm/session"
+	"github.com/MysticalDevil/codexsm/session/scanner"
 	"github.com/MysticalDevil/codexsm/usecase"
 )
 
@@ -548,7 +549,7 @@ func TestTUIViewAndHelpersCoverage(t *testing.T) {
 func TestTUIViewKeysBarWidthMatchesMainArea(t *testing.T) {
 	workspace := testsupport.PrepareFixtureSandbox(t, "rich")
 	sessionsRoot := filepath.Join(workspace, "sessions")
-	sessions, err := session.ScanSessions(sessionsRoot)
+	sessions, err := scanner.ScanSessions(sessionsRoot)
 	if err != nil {
 		t.Fatalf("load sessions: %v", err)
 	}
@@ -601,7 +602,7 @@ func TestTUIViewKeysBarWidthMatchesMainArea(t *testing.T) {
 func TestTUIViewShowsPendingConfirmInKeysBar(t *testing.T) {
 	workspace := testsupport.PrepareFixtureSandbox(t, "rich")
 	sessionsRoot := filepath.Join(workspace, "sessions")
-	sessions, err := session.ScanSessions(sessionsRoot)
+	sessions, err := scanner.ScanSessions(sessionsRoot)
 	if err != nil {
 		t.Fatalf("scan sessions: %v", err)
 	}
@@ -864,7 +865,7 @@ func TestTUIRequestRestoreGuardPaths(t *testing.T) {
 func TestTUIRequestRestoreDryRunUpdatesStatus(t *testing.T) {
 	workspace := testsupport.PrepareFixtureSandbox(t, "rich")
 	trashSessionsRoot := filepath.Join(workspace, "trash", "sessions")
-	items, err := session.ScanSessions(trashSessionsRoot)
+	items, err := scanner.ScanSessions(trashSessionsRoot)
 	if err != nil {
 		t.Fatalf("scan trash sessions: %v", err)
 	}

@@ -1,4 +1,4 @@
-package session
+package session_test
 
 import (
 	"fmt"
@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/MysticalDevil/codexsm/internal/testsupport"
+	"github.com/MysticalDevil/codexsm/session"
+	"github.com/MysticalDevil/codexsm/session/scanner"
 )
 
 func BenchmarkScanSessions(b *testing.B) {
@@ -16,7 +18,7 @@ func BenchmarkScanSessions(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		sessions, err := ScanSessions(root)
+		sessions, err := scanner.ScanSessions(root)
 		if err != nil {
 			b.Fatalf("ScanSessions: %v", err)
 		}
@@ -28,7 +30,7 @@ func BenchmarkScanSessions(b *testing.B) {
 
 func BenchmarkFilterSessions(b *testing.B) {
 	root := filepath.Join(testsupport.TestdataRoot(), "fixtures", "rich", "sessions")
-	sessions, err := ScanSessions(root)
+	sessions, err := scanner.ScanSessions(root)
 	if err != nil {
 		b.Fatalf("ScanSessions setup: %v", err)
 	}
@@ -39,24 +41,24 @@ func BenchmarkFilterSessions(b *testing.B) {
 	now := time.Date(2026, 3, 5, 12, 0, 0, 0, time.UTC)
 	cases := []struct {
 		name string
-		sel  Selector
+		sel  session.Selector
 	}{
 		{
 			name: "all",
-			sel:  Selector{},
+			sel:  session.Selector{},
 		},
 		{
 			name: "host_head_health",
-			sel: Selector{
+			sel: session.Selector{
 				HostContains: "workspace",
 				HeadContains: "session",
-				Health:       HealthOK,
+				Health:       session.HealthOK,
 				HasHealth:    true,
 			},
 		},
 		{
 			name: "older_than",
-			sel: Selector{
+			sel: session.Selector{
 				OlderThan:    24 * time.Hour,
 				HasOlderThan: true,
 			},
@@ -69,7 +71,7 @@ func BenchmarkFilterSessions(b *testing.B) {
 			b.ReportAllocs()
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				out := FilterSessions(sessions, tc.sel, now)
+				out := session.FilterSessions(sessions, tc.sel, now)
 				if len(out) == 0 && tc.name == "all" {
 					b.Fatal("unexpected empty result for all selector")
 				}
@@ -80,7 +82,7 @@ func BenchmarkFilterSessions(b *testing.B) {
 
 func BenchmarkScanSessionsLimited_3k(b *testing.B) {
 	root := prepareBenchSessionsRoot(b, 3000, false)
-	less := func(a, b Session) bool {
+	less := func(a, b session.Session) bool {
 		if c := b.UpdatedAt.Compare(a.UpdatedAt); c != 0 {
 			return c < 0
 		}
@@ -90,7 +92,7 @@ func BenchmarkScanSessionsLimited_3k(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		sessions, err := ScanSessionsLimited(root, 100, less)
+		sessions, err := scanner.ScanSessionsLimited(root, 100, less)
 		if err != nil {
 			b.Fatalf("ScanSessionsLimited: %v", err)
 		}
@@ -102,7 +104,7 @@ func BenchmarkScanSessionsLimited_3k(b *testing.B) {
 
 func BenchmarkScanSessions_AllVsLimited_3k(b *testing.B) {
 	root := prepareBenchSessionsRoot(b, 3000, false)
-	less := func(a, b Session) bool {
+	less := func(a, b session.Session) bool {
 		if c := b.UpdatedAt.Compare(a.UpdatedAt); c != 0 {
 			return c < 0
 		}
@@ -113,7 +115,7 @@ func BenchmarkScanSessions_AllVsLimited_3k(b *testing.B) {
 		b.ReportAllocs()
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			sessions, err := ScanSessions(root)
+			sessions, err := scanner.ScanSessions(root)
 			if err != nil {
 				b.Fatalf("ScanSessions: %v", err)
 			}
@@ -127,7 +129,7 @@ func BenchmarkScanSessions_AllVsLimited_3k(b *testing.B) {
 		b.ReportAllocs()
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			sessions, err := ScanSessionsLimited(root, 100, less)
+			sessions, err := scanner.ScanSessionsLimited(root, 100, less)
 			if err != nil {
 				b.Fatalf("ScanSessionsLimited: %v", err)
 			}
@@ -144,7 +146,7 @@ func BenchmarkScanSessions_ExtremeMix(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		sessions, err := ScanSessions(root)
+		sessions, err := scanner.ScanSessions(root)
 		if err != nil {
 			b.Fatalf("ScanSessions: %v", err)
 		}

@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/MysticalDevil/codexsm/config"
-	"github.com/MysticalDevil/codexsm/session"
+	sessionmigrate "github.com/MysticalDevil/codexsm/session/migrate"
 	"github.com/spf13/cobra"
 )
 
@@ -60,7 +60,7 @@ func newSessionMigrateCmd() *cobra.Command {
 			}
 
 			if filePath != "" {
-				result, err := session.MigrateSessionsBatch(session.MigrateBatchOptions{
+				result, err := sessionmigrate.MigrateSessionsBatch(sessionmigrate.MigrateBatchOptions{
 					FilePath:     filePath,
 					SessionsRoot: sessionsRoot,
 					StateDBPath:  stateDB,
@@ -78,7 +78,7 @@ func newSessionMigrateCmd() *cobra.Command {
 				return nil
 			}
 
-			result, err := session.MigrateSessions(session.MigrateOptions{
+			result, err := sessionmigrate.MigrateSessions(sessionmigrate.MigrateOptions{
 				FromCWD:      fromPath,
 				ToCWD:        toPath,
 				Branch:       branch,
@@ -126,7 +126,7 @@ func parseSinceTime(raw string) (time.Time, bool, error) {
 	return time.Time{}, false, fmt.Errorf("invalid --since value %q: expected RFC3339 timestamp or YYYY-MM-DD", raw)
 }
 
-func printSessionMigrateResult(cmd *cobra.Command, result session.MigrateResult) {
+func printSessionMigrateResult(cmd *cobra.Command, result sessionmigrate.MigrateResult) {
 	out := cmd.OutOrStdout()
 	action := "dry-run"
 	if !result.DryRun {
@@ -153,7 +153,7 @@ func printSessionMigrateResult(cmd *cobra.Command, result session.MigrateResult)
 	}
 }
 
-func printSessionMigrateBatchResult(cmd *cobra.Command, result session.MigrateBatchResult) {
+func printSessionMigrateBatchResult(cmd *cobra.Command, result sessionmigrate.MigrateBatchResult) {
 	out := cmd.OutOrStdout()
 	action := "dry-run"
 	if !result.DryRun {

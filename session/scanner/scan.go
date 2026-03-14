@@ -1,4 +1,4 @@
-package session
+package scanner
 
 import (
 	"bufio"
@@ -12,16 +12,18 @@ import (
 	"slices"
 	"strings"
 	"time"
+
+	"github.com/MysticalDevil/codexsm/session"
 )
 
 // ScanSessions walks the sessions root and parses each .jsonl file into Session metadata.
-func ScanSessions(root string) ([]Session, error) {
+func ScanSessions(root string) ([]session.Session, error) {
 	root = strings.TrimSpace(root)
 	if root == "" {
 		return nil, fmt.Errorf("sessions root is empty")
 	}
 
-	var out []Session
+	var out []session.Session
 	err := filepath.WalkDir(root, func(path string, d os.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
@@ -41,7 +43,7 @@ func ScanSessions(root string) ([]Session, error) {
 	})
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			return []Session{}, nil
+			return []session.Session{}, nil
 		}
 		return nil, err
 	}
@@ -50,7 +52,7 @@ func ScanSessions(root string) ([]Session, error) {
 
 // ScanSessionsLimited scans a root and retains only the best limit sessions
 // according to less. A limit <= 0 falls back to full ScanSessions behavior.
-func ScanSessionsLimited(root string, limit int, less func(a, b Session) bool) ([]Session, error) {
+func ScanSessionsLimited(root string, limit int, less func(a, b session.Session) bool) ([]session.Session, error) {
 	root = strings.TrimSpace(root)
 	if root == "" {
 		return nil, fmt.Errorf("sessions root is empty")
@@ -62,7 +64,7 @@ func ScanSessionsLimited(root string, limit int, less func(a, b Session) bool) (
 		return nil, fmt.Errorf("limited scan comparator is nil")
 	}
 
-	out := make([]Session, 0, limit)
+	out := make([]session.Session, 0, limit)
 	err := filepath.WalkDir(root, func(path string, d os.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
@@ -91,11 +93,11 @@ func ScanSessionsLimited(root string, limit int, less func(a, b Session) bool) (
 	})
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			return []Session{}, nil
+			return []session.Session{}, nil
 		}
 		return nil, err
 	}
-	slices.SortStableFunc(out, func(a, b Session) int {
+	slices.SortStableFunc(out, func(a, b session.Session) int {
 		switch {
 		case less(a, b):
 			return -1
@@ -108,17 +110,17 @@ func ScanSessionsLimited(root string, limit int, less func(a, b Session) bool) (
 	return out, nil
 }
 
-func scanOne(path string) (Session, error) {
+func scanOne(path string) (session.Session, error) {
 	info, err := os.Stat(path)
 	if err != nil {
-		return Session{}, err
+		return session.Session{}, err
 	}
 
-	s := Session{
+	s := session.Session{
 		Path:      path,
 		UpdatedAt: info.ModTime(),
 		SizeBytes: info.Size(),
-		Health:    HealthOK,
+		Health:    session.HealthOK,
 	}
 
 	fallbackID := sessionIDFromFilename(filepath.Base(path))
@@ -128,7 +130,7 @@ func scanOne(path string) (Session, error) {
 
 	f, err := os.Open(path)
 	if err != nil {
-		s.Health = HealthCorrupted
+		s.Health = session.HealthCorrupted
 		if s.CreatedAt.IsZero() {
 			s.CreatedAt = s.UpdatedAt
 		}
@@ -136,7 +138,7 @@ func scanOne(path string) (Session, error) {
 	}
 	closeScanFile := func() {
 		if closeErr := f.Close(); closeErr != nil {
-			s.Health = HealthCorrupted
+			s.Health = session.HealthCorrupted
 			if s.CreatedAt.IsZero() {
 				s.CreatedAt = s.UpdatedAt
 			}
@@ -146,7 +148,7 @@ func scanOne(path string) (Session, error) {
 	r := bufio.NewReader(f)
 	line, truncated, err := readBoundedLine(r, maxSessionMetaLineBytes)
 	if err != nil && !errors.Is(err, io.EOF) {
-		s.Health = HealthCorrupted
+		s.Health = session.HealthCorrupted
 		if s.CreatedAt.IsZero() {
 			s.CreatedAt = s.UpdatedAt
 		}
@@ -154,13 +156,13 @@ func scanOne(path string) (Session, error) {
 		return s, nil
 	}
 	if truncated {
-		s.Health = HealthCorrupted
+		s.Health = session.HealthCorrupted
 		s.CreatedAt = s.UpdatedAt
 		closeScanFile()
 		return s, nil
 	}
 	if len(line) == 0 {
-		s.Health = HealthMissingMeta
+		s.Health = session.HealthMissingMeta
 		s.CreatedAt = s.UpdatedAt
 		closeScanFile()
 		return s, nil
@@ -168,20 +170,20 @@ func scanOne(path string) (Session, error) {
 
 	var m metaLine
 	if !jsontext.Value(line).IsValid() {
-		s.Health = HealthCorrupted
+		s.Health = session.HealthCorrupted
 		s.CreatedAt = s.UpdatedAt
 		closeScanFile()
 		return s, nil
 	}
 	if err := json.Unmarshal(line, &m); err != nil {
-		s.Health = HealthCorrupted
+		s.Health = session.HealthCorrupted
 		s.CreatedAt = s.UpdatedAt
 		closeScanFile()
 		return s, nil
 	}
 
 	if m.Type != "session_meta" || strings.TrimSpace(m.Payload.ID) == "" {
-		s.Health = HealthMissingMeta
+		s.Health = session.HealthMissingMeta
 		s.CreatedAt = s.UpdatedAt
 		closeScanFile()
 		return s, nil

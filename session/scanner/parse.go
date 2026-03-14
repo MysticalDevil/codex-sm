@@ -1,4 +1,4 @@
-package session
+package scanner
 
 import (
 	"encoding/json/jsontext"

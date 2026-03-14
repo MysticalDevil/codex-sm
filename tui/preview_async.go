@@ -2,13 +2,13 @@ package tui
 
 import (
 	"container/list"
-	"fmt"
 	"strings"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/MysticalDevil/codexsm/session"
+	previewpkg "github.com/MysticalDevil/codexsm/tui/preview"
 	"github.com/charmbracelet/lipgloss"
 )
 
@@ -52,7 +52,7 @@ type previewLRUEntry struct {
 }
 
 func previewCacheKeyForSession(s session.Session, width int) string {
-	return fmt.Sprintf("%s|w:%d|sz:%d|mt:%d", s.Path, width, s.SizeBytes, s.UpdatedAt.UnixNano())
+	return previewpkg.CacheKeyForSession(s.Path, width, s.SizeBytes, s.UpdatedAt.UnixNano())
 }
 
 func (m *tuiModel) ensurePreviewRequest() tea.Cmd {
@@ -241,9 +241,5 @@ func persistPreviewIndexCmd(indexPath string, cap int, record previewIndexRecord
 }
 
 func previewLinesBytes(lines []string) int64 {
-	total := int64(0)
-	for _, line := range lines {
-		total += int64(len(line))
-	}
-	return total
+	return previewpkg.LinesBytes(lines)
 }

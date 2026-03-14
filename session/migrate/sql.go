@@ -1,4 +1,4 @@
-package session
+package migrate
 
 const (
 	sqlThreadsTableInfo = `PRAGMA table_info(threads)`

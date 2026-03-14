@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/MysticalDevil/codexsm/session"
+	"github.com/MysticalDevil/codexsm/session/scanner"
 )
 
 type SortField string
@@ -109,12 +110,12 @@ type SessionRepository interface {
 	ScanSessions(root string) ([]session.Session, error)
 }
 
-// ScannerRepository is the default repository backed by session.ScanSessions.
+// ScannerRepository is the default repository backed by scanner.ScanSessions.
 type ScannerRepository struct{}
 
 // ScanSessions implements SessionRepository.
 func (ScannerRepository) ScanSessions(root string) ([]session.Session, error) {
-	return session.ScanSessions(root)
+	return scanner.ScanSessions(root)
 }
 
 // RiskEvaluator evaluates one session and returns the highest-priority risk.
