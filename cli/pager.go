@@ -10,8 +10,10 @@ import (
 	cliutil "github.com/MysticalDevil/codexsm/cli/util"
 )
 
+var isTerminalWriterForPager = isTerminalWriter
+
 func writeWithPager(out io.Writer, text string, pager bool, pageSize int, hasHeader bool) error {
-	if !pager || pageSize <= 0 || !isTerminalWriter(out) {
+	if !pager || pageSize <= 0 || !isTerminalWriterForPager(out) {
 		_, err := io.WriteString(out, text)
 		return err
 	}
