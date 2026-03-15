@@ -6,6 +6,21 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 
 ## [Unreleased]
 
+## [v0.3.4] - 2026-03-16
+
+### Added
+
+- Added TUI group delete support so pressing `d` on a group header targets the entire selected group instead of a single session.
+
+### Changed
+
+- Strengthened TUI real-delete safety for group deletes with a dedicated three-step in-place confirmation flow in the bottom keybar.
+- Updated README, command guide, release checklist, and architecture notes for the `v0.3.4` release examples and current TUI delete behavior.
+
+### Fixed
+
+- Applied `gofumpt` cleanup to the TUI command/model wiring touched by the new group delete flow.
+
 ## [v0.3.3] - 2026-03-15
 
 ### Added

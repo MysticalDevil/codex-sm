@@ -12,7 +12,7 @@ Known hot spots:
 
 ## Architecture Design
 
-`codexsm` follows a layered approach. As of `v0.3.3`, the runtime dependency view is:
+`codexsm` follows a layered approach. As of `v0.3.4`, the runtime dependency view is:
 
 ```text
 External/runtime:
@@ -132,6 +132,7 @@ Boundary intent:
 - `cli` subpackages should own command-specific argument validation and output formatting.
 - `tui/*` should own interaction state, key handling, and rendering.
 - `tui/preview/*` should stay preview-specific and avoid reverse dependencies to CLI.
+- TUI delete safety lives in `tui/actions.go` and may apply stricter interactive confirmation than the CLI for high-risk tree actions such as group deletes.
 - `session/*`, `audit/*`, and `config/*` should remain reusable by both CLI and TUI.
 - avoid pass-through wrappers: call real package types/functions directly across boundaries.
 

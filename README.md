@@ -27,13 +27,13 @@ export GOEXPERIMENT=jsonv2
 ## Install
 
 ```bash
-GOEXPERIMENT=jsonv2 go install github.com/MysticalDevil/codexsm@v0.3.3
+GOEXPERIMENT=jsonv2 go install github.com/MysticalDevil/codexsm@v0.3.4
 ```
 
 Or with `mise`:
 
 ```bash
-GOEXPERIMENT=jsonv2 mise install go:github.com/MysticalDevil/codexsm@v0.3.3
+GOEXPERIMENT=jsonv2 mise install go:github.com/MysticalDevil/codexsm@v0.3.4
 ```
 
 ## Quick Start
@@ -86,6 +86,7 @@ codexsm restore --id-prefix 019ca9
 - Session listing and grouping (`list`, `group`)
 - Interactive browser (`tui`) with theme support
 - Safe delete/restore workflow (`dry-run` by default)
+- TUI group delete from a selected group header with triple confirm for real execution
 - Resume-compatible session migration (`session migrate`)
 - TUI pending-action confirmation shown in bottom keybar (`Y/N`) with stronger visibility
 - TUI delete keeps navigation continuity by advancing selection to the next session
@@ -98,6 +99,7 @@ codexsm restore --id-prefix 019ca9
 - Destructive actions default to simulation (`--dry-run=true`).
 - Real execution requires explicit opt-in (`--dry-run=false --confirm`).
 - Multi-target real execution requires additional approval (`--yes` or interactive confirmation).
+- TUI real delete from a group header requires three explicit confirms before execution.
 - Soft-delete is default; hard delete is explicit (`--hard`).
 - Operation logs include `batch_id` for audit and rollback.
 
@@ -138,6 +140,7 @@ TUI note:
 - `bg` remains available for local emphasis, such as highlighted action prompts
 - semantic state tokens are available for status UI: `status_ok`, `status_warn`, `status_risk`, `status_info`, `accent_group`
 - group tree supports folding with `z` (toggle selected session group) and `Z` (expand all groups)
+- pressing `d` on a group header targets the whole group; real execution uses a dedicated `3/3` confirm flow
 - layout is adaptive by width tier: `full` (`>=118`), `medium` (`96-117`), `compact` (`80-95`), `ultra` (`65-79`)
 - `ultra` mode switches to a single active pane (`tree`/`preview`) with `Tab` or `1`/`2`, while keeping shared selection state
 - minimum supported runtime size is `65x24`
@@ -157,7 +160,7 @@ just stress-cli
 codexsm doctor risk --sessions-root ./testdata/fixtures/risky-static/sessions --format json --sample-limit 5
 just gen-sessions-extreme
 just gen-sessions-large
-just check-release 0.3.3
+just check-release 0.3.4
 ```
 
 Fixture note:
@@ -171,7 +174,7 @@ Fixture note:
 Release build example:
 
 ```bash
-GOEXPERIMENT=jsonv2 go build -ldflags="-X main.version=0.3.3" -o codexsm .
+GOEXPERIMENT=jsonv2 go build -ldflags="-X main.version=0.3.4" -o codexsm .
 ```
 
 ## License

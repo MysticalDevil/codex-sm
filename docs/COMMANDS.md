@@ -76,7 +76,7 @@ TUI keys (default):
 - `g/G`: first/last item
 - `Tab` / `h` / `l`: switch focus panes
 - `Ctrl+d` / `Ctrl+u`: preview page scroll
-- `d`: delete selected session
+- `d`: delete selected session, or delete the selected group from a group header
 - `r`: restore selected session (trash source)
 - `m`: migrate missing-host sessions to trash
 - `y/n`: confirm/cancel pending action
@@ -86,6 +86,7 @@ TUI keys (default):
 > Use `t` / `p` (or `1` / `2`) to explicitly focus tree/preview panes.
 >
 > When a destructive action is pending, the bottom `KEYS` row is replaced by a high-visibility one-line confirm prompt (`Y` continue / `N` cancel).
+> Real TUI delete on a group header requires three confirms before execution.
 > After a delete succeeds, selection advances to the next available session instead of jumping back to the top.
 > Width is adaptive by tier: `full` (`>=118`), `medium` (`96-117`), `compact` (`80-95`), `ultra` (`65-79`, single active pane with `Tab`/`1`/`2`).
 
@@ -191,5 +192,5 @@ just cover-gate
 just bench-tui
 just bench-gate
 just check
-just check-release 0.3.3
+just check-release 0.3.4
 ```
