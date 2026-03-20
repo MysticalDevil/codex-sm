@@ -6,6 +6,25 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 
 ## [Unreleased]
 
+## [v0.3.5] - 2026-03-20
+
+### Added
+
+- Added `doctor --compact-home` (default `true`) so `$HOME`-prefixed detail paths render as `~/...`, with opt-out support via `--compact-home=false`.
+
+### Changed
+
+- Improved `doctor` detail output with terminal-width-aware wrapping, hanging-indent continuation, and semantic token coloring for commands/flags/paths.
+- Unified `doctor` check name rendering to a single stable label and removed debug-only check-name mode.
+- Refactored delete/restore action orchestration to function-based execution/audit injection, removing thin pass-through wrappers.
+- Refactored internal core repository/risk ports to function-based adapters, removing thin pass-through structs.
+- Promoted `github.com/charmbracelet/x/term` to a direct dependency in `go.mod`.
+
+### Fixed
+
+- Fixed long `doctor` detail-line wrapping misalignment in narrow terminals.
+- Fixed lint/style regressions introduced during doctor rendering and action/core refactors.
+
 ## [v0.3.4] - 2026-03-16
 
 ### Added
