@@ -3,16 +3,11 @@ package tui
 
 import (
 	"container/list"
-	"fmt"
-	"path/filepath"
-	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
 
 	"github.com/MysticalDevil/codexsm/config"
 	"github.com/MysticalDevil/codexsm/session"
-	"github.com/MysticalDevil/codexsm/usecase"
 )
 
 type treeItemKind int
@@ -143,141 +138,23 @@ func NewCommand(deps CommandDeps) *cobra.Command {
 			"  y/n: confirm/cancel pending action (group real delete requires 3 confirms)\n" +
 			"  q: quit",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if strings.TrimSpace(sessionsRoot) == "" {
-				v, err := deps.ResolveSessionsRoot()
-				if err != nil {
-					return err
-				}
-
-				sessionsRoot = v
-			} else {
-				v, err := config.ResolvePath(sessionsRoot)
-				if err != nil {
-					return err
-				}
-
-				sessionsRoot = v
-			}
-
-			if strings.TrimSpace(trashRoot) == "" {
-				v, err := deps.ResolveTrashRoot()
-				if err != nil {
-					return err
-				}
-
-				trashRoot = v
-			} else {
-				v, err := config.ResolvePath(trashRoot)
-				if err != nil {
-					return err
-				}
-
-				trashRoot = v
-			}
-
-			if strings.TrimSpace(logFile) == "" {
-				v, err := deps.ResolveLogFile()
-				if err != nil {
-					return err
-				}
-
-				logFile = v
-			} else {
-				v, err := config.ResolvePath(logFile)
-				if err != nil {
-					return err
-				}
-
-				logFile = v
-			}
-
-			if strings.TrimSpace(source) == "" {
-				source = strings.TrimSpace(deps.TUIConfig.Source)
-			}
-
-			source = strings.ToLower(strings.TrimSpace(source))
-			if source == "" {
-				source = "sessions"
-			}
-
-			if source != "sessions" && source != "trash" {
-				return fmt.Errorf("invalid --source %q (allowed: sessions, trash)", source)
-			}
-
-			if scanLimit < 0 {
-				return fmt.Errorf("invalid --scan-limit value %d", scanLimit)
-			}
-
-			if viewLimit < 0 {
-				return fmt.Errorf("invalid --view-limit value %d", viewLimit)
-			}
-
-			scanRoot := sessionsRoot
-			if source == "trash" {
-				scanRoot = filepath.Join(trashRoot, "sessions")
-			}
-
-			result, err := usecase.LoadTUISessions(usecase.LoadTUISessionsInput{
-				SessionsRoot: scanRoot,
-				ScanLimit:    scanLimit,
-				ViewLimit:    viewLimit,
+			return runCommand(deps, cmd, commandInput{
+				SessionsRoot:    sessionsRoot,
+				TrashRoot:       trashRoot,
+				LogFile:         logFile,
+				ScanLimit:       scanLimit,
+				ViewLimit:       viewLimit,
+				GroupBy:         groupBy,
+				Source:          source,
+				ThemeName:       themeName,
+				ThemeColors:     themeColors,
+				DryRun:          dryRun,
+				Confirm:         confirm,
+				Yes:             yes,
+				HardDelete:      hardDelete,
+				MaxBatch:        maxBatch,
+				MaxBatchChanged: cmd.Flags().Changed("max-batch"),
 			})
-			if err != nil {
-				return err
-			}
-
-			items := result.Items
-
-			home, _ := config.ResolvePath("~")
-
-			if strings.TrimSpace(groupBy) == "" {
-				groupBy = strings.TrimSpace(deps.TUIConfig.GroupBy)
-			}
-
-			mode, err := normalizeTUIGroupBy(groupBy)
-			if err != nil {
-				return err
-			}
-
-			theme, err := resolveTUITheme(deps.TUIConfig.Theme, deps.TUIConfig.Colors, themeName, themeColors)
-			if err != nil {
-				return err
-			}
-
-			previewIndex, err := config.ResolvePath("~/.codex/codexsm/index/preview.v1.jsonl")
-			if err != nil {
-				previewIndex = ""
-			}
-
-			m := tuiModel{
-				sessions:           items,
-				collapsedGroups:    make(map[string]bool),
-				home:               home,
-				sessionsRoot:       sessionsRoot,
-				status:             "Ready. Press q to quit.",
-				previewCache:       make(map[string][]string),
-				previewNodes:       make(map[string]*list.Element),
-				previewBytesBudget: 8 << 20,
-				focus:              focusTree,
-				ultraPane:          ultraPaneTree,
-				groupBy:            mode,
-				source:             source,
-				theme:              theme,
-				previewIndex:       previewIndex,
-				indexCap:           5000,
-				trashRoot:          trashRoot,
-				logFile:            logFile,
-				dryRun:             dryRun,
-				confirm:            confirm,
-				yes:                yes,
-				hardDelete:         hardDelete,
-				maxBatch:           maxBatch,
-				maxBatchChanged:    cmd.Flags().Changed("max-batch"),
-			}
-			m.rebuildTree()
-			_, err = tea.NewProgram(m, tea.WithAltScreen()).Run()
-
-			return err
 		},
 	}
 
