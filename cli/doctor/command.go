@@ -22,6 +22,7 @@ func NewCommand(
 	resolveLogFile func() (string, error),
 ) *cobra.Command {
 	var strict bool
+	var debug bool
 
 	cmd := &cobra.Command{
 		Use:   "doctor",
@@ -29,11 +30,12 @@ func NewCommand(
 		Long: "Run local checks for codexsm runtime prerequisites.\n\n" +
 			"This command validates config and storage paths.",
 		Example: "  codexsm doctor\n" +
-			"  codexsm doctor --strict",
+			"  codexsm doctor --strict\n" +
+			"  codexsm doctor --debug",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			checks := runChecks(resolveSessionsRoot, resolveTrashRoot, resolveLogFile)
 
-			out := renderChecks(checks, cliutil.ShouldUseColor("auto", cmd.OutOrStdout()))
+			out := renderChecks(checks, cliutil.ShouldUseColor("auto", cmd.OutOrStdout()), debug)
 			if _, err := fmt.Fprint(cmd.OutOrStdout(), out); err != nil {
 				return err
 			}
@@ -56,6 +58,7 @@ func NewCommand(
 		},
 	}
 	cmd.Flags().BoolVar(&strict, "strict", false, "treat warnings as failures")
+	cmd.Flags().BoolVar(&debug, "debug", false, "show internal check names for debugging")
 	cmd.AddCommand(newRiskCmd(resolveSessionsRoot))
 
 	return cmd

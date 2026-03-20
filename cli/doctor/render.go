@@ -30,15 +30,16 @@ func colorize(v, color string, enabled bool) string {
 	return color + v + ansiReset
 }
 
-func renderChecks(checks []usecase.DoctorCheck, color bool) string {
+func renderChecks(checks []usecase.DoctorCheck, color bool, debug bool) string {
 	var buf bytes.Buffer
 
 	checkW := len("CHECK")
 
 	statusW := len("STATUS")
 	for _, c := range checks {
-		if len(c.Name) > checkW {
-			checkW = len(c.Name)
+		checkName := checkLabel(c.Name, debug)
+		if len(checkName) > checkW {
+			checkW = len(checkName)
 		}
 
 		if len(c.Level) > statusW {
@@ -78,7 +79,8 @@ func renderChecks(checks []usecase.DoctorCheck, color bool) string {
 		}
 		lines = wrapDetailLines(lines, detailWrapW)
 
-		_, _ = fmt.Fprintf(&buf, "%-*s  %s  %s\n", checkW, c.Name, status, lines[0])
+		checkName := checkLabel(c.Name, debug)
+		_, _ = fmt.Fprintf(&buf, "%-*s  %s  %s\n", checkW, checkName, status, lines[0])
 		for _, line := range lines[1:] {
 			_, _ = fmt.Fprintf(&buf, "%s  %s  %s\n", strings.Repeat(" ", checkW), strings.Repeat(" ", statusW), line)
 		}
@@ -106,6 +108,19 @@ func detailLines(detail string) []string {
 	}
 
 	return out
+}
+
+func checkLabel(internal string, debug bool) string {
+	if debug {
+		return strings.TrimSpace(internal)
+	}
+
+	v := strings.TrimSpace(internal)
+	if v == "" {
+		return v
+	}
+
+	return strings.ReplaceAll(v, "_", " ")
 }
 
 func detailWrapWidth(checkW, statusW int) int {

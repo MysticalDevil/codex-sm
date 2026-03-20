@@ -19,7 +19,7 @@ func TestRenderChecksWrapsDetailToColumns(t *testing.T) {
 		},
 	}
 
-	out := renderChecks(checks, false)
+	out := renderChecks(checks, false, false)
 	lines := strings.Split(strings.TrimSuffix(out, "\n"), "\n")
 	if len(lines) < 3 {
 		t.Fatalf("expected wrapped output, got lines=%d output=%q", len(lines), out)
