@@ -54,6 +54,9 @@ codexsm doctor
 # Explain AGENTS.md rule sources and effective rules
 codexsm agents explain
 
+# Lint AGENTS.md layering for shadowed/duplicate rules
+codexsm agents lint --strict
+
 # Dry-run single session migration to a new cwd
 codexsm session migrate --from /old/path --to /new/path
 
@@ -79,7 +82,7 @@ codexsm restore --id-prefix 019ca9
 | Recovery | `batch_id`-based rollback with `restore --batch-id` |
 | Migration | `session migrate` for Resume-compatible cwd/path moves |
 | Diagnostics | `doctor` and `config` validation tooling |
-| Rules Visibility | `agents explain` for AGENTS.md source/effective-shadowed view |
+| Rules Visibility | `agents explain` / `agents lint` for AGENTS.md traceability and policy checks |
 
 ## Core Features
 
@@ -92,7 +95,7 @@ codexsm restore --id-prefix 019ca9
 - TUI delete keeps navigation continuity by advancing selection to the next session
 - Batch rollback via `restore --batch-id`
 - Diagnostics and configuration (`doctor`, `config`)
-- AGENTS.md instruction visibility (`agents explain`)
+- AGENTS.md instruction visibility and lint checks (`agents explain`, `agents lint`)
 
 ## Safety Model
 

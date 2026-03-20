@@ -12,6 +12,7 @@
 | `doctor` | environment/config checks | read-only |
 | `config` | inspect/init/validate config | read-only except `init` |
 | `agents explain` | show AGENTS.md source chain and effective rules | read-only |
+| `agents lint` | detect shadowed/duplicate AGENTS.md rules | read-only |
 | `session migrate` | copy sessions to a new cwd/path | dry-run |
 
 ## Common Commands
@@ -151,6 +152,10 @@ codexsm config init
 codexsm agents explain
 codexsm agents explain --show-shadowed
 codexsm agents explain --format json
+codexsm agents explain --effective-only --source sub --rule ast-grep
+codexsm agents lint
+codexsm agents lint --strict
+codexsm agents lint --format json
 ```
 
 ## Session Migration
