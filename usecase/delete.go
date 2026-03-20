@@ -25,7 +25,7 @@ func SelectDeleteSessions(in DeleteSelectInput) (DeleteSelectResult, error) {
 		return DeleteSelectResult{}, errors.New("delete requires at least one selector (--id/--id-prefix/--host-contains/--path-contains/--head-contains/--older-than/--health)")
 	}
 
-	q, err := core.QuerySessions(in.Repository, in.SessionsRoot, core.QuerySpec{
+	q, err := core.QuerySessions(sessionRepositoryOrDefault(in.Repository), in.SessionsRoot, core.QuerySpec{
 		Selector: in.Selector,
 		Now:      in.Now,
 	})

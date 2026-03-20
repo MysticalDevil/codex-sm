@@ -24,7 +24,7 @@ type ListResult struct {
 }
 
 func ListSessions(in ListInput) (ListResult, error) {
-	q, err := core.QuerySessions(in.Repository, in.SessionsRoot, core.QuerySpec{
+	q, err := core.QuerySessions(sessionRepositoryOrDefault(in.Repository), in.SessionsRoot, core.QuerySpec{
 		Selector: in.Selector,
 		SortBy:   in.SortBy,
 		Order:    in.Order,

@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/MysticalDevil/codexsm/session"
-	"github.com/MysticalDevil/codexsm/session/scanner"
 )
 
 type QueryResult struct {
@@ -16,10 +15,10 @@ type QueryResult struct {
 }
 
 // QuerySessions scans root via repo, applies selector, then performs
-// normalized sorting and pagination.
+// normalized sorting and pagination. repo must be non-nil.
 func QuerySessions(repo SessionRepository, root string, spec QuerySpec) (QueryResult, error) {
 	if repo == nil {
-		repo = scanner.ScanSessions
+		return QueryResult{}, errNilRepository
 	}
 
 	if spec.Offset < 0 {
@@ -62,6 +61,8 @@ func QuerySessions(repo SessionRepository, root string, spec QuerySpec) (QueryRe
 		Items: filtered,
 	}, nil
 }
+
+var errNilRepository = &queryErr{msg: "session repository is nil"}
 
 func sortSessions(items []session.Session, spec SortSpec) {
 	if len(items) <= 1 {
@@ -136,14 +137,19 @@ func sortSessions(items []session.Session, spec SortSpec) {
 }
 
 func errInvalidOffset(v int) error {
-	return &queryErr{msg: "invalid --offset value", value: v}
+	return &queryErr{msg: "invalid --offset value", value: v, hasV: true}
 }
 
 type queryErr struct {
 	msg   string
 	value int
+	hasV  bool
 }
 
 func (e *queryErr) Error() string {
+	if !e.hasV {
+		return e.msg
+	}
+
 	return e.msg + " " + strconv.Itoa(e.value)
 }

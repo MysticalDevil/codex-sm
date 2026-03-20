@@ -8,7 +8,6 @@ import (
 
 	"github.com/MysticalDevil/codexsm/internal/core"
 	"github.com/MysticalDevil/codexsm/session"
-	"github.com/MysticalDevil/codexsm/session/scanner"
 )
 
 type DoctorLevel string
@@ -55,9 +54,7 @@ type DoctorRiskInput struct {
 
 func DoctorRisk(in DoctorRiskInput) (DoctorRiskReport, error) {
 	repo := in.Repository
-	if repo == nil {
-		repo = scanner.ScanSessions
-	}
+	repo = sessionRepositoryOrDefault(repo)
 
 	evaluator := in.Evaluator
 	if evaluator == nil {
@@ -162,9 +159,7 @@ func CheckSessionHostPaths(in DoctorHostPathInput) DoctorCheck {
 	}
 
 	repo := in.Repository
-	if repo == nil {
-		repo = scanner.ScanSessions
-	}
+	repo = sessionRepositoryOrDefault(repo)
 
 	q, err := core.QuerySessions(repo, in.SessionsRoot, core.QuerySpec{})
 	if err != nil {

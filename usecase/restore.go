@@ -48,7 +48,7 @@ func SelectRestoreSessions(in RestoreSelectInput) (RestoreSelectResult, error) {
 			idSet[id] = struct{}{}
 		}
 
-		q, err := core.QuerySessions(in.Repository, in.TrashSessionsRoot, core.QuerySpec{
+		q, err := core.QuerySessions(sessionRepositoryOrDefault(in.Repository), in.TrashSessionsRoot, core.QuerySpec{
 			Now: in.Now,
 		})
 		if err != nil {
@@ -82,7 +82,7 @@ func SelectRestoreSessions(in RestoreSelectInput) (RestoreSelectResult, error) {
 		return RestoreSelectResult{}, errors.New("restore requires at least one selector (--id/--id-prefix/--host-contains/--path-contains/--head-contains/--older-than/--health or --batch-id)")
 	}
 
-	q, err := core.QuerySessions(in.Repository, in.TrashSessionsRoot, core.QuerySpec{
+	q, err := core.QuerySessions(sessionRepositoryOrDefault(in.Repository), in.TrashSessionsRoot, core.QuerySpec{
 		Selector: in.Selector,
 		Now:      in.Now,
 	})

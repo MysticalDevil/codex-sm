@@ -34,7 +34,7 @@ func GroupSessions(in GroupInput) ([]GroupStat, error) {
 		return nil, fmt.Errorf("invalid --offset value %d", in.Offset)
 	}
 
-	q, err := core.QuerySessions(in.Repository, in.SessionsRoot, core.QuerySpec{
+	q, err := core.QuerySessions(sessionRepositoryOrDefault(in.Repository), in.SessionsRoot, core.QuerySpec{
 		Selector: in.Selector,
 		Now:      in.Now,
 	})

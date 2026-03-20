@@ -7,6 +7,7 @@ import (
 
 	"github.com/MysticalDevil/codexsm/internal/testsupport"
 	"github.com/MysticalDevil/codexsm/session"
+	"github.com/MysticalDevil/codexsm/session/scanner"
 )
 
 func TestParseSortSpec(t *testing.T) {
@@ -41,7 +42,7 @@ func TestQuerySessionsSortOffsetLimit(t *testing.T) {
 	workspace := testsupport.PrepareFixtureSandbox(t, "rich")
 	root := filepath.Join(workspace, "sessions")
 
-	out, err := QuerySessions(nil, root, QuerySpec{
+	out, err := QuerySessions(scanner.ScanSessions, root, QuerySpec{
 		Selector: session.Selector{},
 		SortBy:   "size",
 		Order:    "asc",
@@ -72,7 +73,13 @@ func TestQuerySessionsInvalidOffset(t *testing.T) {
 	workspace := testsupport.PrepareFixtureSandbox(t, "rich")
 
 	root := filepath.Join(workspace, "sessions")
-	if _, err := QuerySessions(nil, root, QuerySpec{Offset: -1}); err == nil {
+	if _, err := QuerySessions(scanner.ScanSessions, root, QuerySpec{Offset: -1}); err == nil {
 		t.Fatal("expected invalid offset error")
+	}
+}
+
+func TestQuerySessionsNilRepository(t *testing.T) {
+	if _, err := QuerySessions(nil, "/tmp", QuerySpec{}); err == nil {
+		t.Fatal("expected nil repository error")
 	}
 }
