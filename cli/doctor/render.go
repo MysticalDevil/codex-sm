@@ -17,6 +17,9 @@ const (
 	ansiGreen    = "\x1b[32m"
 	ansiYellow   = "\x1b[33m"
 	ansiRed      = "\x1b[31m"
+	ansiBlue     = "\x1b[34m"
+	ansiMagenta  = "\x1b[35m"
+	ansiDim      = "\x1b[2m"
 	ansiCyanBold = "\x1b[1;36m"
 
 	detailContinuationIndent = "   "
@@ -30,14 +33,18 @@ func colorize(v, color string, enabled bool) string {
 	return color + v + ansiReset
 }
 
-func renderChecks(checks []usecase.DoctorCheck, color bool, debug bool) string {
+func renderChecks(checks []usecase.DoctorCheck, color bool, compactHomePath bool) string {
 	var buf bytes.Buffer
+	home := ""
+	if compactHomePath {
+		home, _ = os.UserHomeDir()
+	}
 
 	checkW := len("CHECK")
 
 	statusW := len("STATUS")
 	for _, c := range checks {
-		checkName := checkLabel(c.Name, debug)
+		checkName := checkLabel(c.Name)
 		if len(checkName) > checkW {
 			checkW = len(checkName)
 		}
@@ -77,11 +84,19 @@ func renderChecks(checks []usecase.DoctorCheck, color bool, debug bool) string {
 		if len(lines) == 0 {
 			lines = []string{""}
 		}
+		lines = normalizeDetailLines(lines, compactHomePath, home)
 		lines = wrapDetailLines(lines, detailWrapW)
 
-		checkName := checkLabel(c.Name, debug)
-		_, _ = fmt.Fprintf(&buf, "%-*s  %s  %s\n", checkW, checkName, status, lines[0])
+		checkName := checkLabel(c.Name)
+		first := lines[0]
+		if color {
+			first = colorizeDetailLine(first)
+		}
+		_, _ = fmt.Fprintf(&buf, "%-*s  %s  %s\n", checkW, checkName, status, first)
 		for _, line := range lines[1:] {
+			if color {
+				line = colorizeDetailLine(line)
+			}
 			_, _ = fmt.Fprintf(&buf, "%s  %s  %s\n", strings.Repeat(" ", checkW), strings.Repeat(" ", statusW), line)
 		}
 	}
@@ -110,17 +125,132 @@ func detailLines(detail string) []string {
 	return out
 }
 
-func checkLabel(internal string, debug bool) string {
-	if debug {
-		return strings.TrimSpace(internal)
+func checkLabel(name string) string {
+	return strings.TrimSpace(name)
+}
+
+func normalizeDetailLines(lines []string, compactHomePath bool, home string) []string {
+	if !compactHomePath || home == "" || len(lines) == 0 {
+		return lines
 	}
 
-	v := strings.TrimSpace(internal)
-	if v == "" {
-		return v
+	out := make([]string, 0, len(lines))
+	for _, line := range lines {
+		out = append(out, normalizeDetailLine(line, home))
 	}
 
-	return strings.ReplaceAll(v, "_", " ")
+	return out
+}
+
+func normalizeDetailLine(line, home string) string {
+	tokens := strings.Fields(line)
+	if len(tokens) == 0 {
+		return line
+	}
+
+	out := make([]string, 0, len(tokens))
+	for _, tok := range tokens {
+		out = append(out, compactHomePathToken(tok, home))
+	}
+
+	return strings.Join(out, " ")
+}
+
+func colorizeDetailLine(line string) string {
+	prefixLen := len(line) - len(strings.TrimLeft(line, " "))
+	prefix := line[:prefixLen]
+	content := strings.TrimLeft(line, " ")
+	if content == "" {
+		return line
+	}
+
+	tokens := strings.Fields(content)
+	styled := make([]string, 0, len(tokens))
+	for _, tok := range tokens {
+		styled = append(styled, colorizeDetailToken(tok))
+	}
+
+	return prefix + strings.Join(styled, " ")
+}
+
+func colorizeDetailToken(tok string) string {
+	leading, core, trailing := splitTokenAffixes(tok)
+	if core == "" {
+		return tok
+	}
+
+	styledCore := core
+	lower := strings.ToLower(core)
+	switch {
+	case lower == "codexsm":
+		styledCore = colorize(core, ansiCyanBold, true)
+	case lower == "list":
+		styledCore = colorize(core, ansiGreen, true)
+	case lower == "delete":
+		styledCore = colorize(core, ansiRed, true)
+	case lower == "doctor":
+		styledCore = colorize(core, ansiBlue, true)
+	case strings.HasPrefix(core, "--"):
+		styledCore = colorize(core, ansiYellow, true)
+	case strings.HasPrefix(core, "/"), strings.HasPrefix(core, "~/"):
+		styledCore = colorize(core, ansiDim, true)
+	case strings.HasSuffix(core, "."):
+		styledCore = colorize(core, ansiDim, true)
+	}
+
+	return leading + styledCore + trailing
+}
+
+func compactHomePathToken(tok, home string) string {
+	if home == "" {
+		return tok
+	}
+
+	leading, core, trailing := splitTokenAffixes(tok)
+	if core == "" {
+		return tok
+	}
+
+	replaced := compactHomePathCore(core, home)
+	return leading + replaced + trailing
+}
+
+func compactHomePathCore(pathToken, home string) string {
+	if pathToken == home {
+		return "~"
+	}
+
+	if strings.HasPrefix(pathToken, home+"/") {
+		return "~" + pathToken[len(home):]
+	}
+
+	return pathToken
+}
+
+func splitTokenAffixes(tok string) (leading, core, trailing string) {
+	start := 0
+	end := len(tok)
+
+	for start < end {
+		switch tok[start] {
+		case '(', '[', '{', '"', '\'':
+			start++
+		default:
+			goto right
+		}
+	}
+
+right:
+	for end > start {
+		switch tok[end-1] {
+		case ',', ';', ')', ']', '}', '"', '\'':
+			end--
+		default:
+			break right
+		}
+	}
+
+	return tok[:start], tok[start:end], tok[end:]
 }
 
 func detailWrapWidth(checkW, statusW int) int {

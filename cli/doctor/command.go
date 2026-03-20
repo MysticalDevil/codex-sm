@@ -22,7 +22,7 @@ func NewCommand(
 	resolveLogFile func() (string, error),
 ) *cobra.Command {
 	var strict bool
-	var debug bool
+	var compactHomePath bool
 
 	cmd := &cobra.Command{
 		Use:   "doctor",
@@ -30,12 +30,11 @@ func NewCommand(
 		Long: "Run local checks for codexsm runtime prerequisites.\n\n" +
 			"This command validates config and storage paths.",
 		Example: "  codexsm doctor\n" +
-			"  codexsm doctor --strict\n" +
-			"  codexsm doctor --debug",
+			"  codexsm doctor --strict",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			checks := runChecks(resolveSessionsRoot, resolveTrashRoot, resolveLogFile)
 
-			out := renderChecks(checks, cliutil.ShouldUseColor("auto", cmd.OutOrStdout()), debug)
+			out := renderChecks(checks, cliutil.ShouldUseColor("auto", cmd.OutOrStdout()), compactHomePath)
 			if _, err := fmt.Fprint(cmd.OutOrStdout(), out); err != nil {
 				return err
 			}
@@ -58,7 +57,7 @@ func NewCommand(
 		},
 	}
 	cmd.Flags().BoolVar(&strict, "strict", false, "treat warnings as failures")
-	cmd.Flags().BoolVar(&debug, "debug", false, "show internal check names for debugging")
+	cmd.Flags().BoolVar(&compactHomePath, "compact-home", true, "compact $HOME-prefixed detail paths as ~")
 	cmd.AddCommand(newRiskCmd(resolveSessionsRoot))
 
 	return cmd
