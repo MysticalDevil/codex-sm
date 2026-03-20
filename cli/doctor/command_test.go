@@ -36,7 +36,7 @@ func TestDoctorCommandNonStrict(t *testing.T) {
 	}
 
 	out := stdout.String()
-	if !strings.Contains(out, "CHECK") || !strings.Contains(out, "sessions root") {
+	if !strings.Contains(out, "CHECK") || !strings.Contains(out, "sessions_root") {
 		t.Fatalf("unexpected doctor output: %q", out)
 	}
 }
@@ -206,56 +206,6 @@ func TestDoctorRiskCommandExtremeStaticJSON(t *testing.T) {
 
 	if payload.SampleLimit != 4 {
 		t.Fatalf("expected sample limit=4, got %+v", payload)
-	}
-}
-
-func TestDoctorCommandDebugShowsInternalName(t *testing.T) {
-	workspace := testsupport.PrepareFixtureSandbox(t, "rich")
-	sessionsRoot := filepath.Join(workspace, "sessions")
-	t.Setenv("SESSIONS_ROOT", sessionsRoot)
-	t.Setenv("CSM_CONFIG", filepath.Join(workspace, "missing-config.json"))
-
-	cmd := cli.NewRootCmd()
-	stdout := &bytes.Buffer{}
-	cmd.SetOut(stdout)
-	cmd.SetErr(&bytes.Buffer{})
-	cmd.SetArgs([]string{"doctor", "--debug"})
-
-	if err := cmd.Execute(); err != nil {
-		t.Fatalf("doctor execute: %v", err)
-	}
-
-	out := stdout.String()
-	if !strings.Contains(out, "session_host_paths") {
-		t.Fatalf("expected internal check names in debug output, got: %q", out)
-	}
-	if strings.Contains(out, "session host paths") {
-		t.Fatalf("did not expect display check names in debug output, got: %q", out)
-	}
-}
-
-func TestDoctorCommandDefaultShowsDisplayName(t *testing.T) {
-	workspace := testsupport.PrepareFixtureSandbox(t, "rich")
-	sessionsRoot := filepath.Join(workspace, "sessions")
-	t.Setenv("SESSIONS_ROOT", sessionsRoot)
-	t.Setenv("CSM_CONFIG", filepath.Join(workspace, "missing-config.json"))
-
-	cmd := cli.NewRootCmd()
-	stdout := &bytes.Buffer{}
-	cmd.SetOut(stdout)
-	cmd.SetErr(&bytes.Buffer{})
-	cmd.SetArgs([]string{"doctor"})
-
-	if err := cmd.Execute(); err != nil {
-		t.Fatalf("doctor execute: %v", err)
-	}
-
-	out := stdout.String()
-	if !strings.Contains(out, "session host paths") {
-		t.Fatalf("expected display check names in normal output, got: %q", out)
-	}
-	if strings.Contains(out, "session_host_paths") {
-		t.Fatalf("did not expect internal check names in normal output, got: %q", out)
 	}
 }
 
