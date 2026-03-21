@@ -10,7 +10,6 @@ import (
 	"testing"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
 	"github.com/mattn/go-runewidth"
 
 	"github.com/MysticalDevil/codexsm/internal/core"
@@ -18,6 +17,7 @@ import (
 	"github.com/MysticalDevil/codexsm/session"
 	"github.com/MysticalDevil/codexsm/session/scanner"
 	"github.com/MysticalDevil/codexsm/tui/preview"
+	"github.com/MysticalDevil/codexsm/tui/runtime"
 	"github.com/MysticalDevil/codexsm/usecase"
 )
 
@@ -1069,9 +1069,9 @@ func TestTUIUpdateAndDryRunPreview(t *testing.T) {
 	}
 	m.rebuildTree()
 
-	model, _ := m.Update(tea.WindowSizeMsg{Width: 100, Height: 30})
+	updated := m
+	updated.HandleEvent(runtime.WindowSizeEvent{Width: 100, Height: 30})
 
-	updated := model.(tuiModel)
 	if updated.width != 100 || updated.height != 30 {
 		t.Fatalf("window size not updated: %+v", updated)
 	}
@@ -1082,8 +1082,13 @@ func TestTUIUpdateAndDryRunPreview(t *testing.T) {
 		t.Fatalf("unexpected dry-run status: %q", updated.status)
 	}
 
-	if _, cmd := updated.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{'q'}}); cmd == nil {
-		t.Fatal("expected quit command on q")
+	effects := updated.HandleEvent(runtime.KeyPressedEvent{Key: "q"})
+	if len(effects) != 1 {
+		t.Fatalf("expected quit effect on q, got %d effects", len(effects))
+	}
+
+	if _, ok := effects[0].(runtime.QuitEffect); !ok {
+		t.Fatalf("expected quit effect type, got %T", effects[0])
 	}
 }
 

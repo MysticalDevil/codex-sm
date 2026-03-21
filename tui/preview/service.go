@@ -3,8 +3,6 @@ package preview
 import (
 	"strings"
 	"time"
-
-	tea "github.com/charmbracelet/bubbletea"
 )
 
 type HandleLoadedOutput struct {
@@ -12,7 +10,14 @@ type HandleLoadedOutput struct {
 	NextWait   string
 	CacheKey   string
 	CacheLines []string
-	PersistCmd tea.Cmd
+	Persist    *PersistRequest
+}
+
+// PersistRequest describes one preview index persistence request.
+type PersistRequest struct {
+	IndexPath string
+	Cap       int
+	Record    IndexRecord
 }
 
 // HandleLoaded validates stale async messages and returns cache/persist actions.
@@ -32,65 +37,65 @@ func HandleLoaded(currentReqID uint64, waitKey string, msg LoadedMsg, indexPath 
 		return out
 	}
 
-	out.PersistCmd = PersistIndexCmd(indexPath, cap, msg.Record)
+	out.Persist = &PersistRequest{
+		IndexPath: indexPath,
+		Cap:       cap,
+		Record:    msg.Record,
+	}
 
 	return out
 }
 
-func LoadCmd(req Request) tea.Cmd {
-	return func() tea.Msg {
-		if req.Path == "" {
-			return LoadedMsg{RequestID: req.RequestID, Key: req.Key, Err: "empty path"}
-		}
+func Load(req Request) LoadedMsg {
+	if req.Path == "" {
+		return LoadedMsg{RequestID: req.RequestID, Key: req.Key, Err: "empty path"}
+	}
 
-		if req.IndexPath != "" {
-			if lines, ok, err := LoadIndexEntry(req.IndexPath, req.Key); err == nil && ok {
-				return LoadedMsg{
-					RequestID: req.RequestID,
-					Key:       req.Key,
-					Lines:     lines,
-					Record: IndexRecord{
-						Key:           req.Key,
-						Path:          req.Path,
-						Width:         req.Width,
-						SizeBytes:     req.SizeBytes,
-						UpdatedAtUnix: req.UpdatedAtUnix,
-						TouchedAtUnix: time.Now().UnixNano(),
-						Lines:         lines,
-					},
-				}
+	if req.IndexPath != "" {
+		if lines, ok, err := LoadIndexEntry(req.IndexPath, req.Key); err == nil && ok {
+			return LoadedMsg{
+				RequestID: req.RequestID,
+				Key:       req.Key,
+				Lines:     lines,
+				Record: IndexRecord{
+					Key:           req.Key,
+					Path:          req.Path,
+					Width:         req.Width,
+					SizeBytes:     req.SizeBytes,
+					UpdatedAtUnix: req.UpdatedAtUnix,
+					TouchedAtUnix: time.Now().UnixNano(),
+					Lines:         lines,
+				},
 			}
 		}
+	}
 
-		lines := BuildLines(req.Path, req.Width, req.Lines, req.Palette)
+	lines := BuildLines(req.Path, req.Width, req.Lines, req.Palette)
 
-		return LoadedMsg{
-			RequestID: req.RequestID,
-			Key:       req.Key,
-			Lines:     lines,
-			Record: IndexRecord{
-				Key:           req.Key,
-				Path:          req.Path,
-				Width:         req.Width,
-				SizeBytes:     req.SizeBytes,
-				UpdatedAtUnix: req.UpdatedAtUnix,
-				TouchedAtUnix: time.Now().UnixNano(),
-				Lines:         lines,
-			},
-		}
+	return LoadedMsg{
+		RequestID: req.RequestID,
+		Key:       req.Key,
+		Lines:     lines,
+		Record: IndexRecord{
+			Key:           req.Key,
+			Path:          req.Path,
+			Width:         req.Width,
+			SizeBytes:     req.SizeBytes,
+			UpdatedAtUnix: req.UpdatedAtUnix,
+			TouchedAtUnix: time.Now().UnixNano(),
+			Lines:         lines,
+		},
 	}
 }
 
-func PersistIndexCmd(indexPath string, cap int, record IndexRecord) tea.Cmd {
-	return func() tea.Msg {
-		if strings.TrimSpace(indexPath) == "" || strings.TrimSpace(record.Key) == "" {
-			return IndexPersistedMsg{}
-		}
-
-		if err := UpsertIndex(indexPath, cap, record); err != nil {
-			return IndexPersistedMsg{Err: err.Error()}
-		}
-
+func PersistIndex(indexPath string, cap int, record IndexRecord) IndexPersistedMsg {
+	if strings.TrimSpace(indexPath) == "" || strings.TrimSpace(record.Key) == "" {
 		return IndexPersistedMsg{}
 	}
+
+	if err := UpsertIndex(indexPath, cap, record); err != nil {
+		return IndexPersistedMsg{Err: err.Error()}
+	}
+
+	return IndexPersistedMsg{}
 }

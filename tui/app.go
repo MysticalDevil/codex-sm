@@ -4,45 +4,50 @@ import (
 	"container/list"
 	"os"
 
-	tea "github.com/charmbracelet/bubbletea"
-
 	"github.com/MysticalDevil/codexsm/tui/preview"
+	"github.com/MysticalDevil/codexsm/tui/runtime"
 	"github.com/charmbracelet/lipgloss"
 )
 
-func (m tuiModel) Init() tea.Cmd {
-	return nil
-}
-
-func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg := msg.(type) {
-	case tea.WindowSizeMsg:
-		m.width = msg.Width
-		m.height = msg.Height
+func (m *tuiModel) HandleEvent(ev runtime.Event) []runtime.Effect {
+	switch event := ev.(type) {
+	case runtime.WindowSizeEvent:
+		m.width = event.Width
+		m.height = event.Height
 		m.clampOffset()
 
-		return m, m.ensurePreviewRequest()
-	case preview.LoadedMsg:
-		out := preview.HandleLoaded(m.previewReqID, m.previewWait, msg, m.previewIndex, m.indexCap)
+		return m.ensurePreviewEffects()
+	case runtime.PreviewLoadedEvent:
+		out := preview.HandleLoaded(m.previewReqID, m.previewWait, event.Message, m.previewIndex, m.indexCap)
 		if !out.Accepted {
-			return m, nil
+			return nil
 		}
 
 		m.previewWait = out.NextWait
 		m.previewCachePut(out.CacheKey, out.CacheLines)
 
-		return m, out.PersistCmd
-	case preview.IndexPersistedMsg:
-		return m, nil
-	case tea.KeyMsg:
-		if m.handleKey(msg.String()) {
-			return m, tea.Quit
+		if out.Persist == nil {
+			return nil
 		}
 
-		return m, m.ensurePreviewRequest()
-	}
+		return []runtime.Effect{
+			runtime.PersistPreviewEffect{
+				IndexPath: out.Persist.IndexPath,
+				Cap:       out.Persist.Cap,
+				Record:    out.Persist.Record,
+			},
+		}
+	case runtime.PreviewPersistedEvent:
+		return nil
+	case runtime.KeyPressedEvent:
+		if m.handleKey(event.Key) {
+			return []runtime.Effect{runtime.QuitEffect{}}
+		}
 
-	return m, nil
+		return m.ensurePreviewEffects()
+	default:
+		return nil
+	}
 }
 
 func (m *tuiModel) handleKey(key string) bool {
@@ -290,7 +295,7 @@ type previewLRUEntry struct {
 	Size int64
 }
 
-func (m *tuiModel) ensurePreviewRequest() tea.Cmd {
+func (m *tuiModel) ensurePreviewEffects() []runtime.Effect {
 	selected, ok := m.selectedSession()
 	if !ok {
 		m.previewWait = ""
@@ -324,17 +329,21 @@ func (m *tuiModel) ensurePreviewRequest() tea.Cmd {
 		UpdatedAtUnix: selected.UpdatedAt.UnixNano(),
 	}
 
-	return preview.LoadCmd(preview.Request{
-		RequestID:     req.RequestID,
-		Key:           req.Key,
-		Path:          req.Path,
-		Width:         req.Width,
-		Lines:         req.Lines,
-		Palette:       req.Palette,
-		IndexPath:     req.IndexPath,
-		SizeBytes:     req.SizeBytes,
-		UpdatedAtUnix: req.UpdatedAtUnix,
-	})
+	return []runtime.Effect{
+		runtime.LoadPreviewEffect{
+			Request: preview.Request{
+				RequestID:     req.RequestID,
+				Key:           req.Key,
+				Path:          req.Path,
+				Width:         req.Width,
+				Lines:         req.Lines,
+				Palette:       req.Palette,
+				IndexPath:     req.IndexPath,
+				SizeBytes:     req.SizeBytes,
+				UpdatedAtUnix: req.UpdatedAtUnix,
+			},
+		},
+	}
 }
 
 func (m *tuiModel) currentPreviewRequestDims() (int, int) {

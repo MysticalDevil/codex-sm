@@ -6,10 +6,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
 
 	"github.com/MysticalDevil/codexsm/config"
+	"github.com/MysticalDevil/codexsm/tui/runtime"
 	"github.com/MysticalDevil/codexsm/usecase"
 )
 
@@ -122,7 +122,13 @@ func runCommand(deps CommandDeps, cmd *cobra.Command, in commandInput) error {
 		maxBatchChanged:    in.MaxBatchChanged,
 	}
 	m.rebuildTree()
-	_, err = tea.NewProgram(m, tea.WithAltScreen()).Run()
+
+	runtimeFactory := deps.NewRuntime
+	if runtimeFactory == nil {
+		runtimeFactory = runtime.NewBubbleTea
+	}
+
+	err = runtimeFactory().Run(&m)
 
 	return err
 }

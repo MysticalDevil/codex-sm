@@ -48,8 +48,8 @@ func TestHandleLoadedAcceptsAndBuildsPersistCmd(t *testing.T) {
 		t.Fatalf("NextWait=%q, want empty", out.NextWait)
 	}
 
-	if out.PersistCmd == nil {
-		t.Fatal("expected persist cmd")
+	if out.Persist == nil {
+		t.Fatal("expected persist request")
 	}
 }
 
@@ -69,11 +69,11 @@ func TestHandleLoadedErrorMapsToFriendlyCacheLine(t *testing.T) {
 	}
 }
 
-func TestPersistIndexCmdWritesIndex(t *testing.T) {
+func TestPersistIndexWritesIndex(t *testing.T) {
 	root := t.TempDir()
 	indexPath := filepath.Join(root, "preview-index.jsonl")
 
-	cmd := PersistIndexCmd(indexPath, 10, IndexRecord{
+	msg := PersistIndex(indexPath, 10, IndexRecord{
 		Key:           "k1",
 		Path:          "/tmp/a",
 		Width:         80,
@@ -82,20 +82,9 @@ func TestPersistIndexCmdWritesIndex(t *testing.T) {
 		TouchedAtUnix: 2,
 		Lines:         []string{"hello"},
 	})
-	if cmd == nil {
-		t.Fatal("expected persist cmd")
-	}
 
-	msg := cmd()
-
-	persisted, ok := msg.(IndexPersistedMsg)
-
-	if !ok {
-		t.Fatalf("unexpected message type: %T", msg)
-	}
-
-	if persisted.Err != "" {
-		t.Fatalf("unexpected persist error: %s", persisted.Err)
+	if msg.Err != "" {
+		t.Fatalf("unexpected persist error: %s", msg.Err)
 	}
 
 	lines, found, err := LoadIndexEntry(indexPath, "k1")

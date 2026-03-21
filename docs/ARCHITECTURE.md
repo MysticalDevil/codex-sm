@@ -42,11 +42,11 @@ External/runtime:
                   v                                   v
     +-------------------------------+    +-------------------------------+
     | cli subpackages               |    | tui/*                         |
-    | cli/config                    |    | command/app/state/actions     |
-    | cli/delete                    |    | layout/render/view/text/theme |
-    | cli/doctor                    |    | + tui/preview/*               |
-    | cli/list                      |    +-------------------------------+
-    | cli/restore                   |                    |
+    | cli/config                    |    | command/bootstrap/runtime     |
+    | cli/delete                    |    | app/state/actions             |
+    | cli/doctor                    |    | layout/render/view/text/theme |
+    | cli/list                      |    | + tui/preview/*               |
+    | cli/restore                   |    +-------------------------------+
     | cli/util                      |                    +----> bubbletea/lipgloss/runewidth
     +---------------+---------------+
                     |
@@ -102,6 +102,7 @@ External/runtime:
 3. TUI package:
 - `tui/command.go`
 - `tui/bootstrap.go`
+- `tui/runtime/*`
 - `tui/app.go`
 - `tui/state.go`
 - `tui/actions.go`
@@ -133,6 +134,7 @@ Boundary intent:
 
 - `cli/*` should stay thin orchestration and output adaptation.
 - `cli` subpackages should own command-specific argument validation and output formatting.
+- `tui/runtime/*` should own UI event loop adapters and runtime side effects.
 - `tui/*` should own interaction state, key handling, and rendering.
 - `tui/preview/*` should stay preview-specific and avoid reverse dependencies to CLI.
 - TUI delete safety lives in `tui/actions.go` and may apply stricter interactive confirmation than the CLI for high-risk tree actions such as group deletes.

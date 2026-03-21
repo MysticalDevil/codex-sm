@@ -8,6 +8,7 @@ import (
 
 	"github.com/MysticalDevil/codexsm/config"
 	"github.com/MysticalDevil/codexsm/session"
+	"github.com/MysticalDevil/codexsm/tui/runtime"
 )
 
 type treeItemKind int
@@ -89,6 +90,7 @@ type CommandDeps struct {
 	ResolveSessionsRoot func() (string, error)
 	ResolveTrashRoot    func() (string, error)
 	ResolveLogFile      func() (string, error)
+	NewRuntime          func() runtime.Runtime
 	TUIConfig           config.TUIConfig
 }
 

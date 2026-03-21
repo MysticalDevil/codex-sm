@@ -10,6 +10,7 @@ import (
 	"github.com/MysticalDevil/codexsm/internal/testsupport"
 	"github.com/MysticalDevil/codexsm/session"
 	"github.com/MysticalDevil/codexsm/tui/preview"
+	"github.com/MysticalDevil/codexsm/tui/runtime"
 )
 
 func TestPreviewCacheKeyForSessionIncludesWidth(t *testing.T) {
@@ -122,31 +123,33 @@ func TestEnsurePreviewRequestAndUpdatePipeline(t *testing.T) {
 	}
 	m.rebuildTree()
 
-	cmd := m.ensurePreviewRequest()
-	if cmd == nil {
-		t.Fatal("expected preview load cmd")
+	effects := m.ensurePreviewEffects()
+	if len(effects) != 1 {
+		t.Fatalf("expected one preview effect, got %d", len(effects))
 	}
 
-	msg := cmd()
-
-	loaded, ok := msg.(preview.LoadedMsg)
+	loadEffect, ok := effects[0].(runtime.LoadPreviewEffect)
 	if !ok {
-		t.Fatalf("unexpected msg type: %T", msg)
+		t.Fatalf("unexpected effect type: %T", effects[0])
 	}
 
-	model, persistCmd := m.Update(loaded)
+	loaded := preview.Load(loadEffect.Request)
+	next := m.HandleEvent(runtime.PreviewLoadedEvent{Message: loaded})
 
-	updated := model.(tuiModel)
-	if updated.previewWait != "" {
-		t.Fatalf("expected previewWait cleared, got %q", updated.previewWait)
+	if m.previewWait != "" {
+		t.Fatalf("expected previewWait cleared, got %q", m.previewWait)
 	}
 
-	if _, ok := updated.previewCachePeek(loaded.Key); !ok {
+	if _, ok := m.previewCachePeek(loaded.Key); !ok {
 		t.Fatalf("expected cached preview for key %q", loaded.Key)
 	}
 
-	if persistCmd == nil {
-		t.Fatal("expected persist cmd")
+	if len(next) != 1 {
+		t.Fatalf("expected one persist effect, got %d", len(next))
+	}
+
+	if _, ok := next[0].(runtime.PersistPreviewEffect); !ok {
+		t.Fatalf("unexpected persist effect type: %T", next[0])
 	}
 }
 
@@ -174,26 +177,25 @@ func TestEnsurePreviewRequestUltraModeUsesRenderedPreviewDims(t *testing.T) {
 
 	width, _ := m.currentPreviewRequestDims()
 
-	cmd := m.ensurePreviewRequest()
-	if cmd == nil {
-		t.Fatal("expected preview load cmd in ultra mode")
+	effects := m.ensurePreviewEffects()
+	if len(effects) != 1 {
+		t.Fatalf("expected one preview effect in ultra mode, got %d", len(effects))
 	}
 
-	msg := cmd()
-
-	loaded, ok := msg.(preview.LoadedMsg)
+	loadEffect, ok := effects[0].(runtime.LoadPreviewEffect)
 	if !ok {
-		t.Fatalf("unexpected msg type: %T", msg)
+		t.Fatalf("unexpected effect type: %T", effects[0])
 	}
+
+	loaded := preview.Load(loadEffect.Request)
 
 	if want := preview.CacheKeyForSession(p, width, 1, m.sessions[0].UpdatedAt.UnixNano()); loaded.Key != want {
 		t.Fatalf("unexpected preview key in ultra mode: got=%q want=%q", loaded.Key, want)
 	}
 
-	model, _ := m.Update(loaded)
-	updated := model.(tuiModel)
+	m.HandleEvent(runtime.PreviewLoadedEvent{Message: loaded})
 
-	out := stripANSIForTest(updated.View())
+	out := stripANSIForTest(m.View())
 	if strings.Contains(out, "preview not ready") {
 		t.Fatalf("unexpected preview miss in ultra mode view: %q", out)
 	}
