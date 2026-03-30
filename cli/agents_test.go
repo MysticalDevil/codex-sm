@@ -102,8 +102,8 @@ func TestAgentsExplainJSON(t *testing.T) {
 	}
 
 	var decoded struct {
-		CWD     string         `json:"cwd"`
-		Filters map[string]any `json:"filters"`
+		CWD     string    `json:"cwd"`
+		Filters *struct{} `json:"filters"`
 		Summary struct {
 			Sources   int `json:"sources"`
 			Rules     int `json:"rules"`

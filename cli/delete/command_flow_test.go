@@ -24,7 +24,9 @@ func TestNewCommandDryRunByID(t *testing.T) {
 	}
 
 	var selected session.Session
+
 	found := false
+
 	for _, s := range items {
 		if strings.TrimSpace(s.SessionID) == "" {
 			continue
@@ -32,6 +34,7 @@ func TestNewCommandDryRunByID(t *testing.T) {
 
 		selected = s
 		found = true
+
 		break
 	}
 
@@ -49,7 +52,9 @@ func TestNewCommandDryRunByID(t *testing.T) {
 	)
 
 	var stdout bytes.Buffer
+
 	var stderr bytes.Buffer
+
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stderr)
 	cmd.SetArgs([]string{"--id", selected.SessionID, "--dry-run"})
@@ -97,6 +102,7 @@ func TestNewCommandRejectsInvalidPreviewMode(t *testing.T) {
 	}
 
 	var selected session.Session
+
 	for _, s := range items {
 		if strings.TrimSpace(s.SessionID) != "" {
 			selected = s

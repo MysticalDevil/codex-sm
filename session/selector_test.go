@@ -77,7 +77,6 @@ func TestFilterSessions_MultilingualAndEmojiHeadContains(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			got := FilterSessions(sessions, Selector{HeadContains: tc.q}, now)
 			if len(got) != 1 {

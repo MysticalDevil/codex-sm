@@ -17,7 +17,6 @@ func TestEvaluateRiskFromHealth(t *testing.T) {
 		{name: "corrupted", health: HealthCorrupted, level: RiskHigh, reason: RiskReasonCorrupted},
 	}
 	for _, tc := range cases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			got := EvaluateRisk(Session{Health: tc.health}, nil)
 			if got.Level != tc.level || got.Reason != tc.reason {

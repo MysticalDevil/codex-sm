@@ -61,8 +61,9 @@ func TestExitErrorAndWithExitCodeHelpers(t *testing.T) {
 
 	base := errors.New("boom")
 	err := WithExitCode(base, 2)
-	var exitErr *ExitError
-	if !errors.As(err, &exitErr) {
+
+	exitErr, ok := errors.AsType[*ExitError](err)
+	if !ok {
 		t.Fatalf("expected ExitError wrapper, got: %T", err)
 	}
 
@@ -81,6 +82,7 @@ func TestExitErrorAndWithExitCodeHelpers(t *testing.T) {
 
 func TestShouldUseColorAutoAndParseHealthInvalid(t *testing.T) {
 	t.Setenv("NO_COLOR", "1")
+
 	if ShouldUseColor("auto", &bytes.Buffer{}) {
 		t.Fatal("auto mode should disable color when NO_COLOR is set")
 	}

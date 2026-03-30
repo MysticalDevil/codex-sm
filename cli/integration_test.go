@@ -987,8 +987,7 @@ func TestRestore_BatchIDConflictsWithSelectors(t *testing.T) {
 	if !strings.Contains(err.Error(), "cannot be combined") {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	var ex *cliutil.ExitError
-	if !errors.As(err, &ex) || ex.ExitCode() != 1 {
+	if ex, ok := errors.AsType[*cliutil.ExitError](err); !ok || ex.ExitCode() != 1 {
 		t.Fatalf("expected exit code 1, got err=%v", err)
 	}
 }
@@ -1012,8 +1011,7 @@ func TestRestore_RequiresSelectorOrBatchID(t *testing.T) {
 	if !strings.Contains(err.Error(), "requires at least one selector") {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	var ex *cliutil.ExitError
-	if !errors.As(err, &ex) || ex.ExitCode() != 1 {
+	if ex, ok := errors.AsType[*cliutil.ExitError](err); !ok || ex.ExitCode() != 1 {
 		t.Fatalf("expected exit code 1, got err=%v", err)
 	}
 }

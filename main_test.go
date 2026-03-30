@@ -14,7 +14,6 @@ func TestNormalizeBuildInfoVersion(t *testing.T) {
 		{in: "  v1.2.3  ", want: "v1.2.3"},
 	}
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.in, func(t *testing.T) {
 			if got := normalizeBuildInfoVersion(tt.in); got != tt.want {
 				t.Fatalf("normalizeBuildInfoVersion(%q)=%q, want %q", tt.in, got, tt.want)

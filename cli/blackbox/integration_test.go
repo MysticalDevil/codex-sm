@@ -351,8 +351,7 @@ func runCLI(t *testing.T, args []string, extraEnv []string) runResult {
 	err := cmd.Run()
 	exitCode := 0
 	if err != nil {
-		var exitErr *exec.ExitError
-		if errors.As(err, &exitErr) {
+		if exitErr, ok := errors.AsType[*exec.ExitError](err); ok {
 			exitCode = exitErr.ExitCode()
 		} else {
 			exitCode = -1

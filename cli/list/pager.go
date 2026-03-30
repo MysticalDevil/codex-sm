@@ -60,9 +60,7 @@ func WriteWithPager(out io.Writer, text string, pager bool, pageSize int, hasHea
 		start := page * pageSize
 
 		end := start + pageSize
-		if end > len(body) {
-			end = len(body)
-		}
+		end = min(end, len(body))
 
 		if header != "" {
 			if _, err := fmt.Fprintln(out, header); err != nil {
@@ -129,9 +127,7 @@ func WriteWithPager(out io.Writer, text string, pager bool, pageSize int, hasHea
 				start := p * pageSize
 
 				end := start + pageSize
-				if end > len(body) {
-					end = len(body)
-				}
+				end = min(end, len(body))
 
 				for _, line := range body[start:end] {
 					if _, err := fmt.Fprintln(out, line); err != nil {

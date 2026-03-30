@@ -21,7 +21,7 @@ func BenchmarkRenderTable(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		out := &bytes.Buffer{}
 
 		table, err := RenderTable(sessions, len(sessions), RenderOptions{
@@ -52,7 +52,7 @@ func BenchmarkRenderTable_LargeColumns(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		out := &bytes.Buffer{}
 
 		table, err := RenderTable(sessions, len(sessions), RenderOptions{
@@ -78,7 +78,7 @@ func BenchmarkRenderJSON(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		buf := &bytes.Buffer{}
 
 		data, err := json.Marshal(sessions)
@@ -100,7 +100,7 @@ func makeCLIBenchSessions(n int) []session.Session {
 	base := time.Date(2026, 3, 9, 0, 0, 0, 0, time.UTC)
 
 	out := make([]session.Session, 0, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		health := session.HealthOK
 		if i%97 == 0 {
 			health = session.HealthCorrupted

@@ -32,7 +32,6 @@ func TestConversationHeadFromLine_MultilingualAndEmoji(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			got := conversationHeadFromLine([]byte(responseItemJSON("user", tc.text)))
 			if got != tc.text {
@@ -47,7 +46,7 @@ func TestReadConversationHead_LargeConversation(t *testing.T) {
 
 	target := "请帮我实现多语言 session restore 支持吗？"
 
-	for i := 0; i < 8; i++ {
+	for i := range 8 {
 		fmt.Fprintf(&b, "%s\n", responseItemJSON("user", fmt.Sprintf("status update %03d", i)))
 	}
 

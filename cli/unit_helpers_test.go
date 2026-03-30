@@ -165,8 +165,8 @@ func TestErrorAndLoggingHelpers(t *testing.T) {
 	base := errors.New("x")
 	wrapped := cliutil.WithExitCode(base, 9)
 
-	var ex *cliutil.ExitError
-	if !errors.As(wrapped, &ex) {
+	ex, ok := errors.AsType[*cliutil.ExitError](wrapped)
+	if !ok {
 		t.Fatal("expected ExitError")
 	}
 

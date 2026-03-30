@@ -21,8 +21,7 @@ func main() {
 	if err := root.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 
-		var ex *cliutil.ExitError
-		if errors.As(err, &ex) {
+		if ex, ok := errors.AsType[*cliutil.ExitError](err); ok {
 			os.Exit(ex.ExitCode())
 		}
 

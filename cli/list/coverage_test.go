@@ -44,6 +44,7 @@ func TestRenderTableIncludesHeaderAndFooter(t *testing.T) {
 
 func TestColorizeRenderedTableReturnsStyledText(t *testing.T) {
 	input := "ID\nrow\nshowing 1 of 1\n"
+
 	out := ColorizeRenderedTable(input, []session.Session{{Health: session.HealthCorrupted}}, false, true)
 	if out == "" {
 		t.Fatal("expected colored output")
@@ -52,6 +53,7 @@ func TestColorizeRenderedTableReturnsStyledText(t *testing.T) {
 
 func TestWriteWithPagerDisabledWritesContent(t *testing.T) {
 	var out bytes.Buffer
+
 	content := "alpha\nbeta\n"
 
 	if err := WriteWithPager(&out, content, false, 10, true); err != nil {
@@ -76,6 +78,7 @@ func TestWriteWithPagerInteractiveAll(t *testing.T) {
 	}
 
 	root := t.TempDir()
+
 	inPath := filepath.Join(root, "pager-input.txt")
 	if err := os.WriteFile(inPath, []byte("a\n"), 0o644); err != nil {
 		t.Fatalf("write pager input: %v", err)
@@ -89,6 +92,7 @@ func TestWriteWithPagerInteractiveAll(t *testing.T) {
 
 	oldStdin := os.Stdin
 	os.Stdin = in
+
 	defer func() { os.Stdin = oldStdin }()
 
 	text := strings.Join([]string{

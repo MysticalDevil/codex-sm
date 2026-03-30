@@ -16,7 +16,9 @@ func TestNewCommandCSVWritesDelimitedOutput(t *testing.T) {
 	cmd := NewCommand(func() (string, error) { return sessionsRoot, nil })
 
 	var stdout bytes.Buffer
+
 	var stderr bytes.Buffer
+
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stderr)
 	cmd.SetArgs([]string{"--by", "day", "--format", "csv"})
@@ -37,7 +39,9 @@ func TestNewCommandJSONWritesStatsArray(t *testing.T) {
 	cmd := NewCommand(func() (string, error) { return sessionsRoot, nil })
 
 	var stdout bytes.Buffer
+
 	var stderr bytes.Buffer
+
 	cmd.SetOut(&stdout)
 	cmd.SetErr(&stderr)
 	cmd.SetArgs([]string{"--by", "health", "--format", "json"})

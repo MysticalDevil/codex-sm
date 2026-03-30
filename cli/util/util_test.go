@@ -20,9 +20,8 @@ func TestExitErrorAndWithExitCode(t *testing.T) {
 
 	err := WithExitCode(base, 7)
 
-	var ex *ExitError
-
-	if !errors.As(err, &ex) {
+	ex, ok := errors.AsType[*ExitError](err)
+	if !ok {
 		t.Fatalf("expected ExitError wrapper, got %T", err)
 	}
 

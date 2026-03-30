@@ -71,8 +71,7 @@ func TestDoctorRiskCommandReturnsFailureWhenRiskFound(t *testing.T) {
 		t.Fatal("expected risk command to fail when risky sessions exist")
 	}
 
-	var ex *cliutil.ExitError
-	if !errors.As(err, &ex) || ex.ExitCode() != 1 {
+	if ex, ok := errors.AsType[*cliutil.ExitError](err); !ok || ex.ExitCode() != 1 {
 		t.Fatalf("expected exit code 1, got err=%v", err)
 	}
 
