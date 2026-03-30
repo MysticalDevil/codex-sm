@@ -6,6 +6,22 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 
 ## [Unreleased]
 
+## [v0.3.8] - 2026-03-30
+
+### Added
+
+- Added command-package coverage for `agents`, `delete`, `group`, `list`, `restore`, and `cli/util`, including new regression tests for list rendering/pager paths and command flow validation.
+
+### Changed
+
+- Raised CLI integration coverage work across command packages and refreshed benchmark/test code to use current Go 1.26 idioms.
+- Applied repository-wide `gopls`-driven cleanup in CLI, TUI, session, and migration code, including dead-code removal, smaller standard-library modernizations, and tighter JSON/type handling.
+- Replaced remaining broad `any`/`interface{}`-style internal handling with concrete structs, typed helpers, `driver.Value`, and `jsontext.Value`-based migration rewrite logic.
+
+### Fixed
+
+- Fixed `agents explain --format json` so empty filter state is omitted from the JSON payload instead of always emitting an empty `filters` object.
+
 ## [v0.3.7] - 2026-03-21
 
 ### Added
