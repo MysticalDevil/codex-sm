@@ -6,6 +6,17 @@ The format is based on Keep a Changelog and this project follows Semantic Versio
 
 ## [Unreleased]
 
+## [v0.3.9] - 2026-03-30
+
+### Changed
+
+- Expanded the repository lint baseline with additional Go 1.26-era and safety-focused checks, including `copyloopvar`, `intrange`, `modernize`, `perfsprint`, `rowserrcheck`, `sqlclosecheck`, `usestdlibvars`, and scoped `wrapcheck` enforcement in `.golangci.yml`.
+- Applied the resulting lint cleanups across CLI, session, TUI, util, and regression/benchmark tests to align the codebase with stricter static-analysis and newer standard-library idioms.
+
+### Fixed
+
+- Added contextual error wrapping in lower-level config, audit, util, session scanning, delete, integrity, and migration paths so filesystem, SQLite, and JSON/TOML failures now report the failing operation with clearer diagnostics.
+
 ## [v0.3.8] - 2026-03-30
 
 ### Added
