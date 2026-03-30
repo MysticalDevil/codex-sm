@@ -48,7 +48,6 @@ func runFixtureJSONLShape(t *testing.T, fixtureName string, minFiles int) {
 	}
 
 	for _, p := range jsonlFiles {
-		p := p
 		t.Run(strings.TrimPrefix(p, fixtureRoot+string(filepath.Separator)), func(t *testing.T) {
 			checkFixtureFile(t, p)
 		})

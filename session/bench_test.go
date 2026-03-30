@@ -75,7 +75,7 @@ func BenchmarkFilterSessions(b *testing.B) {
 			b.ReportAllocs()
 			b.ResetTimer()
 
-			for i := 0; i < b.N; i++ {
+			for range b.N {
 				out := session.FilterSessions(sessions, tc.sel, now)
 				if len(out) == 0 && tc.name == "all" {
 					b.Fatal("unexpected empty result for all selector")
@@ -140,7 +140,7 @@ func BenchmarkScanSessions_AllVsLimited_3k(b *testing.B) {
 		b.ReportAllocs()
 		b.ResetTimer()
 
-		for i := 0; i < b.N; i++ {
+		for range b.N {
 			sessions, err := scanner.ScanSessionsLimited(root, 100, less)
 			if err != nil {
 				b.Fatalf("ScanSessionsLimited: %v", err)

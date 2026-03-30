@@ -22,7 +22,6 @@ func TestClassifyAngleTag(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.tag, func(t *testing.T) {
 			if got := ClassifyAngleTag(tt.tag); got != tt.want {
 				t.Fatalf("ClassifyAngleTag(%q)=%v, want=%v", tt.tag, got, tt.want)

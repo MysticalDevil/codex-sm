@@ -1,6 +1,7 @@
 package migrate
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -69,23 +70,23 @@ func MigrateSessions(opts MigrateOptions) (MigrateResult, error) {
 
 	opts.StateDBPath = strings.TrimSpace(opts.StateDBPath)
 	if opts.FromCWD == "" {
-		return MigrateResult{}, fmt.Errorf("source cwd is required")
+		return MigrateResult{}, errors.New("source cwd is required")
 	}
 
 	if opts.ToCWD == "" {
-		return MigrateResult{}, fmt.Errorf("destination cwd is required")
+		return MigrateResult{}, errors.New("destination cwd is required")
 	}
 
 	if opts.SessionsRoot == "" {
-		return MigrateResult{}, fmt.Errorf("sessions root is required")
+		return MigrateResult{}, errors.New("sessions root is required")
 	}
 
 	if opts.StateDBPath == "" {
-		return MigrateResult{}, fmt.Errorf("codex state db path is required")
+		return MigrateResult{}, errors.New("codex state db path is required")
 	}
 
 	if !opts.DryRun && !opts.Confirm {
-		return MigrateResult{}, fmt.Errorf("real migration requires --confirm")
+		return MigrateResult{}, errors.New("real migration requires --confirm")
 	}
 
 	result := MigrateResult{
@@ -118,7 +119,7 @@ func MigrateSessions(opts MigrateOptions) (MigrateResult, error) {
 
 	for id, meta := range rollouts {
 		if _, ok := sourceByID[id]; !ok {
-			result.Warnings = append(result.Warnings, fmt.Sprintf("rollout exists without thread row: %s", meta.Path))
+			result.Warnings = append(result.Warnings, "rollout exists without thread row: "+meta.Path)
 		}
 	}
 
@@ -134,7 +135,7 @@ func MigrateSessions(opts MigrateOptions) (MigrateResult, error) {
 	for _, row := range sourceRows {
 		meta, ok := rollouts[row.ID]
 		if !ok {
-			result.Warnings = append(result.Warnings, fmt.Sprintf("thread row exists without rollout file: %s", row.ID))
+			result.Warnings = append(result.Warnings, "thread row exists without rollout file: "+row.ID)
 			continue
 		}
 
@@ -211,7 +212,7 @@ func MigrateSessions(opts MigrateOptions) (MigrateResult, error) {
 	}
 
 	if st, err := os.Stat(opts.ToCWD); err != nil || !st.IsDir() {
-		result.Warnings = append(result.Warnings, fmt.Sprintf("target cwd does not currently exist on disk: %s", opts.ToCWD))
+		result.Warnings = append(result.Warnings, "target cwd does not currently exist on disk: "+opts.ToCWD)
 	}
 
 	createdPaths := make([]string, 0, len(candidates))

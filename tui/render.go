@@ -303,7 +303,7 @@ func buildPreviewScrollBar(start, end, total, width int) string {
 	var b strings.Builder
 	b.WriteByte('[')
 
-	for i := 0; i < width; i++ {
+	for i := range width {
 		if i >= l && i < r {
 			b.WriteString("█")
 		} else {

@@ -2,10 +2,12 @@ package list
 
 import (
 	"encoding/csv"
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -47,7 +49,7 @@ func ParseColumns(input string, detailed bool, format string) ([]Column, error) 
 	}
 
 	if len(names) == 0 {
-		return nil, fmt.Errorf("no columns selected")
+		return nil, errors.New("no columns selected")
 	}
 
 	defs := map[string]Column{
@@ -91,7 +93,7 @@ func ColumnValue(key string, s session.Session, home string, headWidth int, trun
 	case "size":
 		return core.FormatBytesIEC(s.SizeBytes)
 	case "size_bytes":
-		return fmt.Sprintf("%d", s.SizeBytes)
+		return strconv.FormatInt(s.SizeBytes, 10)
 	case "health":
 		return strings.ToUpper(string(s.Health))
 	case "host", "host_dir":

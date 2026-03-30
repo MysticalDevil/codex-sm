@@ -2,6 +2,7 @@
 package util
 
 import (
+	"errors"
 	"fmt"
 	"regexp"
 	"strconv"
@@ -21,7 +22,7 @@ func ParseOlderThan(input string) (time.Duration, error) {
 
 	if d, err := time.ParseDuration(v); err == nil {
 		if d < 0 {
-			return 0, fmt.Errorf("duration must be non-negative")
+			return 0, errors.New("duration must be non-negative")
 		}
 
 		return d, nil

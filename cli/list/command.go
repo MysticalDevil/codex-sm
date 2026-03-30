@@ -4,6 +4,7 @@ package list
 import (
 	"bytes"
 	"encoding/json/v2"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -105,7 +106,7 @@ func NewCommand(resolveSessionsRoot func() (string, error)) *cobra.Command {
 			}
 
 			if formatMode == "json" && (noHeader || strings.TrimSpace(columnInput) != "") {
-				return fmt.Errorf("--no-header and --column are only supported with table/csv/tsv")
+				return errors.New("--no-header and --column are only supported with table/csv/tsv")
 			}
 
 			columns, err := ParseColumns(columnInput, detailed, formatMode)

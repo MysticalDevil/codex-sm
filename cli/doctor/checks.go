@@ -46,7 +46,7 @@ func checkConfigFile() usecase.DoctorCheck {
 	_, err = os.Stat(p)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			return usecase.DoctorCheck{Name: "config", Level: Warn, Detail: fmt.Sprintf("missing (optional): %s", p)}
+			return usecase.DoctorCheck{Name: "config", Level: Warn, Detail: "missing (optional): " + p}
 		}
 
 		return usecase.DoctorCheck{Name: "config", Level: Fail, Detail: err.Error()}
@@ -72,14 +72,14 @@ func checkDir(name, path string, pathErr error) usecase.DoctorCheck {
 	info, err := os.Stat(path)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			return usecase.DoctorCheck{Name: name, Level: Warn, Detail: fmt.Sprintf("missing: %s", path)}
+			return usecase.DoctorCheck{Name: name, Level: Warn, Detail: "missing: " + path}
 		}
 
 		return usecase.DoctorCheck{Name: name, Level: Fail, Detail: err.Error()}
 	}
 
 	if !info.IsDir() {
-		return usecase.DoctorCheck{Name: name, Level: Fail, Detail: fmt.Sprintf("not a directory: %s", path)}
+		return usecase.DoctorCheck{Name: name, Level: Fail, Detail: "not a directory: " + path}
 	}
 
 	if writable, msg := isWritableDir(path); !writable {
@@ -99,14 +99,14 @@ func checkLogFile(path string, pathErr error) usecase.DoctorCheck {
 	info, err := os.Stat(dir)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			return usecase.DoctorCheck{Name: "log_file", Level: Warn, Detail: fmt.Sprintf("parent dir missing: %s", dir)}
+			return usecase.DoctorCheck{Name: "log_file", Level: Warn, Detail: "parent dir missing: " + dir}
 		}
 
 		return usecase.DoctorCheck{Name: "log_file", Level: Fail, Detail: err.Error()}
 	}
 
 	if !info.IsDir() {
-		return usecase.DoctorCheck{Name: "log_file", Level: Fail, Detail: fmt.Sprintf("parent is not directory: %s", dir)}
+		return usecase.DoctorCheck{Name: "log_file", Level: Fail, Detail: "parent is not directory: " + dir}
 	}
 
 	if writable, msg := isWritableDir(dir); !writable {

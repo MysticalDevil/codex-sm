@@ -7,6 +7,7 @@ import (
 	"hash/fnv"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/MysticalDevil/codexsm/internal/core"
@@ -334,7 +335,7 @@ func agentsRuleID(path string, line int, text string) string {
 	_, _ = h.Write([]byte{0})
 	_, _ = h.Write([]byte(text))
 
-	return fmt.Sprintf("%x", h.Sum64())
+	return strconv.FormatUint(h.Sum64(), 16)
 }
 
 func expandCompactPath(p, home string) string {

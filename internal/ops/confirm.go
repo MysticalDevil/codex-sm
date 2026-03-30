@@ -2,6 +2,7 @@ package ops
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -26,7 +27,7 @@ func IsInteractiveReader(r io.Reader) bool {
 // ConfirmDelete asks the user to confirm delete action.
 func ConfirmDelete(in io.Reader, out io.Writer, count int, hard bool) (bool, error) {
 	if !IsInteractiveReader(in) {
-		return false, fmt.Errorf("interactive confirm requires a terminal stdin; use --yes to continue non-interactively")
+		return false, errors.New("interactive confirm requires a terminal stdin; use --yes to continue non-interactively")
 	}
 
 	reader := bufio.NewReader(in)
@@ -61,7 +62,7 @@ func ConfirmDelete(in io.Reader, out io.Writer, count int, hard bool) (bool, err
 // ConfirmRestore asks the user to confirm restore action.
 func ConfirmRestore(in io.Reader, out io.Writer, count int) (bool, error) {
 	if !IsInteractiveReader(in) {
-		return false, fmt.Errorf("interactive confirm requires a terminal stdin; use --yes to continue non-interactively")
+		return false, errors.New("interactive confirm requires a terminal stdin; use --yes to continue non-interactively")
 	}
 
 	if _, err := fmt.Fprintf(out, "Restore %d session(s) from trash? [y/N]: ", count); err != nil {

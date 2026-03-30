@@ -94,7 +94,7 @@ func TestTUIViewMinSizeWarning(t *testing.T) {
 	}
 
 	maxWidth := Compute(m.width, m.height).TotalW
-	for _, line := range strings.Split(stripANSIForTest(out), "\n") {
+	for line := range strings.SplitSeq(stripANSIForTest(out), "\n") {
 		if got := displayWidthForTest(line); got > maxWidth {
 			t.Fatalf("min-size warning line exceeds width=%d, got=%d line=%q", maxWidth, got, line)
 		}
@@ -125,7 +125,7 @@ func TestTUIViewCompactModeAtMinimumWidth(t *testing.T) {
 	}
 
 	maxWidth := Compute(m.width, m.height).TotalW
-	for _, line := range strings.Split(out, "\n") {
+	for line := range strings.SplitSeq(out, "\n") {
 		if got := displayWidthForTest(line); got > maxWidth {
 			t.Fatalf("compact view line exceeds width=%d, got=%d line=%q", maxWidth, got, line)
 		}
@@ -166,7 +166,7 @@ func TestTUIViewUltraModeAtNarrowWidth(t *testing.T) {
 	}
 
 	maxWidth := Compute(m.width, m.height).TotalW
-	for _, line := range strings.Split(out, "\n") {
+	for line := range strings.SplitSeq(out, "\n") {
 		if got := displayWidthForTest(line); got > maxWidth {
 			t.Fatalf("ultra view line exceeds width=%d, got=%d line=%q", maxWidth, got, line)
 		}
@@ -343,10 +343,8 @@ func TestPreviewForLineWidthBound(t *testing.T) {
 	widths := []int{10, 12, 24, 32, 48}
 
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			for _, width := range widths {
-				width := width
 				t.Run("w"+strconv.Itoa(width), func(t *testing.T) {
 					workspace := testsupport.PrepareFixtureSandbox(t, "rich")
 
@@ -424,7 +422,6 @@ func TestClassifyAngleTag(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.tag, func(t *testing.T) {
 			if got := preview.ClassifyAngleTag(tt.tag); got != tt.want {
 				t.Fatalf("preview.ClassifyAngleTag(%q)=%v, want=%v", tt.tag, got, tt.want)
@@ -467,7 +464,6 @@ func TestRebuildTreeGroupingModes(t *testing.T) {
 		{mode: "host", expectGroupNodes: true},
 	}
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.mode, func(t *testing.T) {
 			m := tuiModel{
 				sessions: sessions,
@@ -599,7 +595,6 @@ func TestPreviewHostPath(t *testing.T) {
 		{name: "very_narrow", host: "/very/long/path/with/many/segments", width: 8},
 	}
 	for _, tc := range tests {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			got := previewHostPath(tc.host, tc.width)
 			if got == "" {
@@ -974,7 +969,7 @@ func TestTUIViewKeysBarWidthMatchesMainArea(t *testing.T) {
 	}
 
 	mainWidth := 0
-	for i := 0; i < keysIdx-1; i++ {
+	for i := range keysIdx - 1 {
 		if w := displayWidthForTest(lines[i]); w > mainWidth {
 			mainWidth = w
 		}

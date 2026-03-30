@@ -1,7 +1,7 @@
 package usecase
 
 import (
-	"fmt"
+	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -186,7 +186,7 @@ func TestRunRestoreActionPropagatesAuditWriteError(t *testing.T) {
 	restoreExec := func(_ []session.Session, _ session.Selector, _ session.RestoreOptions) (session.RestoreSummary, error) {
 		return session.RestoreSummary{Action: "restore-dry-run", Simulation: true}, nil
 	}
-	sink := &stubAuditSink{batchID: "b-res", writeErr: fmt.Errorf("write failed")}
+	sink := &stubAuditSink{batchID: "b-res", writeErr: errors.New("write failed")}
 
 	out, err := RunRestoreAction(RestoreActionInput{
 		Sessions:           []session.Session{{SessionID: "a-1", Path: "/tmp/trash/sessions/a-1.jsonl"}},

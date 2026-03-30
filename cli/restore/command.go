@@ -261,7 +261,7 @@ func InteractiveConfirmRestore(cmd *cobra.Command, count int) (bool, error) {
 	in := cmd.InOrStdin()
 	if !ops.IsInteractiveReader(in) {
 		slog.Default().Warn("interactive restore requested but stdin is not terminal", "count", count)
-		return false, fmt.Errorf("interactive confirm requires a terminal stdin; use --yes to continue non-interactively")
+		return false, errors.New("interactive confirm requires a terminal stdin; use --yes to continue non-interactively")
 	}
 
 	ok, err := ops.ConfirmRestore(in, cmd.ErrOrStderr(), count)

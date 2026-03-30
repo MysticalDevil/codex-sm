@@ -217,7 +217,6 @@ func TestBuildPreviewLinesExtremeStaticFixtures(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			lines := preview.BuildLines(filepath.Join(sessionsRoot, tc.file), 72, 10, previewPalette(theme))
 			if len(lines) == 0 {

@@ -29,7 +29,7 @@ type RestoreSelectResult struct {
 func SelectRestoreSessions(in RestoreSelectInput) (RestoreSelectResult, error) {
 	batchID := strings.TrimSpace(in.BatchID)
 	if batchID != "" && in.Selector.HasAnyFilter() {
-		return RestoreSelectResult{}, fmt.Errorf("restore --batch-id cannot be combined with selector flags")
+		return RestoreSelectResult{}, errors.New("restore --batch-id cannot be combined with selector flags")
 	}
 
 	if batchID != "" {

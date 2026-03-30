@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -60,9 +61,9 @@ func newMigrateCmd() *cobra.Command {
 			toPath = strings.TrimSpace(toPath)
 			switch {
 			case filePath != "" && (fromPath != "" || toPath != ""):
-				return cliutil.WithExitCode(fmt.Errorf("--file cannot be combined with --from or --to"), 1)
+				return cliutil.WithExitCode(errors.New("--file cannot be combined with --from or --to"), 1)
 			case filePath == "" && (fromPath == "" || toPath == ""):
-				return cliutil.WithExitCode(fmt.Errorf("either --file or both --from and --to are required"), 1)
+				return cliutil.WithExitCode(errors.New("either --file or both --from and --to are required"), 1)
 			}
 
 			if filePath != "" {

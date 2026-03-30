@@ -96,7 +96,7 @@ func RestoreSessions(candidates []Session, sel Selector, opts RestoreOptions) (R
 				SessionID: s.SessionID,
 				Path:      s.Path,
 				Status:    "failed",
-				Error:     fmt.Sprintf("destination exists: %s", dst),
+				Error:     "destination exists: " + dst,
 			})
 
 			continue

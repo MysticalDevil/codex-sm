@@ -59,7 +59,7 @@ func LintAgents(in AgentsLintInput) (AgentsLintResult, error) {
 			result.Issues = append(result.Issues, AgentsLintIssue{
 				Level:      "warning",
 				Code:       "shadowed_rule",
-				Message:    fmt.Sprintf("rule is shadowed by %s", r.ShadowedBy),
+				Message:    "rule is shadowed by " + r.ShadowedBy,
 				Key:        r.Key,
 				SourcePath: r.SourcePath,
 				Line:       r.Line,

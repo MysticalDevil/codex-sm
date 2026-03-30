@@ -6,6 +6,7 @@ import (
 	"encoding/json/v2"
 	"fmt"
 	"io"
+	"strconv"
 	"strings"
 	"text/tabwriter"
 
@@ -203,8 +204,8 @@ func writeGroupDelimited(out io.Writer, stats []usecase.GroupStat, sep rune) err
 	for _, g := range stats {
 		if err := w.Write([]string{
 			g.Group,
-			fmt.Sprintf("%d", g.Count),
-			fmt.Sprintf("%d", g.SizeBytes),
+			strconv.Itoa(g.Count),
+			strconv.FormatInt(g.SizeBytes, 10),
 			g.Latest,
 		}); err != nil {
 			return err
