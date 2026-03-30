@@ -2,6 +2,7 @@ package migrate
 
 import (
 	"database/sql"
+	"database/sql/driver"
 	"errors"
 	"fmt"
 	"path/filepath"
@@ -85,7 +86,7 @@ func verifyThreadsSchema(db *sql.DB) (err error) {
 			cid         int
 			name, typ   string
 			notnull, pk int
-			dflt        any
+			dflt        sql.NullString
 		)
 
 		if err := rows.Scan(&cid, &name, &typ, &notnull, &dflt, &pk); err != nil {
@@ -214,7 +215,7 @@ func insertMigratedThreads(dbPath string, migrations []executedMigration) (err e
 	return tx.Commit()
 }
 
-func nullableString(v sql.NullString) any {
+func nullableString(v sql.NullString) driver.Value {
 	if v.Valid {
 		return v.String
 	}
@@ -222,7 +223,7 @@ func nullableString(v sql.NullString) any {
 	return nil
 }
 
-func nullableInt64(v sql.NullInt64) any {
+func nullableInt64(v sql.NullInt64) driver.Value {
 	if v.Valid {
 		return v.Int64
 	}

@@ -32,7 +32,9 @@ func TestRewriteMigrationLineUpdatesMetadataOnly(t *testing.T) {
 		t.Fatalf("rewrite response item: %v", err)
 	}
 
-	var wantObj, gotObj map[string]any
+	var wantObj, gotObj struct {
+		Type string `json:"type"`
+	}
 	if err := json.Unmarshal(raw, &wantObj); err != nil {
 		t.Fatalf("unmarshal want: %v", err)
 	}
@@ -41,7 +43,7 @@ func TestRewriteMigrationLineUpdatesMetadataOnly(t *testing.T) {
 		t.Fatalf("unmarshal got: %v", err)
 	}
 
-	if gotObj["type"] != wantObj["type"] {
+	if gotObj.Type != wantObj.Type {
 		t.Fatalf("response item type changed: %#v", gotObj)
 	}
 }

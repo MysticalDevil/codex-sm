@@ -51,30 +51,25 @@ func TestWriteActionLog(t *testing.T) {
 		t.Fatalf("expected 2 log lines, got %d", len(lines))
 	}
 
-	var got map[string]any
+	var got actionRecordJSON
 	if err := json.Unmarshal([]byte(lines[0]), &got); err != nil {
 		t.Fatalf("unmarshal first log line: %v", err)
 	}
 
-	sel, ok := got["selector"].(map[string]any)
-	if !ok {
-		t.Fatalf("selector missing or wrong type: %#v", got["selector"])
+	if got.BatchID != rec.BatchID {
+		t.Fatalf("batch_id mismatch: %#v", got.BatchID)
 	}
 
-	if got["batch_id"] != rec.BatchID {
-		t.Fatalf("batch_id mismatch: %#v", got["batch_id"])
+	if got.Selector.OlderThan != "30m0s" {
+		t.Fatalf("older_than should be duration string, got: %#v", got.Selector.OlderThan)
 	}
 
-	if sel["older_than"] != "30m0s" {
-		t.Fatalf("older_than should be duration string, got: %#v", sel["older_than"])
+	if got.Selector.IDPrefix != "019c" {
+		t.Fatalf("id_prefix mismatch: %#v", got.Selector.IDPrefix)
 	}
 
-	if sel["id_prefix"] != "019c" {
-		t.Fatalf("id_prefix mismatch: %#v", sel["id_prefix"])
-	}
-
-	if sel["host_contains"] != "/workspace" || sel["path_contains"] != "rollout" || sel["head_contains"] != "fixture" {
-		t.Fatalf("contains selectors mismatch: %#v", sel)
+	if got.Selector.HostContains != "/workspace" || got.Selector.PathContains != "rollout" || got.Selector.HeadContains != "fixture" {
+		t.Fatalf("contains selectors mismatch: %#v", got.Selector)
 	}
 }
 

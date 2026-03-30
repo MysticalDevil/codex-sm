@@ -163,30 +163,57 @@ func rewriteMigrationLine(line []byte, sourceID, destID, destCWD string) ([]byte
 		return append([]byte(nil), line...), nil
 	}
 
-	var payload map[string]any
+	var payload map[string]jsontext.Value
 	if err := json.Unmarshal(line, &payload); err != nil {
 		return append([]byte(nil), line...), nil
 	}
 
-	typ, _ := payload["type"].(string)
+	typ, err := decodeJSONString(payload["type"])
+	if err != nil {
+		return append([]byte(nil), line...), nil
+	}
+
 	switch typ {
 	case "session_meta":
-		p, _ := payload["payload"].(map[string]any)
-		if p != nil {
-			if id, _ := p["id"].(string); id == sourceID {
-				p["id"] = destID
-			}
+		p, err := decodeJSONObject(payload["payload"])
+		if err != nil {
+			return append([]byte(nil), line...), nil
+		}
 
-			if _, ok := p["cwd"]; ok {
-				p["cwd"] = destCWD
+		if id, err := decodeJSONString(p["id"]); err == nil && id == sourceID {
+			p["id"], err = encodeJSONString(destID)
+			if err != nil {
+				return nil, err
 			}
 		}
-	case "turn_context":
-		p, _ := payload["payload"].(map[string]any)
-		if p != nil {
-			if _, ok := p["cwd"]; ok {
-				p["cwd"] = destCWD
+
+		if _, ok := p["cwd"]; ok {
+			p["cwd"], err = encodeJSONString(destCWD)
+			if err != nil {
+				return nil, err
 			}
+		}
+
+		payload["payload"], err = marshalJSONObject(p)
+		if err != nil {
+			return nil, err
+		}
+	case "turn_context":
+		p, err := decodeJSONObject(payload["payload"])
+		if err != nil {
+			return append([]byte(nil), line...), nil
+		}
+
+		if _, ok := p["cwd"]; ok {
+			p["cwd"], err = encodeJSONString(destCWD)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		payload["payload"], err = marshalJSONObject(p)
+		if err != nil {
+			return nil, err
 		}
 	}
 
@@ -196,4 +223,40 @@ func rewriteMigrationLine(line []byte, sourceID, destID, destCWD string) ([]byte
 	}
 
 	return out, nil
+}
+
+func decodeJSONObject(v jsontext.Value) (map[string]jsontext.Value, error) {
+	var out map[string]jsontext.Value
+	if err := json.Unmarshal(v, &out); err != nil {
+		return nil, err
+	}
+
+	return out, nil
+}
+
+func decodeJSONString(v jsontext.Value) (string, error) {
+	var out string
+	if err := json.Unmarshal(v, &out); err != nil {
+		return "", err
+	}
+
+	return out, nil
+}
+
+func encodeJSONString(v string) (jsontext.Value, error) {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return nil, err
+	}
+
+	return jsontext.Value(b), nil
+}
+
+func marshalJSONObject(v map[string]jsontext.Value) (jsontext.Value, error) {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return nil, err
+	}
+
+	return jsontext.Value(b), nil
 }

@@ -31,16 +31,18 @@ func TestConfigShowMissingFile(t *testing.T) {
 		t.Fatalf("config show execute: %v", err)
 	}
 
-	var out map[string]any
+	var out struct {
+		Path   string `json:"path"`
+		Exists bool   `json:"exists"`
+	}
 	if err := json.Unmarshal(stdout.Bytes(), &out); err != nil {
 		t.Fatalf("config show invalid json: %v\n%s", err, stdout.String())
 	}
-	if out["path"] != cfgPath {
-		t.Fatalf("unexpected path: %+v", out["path"])
+	if out.Path != cfgPath {
+		t.Fatalf("unexpected path: %+v", out.Path)
 	}
-	exists, ok := out["exists"].(bool)
-	if !ok || exists {
-		t.Fatalf("expected exists=false, got: %+v", out["exists"])
+	if out.Exists {
+		t.Fatalf("expected exists=false, got: %+v", out.Exists)
 	}
 }
 
@@ -94,15 +96,22 @@ func TestConfigInitShowValidate(t *testing.T) {
 	if err := showCmd.Execute(); err != nil {
 		t.Fatalf("config show --resolved execute: %v", err)
 	}
-	var showDoc map[string]any
+	var showDoc struct {
+		Path      string `json:"path"`
+		Effective *struct {
+			SessionsRoot string `json:"sessions_root"`
+			TrashRoot    string `json:"trash_root"`
+			LogFile      string `json:"log_file"`
+		} `json:"effective"`
+	}
 	if err := json.Unmarshal(showOut.Bytes(), &showDoc); err != nil {
 		t.Fatalf("config show invalid json: %v\n%s", err, showOut.String())
 	}
-	if showDoc["path"] != cfgPath {
-		t.Fatalf("unexpected path: %+v", showDoc["path"])
+	if showDoc.Path != cfgPath {
+		t.Fatalf("unexpected path: %+v", showDoc.Path)
 	}
-	if _, ok := showDoc["effective"].(map[string]any); !ok {
-		t.Fatalf("expected effective block, got: %+v", showDoc["effective"])
+	if showDoc.Effective == nil {
+		t.Fatalf("expected effective block, got: %+v", showDoc.Effective)
 	}
 
 	// validate succeeds for generated config.

@@ -10,7 +10,7 @@ import (
 )
 
 func TestMarshalPrettyJSONProducesIndentedOutput(t *testing.T) {
-	b, err := MarshalPrettyJSON(map[string]any{"k": "v"})
+	b, err := MarshalPrettyJSON(map[string]string{"k": "v"})
 	if err != nil {
 		t.Fatalf("marshal pretty json: %v", err)
 	}

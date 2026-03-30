@@ -7,7 +7,6 @@ import (
 	"bytes"
 	"encoding/json/v2"
 	"errors"
-	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -484,13 +483,14 @@ func TestDelete_DryRunWritesAuditAndKeepsFile(t *testing.T) {
 		t.Fatal("expected one audit log line")
 	}
 
-	var rec map[string]any
+	var rec struct {
+		Simulation bool `json:"simulation"`
+	}
 	if err := json.Unmarshal([]byte(line), &rec); err != nil {
 		t.Fatalf("invalid audit json: %v", err)
 	}
-	sim, ok := rec["simulation"].(bool)
-	if !ok || !sim {
-		t.Fatalf("expected simulation=true, got: %v", rec["simulation"])
+	if !rec.Simulation {
+		t.Fatalf("expected simulation=true, got: %+v", rec)
 	}
 }
 
@@ -590,11 +590,13 @@ func TestDelete_RealSoftDeleteMovesToTrash(t *testing.T) {
 		t.Fatalf("read log: %v", err)
 	}
 	line := strings.TrimSpace(string(data))
-	var rec map[string]any
+	var rec struct {
+		BatchID string `json:"batch_id"`
+	}
 	if err := json.Unmarshal([]byte(line), &rec); err != nil {
 		t.Fatalf("invalid audit json: %v", err)
 	}
-	if strings.TrimSpace(fmt.Sprint(rec["batch_id"])) == "" {
+	if strings.TrimSpace(rec.BatchID) == "" {
 		t.Fatalf("expected batch_id in audit record: %#v", rec)
 	}
 }
@@ -901,11 +903,13 @@ func TestRestore_ByBatchIDRollsBackSoftDelete(t *testing.T) {
 	if len(lines) == 0 {
 		t.Fatal("expected at least one log line")
 	}
-	var rec map[string]any
+	var rec struct {
+		BatchID string `json:"batch_id"`
+	}
 	if err := json.Unmarshal([]byte(lines[len(lines)-1]), &rec); err != nil {
 		t.Fatalf("invalid audit json: %v", err)
 	}
-	batchID := strings.TrimSpace(fmt.Sprint(rec["batch_id"]))
+	batchID := strings.TrimSpace(rec.BatchID)
 	if batchID == "" {
 		t.Fatalf("missing batch_id in delete log: %#v", rec)
 	}
