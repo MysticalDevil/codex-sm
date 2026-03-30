@@ -15,8 +15,8 @@ func CompactPath(path string, maxLen int) string {
 	if home, err := os.UserHomeDir(); err == nil {
 		if p == home {
 			p = "~"
-		} else if strings.HasPrefix(p, home+string(os.PathSeparator)) {
-			p = "~" + string(os.PathSeparator) + strings.TrimPrefix(p, home+string(os.PathSeparator))
+		} else if rest, ok := strings.CutPrefix(p, home+string(os.PathSeparator)); ok {
+			p = "~" + string(os.PathSeparator) + rest
 		}
 	}
 
@@ -51,9 +51,7 @@ func CompactPath(path string, maxLen int) string {
 
 	if len(last)+4 > maxLen {
 		start := len(last) - (maxLen - 3)
-		if start < 0 {
-			start = 0
-		}
+		start = max(start, 0)
 
 		return "..." + last[start:]
 	}

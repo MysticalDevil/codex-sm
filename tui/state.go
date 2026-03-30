@@ -40,9 +40,7 @@ func (m *tuiModel) clampOffset() {
 	}
 
 	maxOffset := len(m.tree) - rows
-	if maxOffset < 0 {
-		maxOffset = 0
-	}
+	maxOffset = max(maxOffset, 0)
 
 	if m.offset > maxOffset {
 		m.offset = maxOffset

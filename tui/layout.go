@@ -125,9 +125,7 @@ func Compute(width, height int) Metrics {
 		}
 
 		leftOuterW := int(float64(totalW) * 0.35)
-		if leftOuterW < leftMin {
-			leftOuterW = leftMin
-		}
+		leftOuterW = max(leftOuterW, leftMin)
 
 		if leftOuterW > totalW-rightMin-gapW {
 			leftOuterW = max(leftMin, totalW-rightMin-gapW)
@@ -176,9 +174,7 @@ func Compute(width, height int) Metrics {
 	}
 
 	leftOuterW := int(float64(totalW) * 0.28)
-	if leftOuterW < 28 {
-		leftOuterW = 28
-	}
+	leftOuterW = max(leftOuterW, 28)
 
 	if leftOuterW > totalW-36-gapW {
 		leftOuterW = max(28, totalW-36-gapW)

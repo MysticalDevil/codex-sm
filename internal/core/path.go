@@ -16,8 +16,8 @@ func CompactHomePath(path, home string) string {
 	}
 
 	prefix := home + string(os.PathSeparator)
-	if strings.HasPrefix(path, prefix) {
-		return "~" + string(os.PathSeparator) + strings.TrimPrefix(path, prefix)
+	if rest, ok := strings.CutPrefix(path, prefix); ok {
+		return "~" + string(os.PathSeparator) + rest
 	}
 
 	return path

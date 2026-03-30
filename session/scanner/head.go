@@ -19,7 +19,7 @@ func readConversationHead(r *bufio.Reader) string {
 
 	candidates := make([]string, 0, maxCandidates)
 
-	for i := 0; i < maxLines; i++ {
+	for range maxLines {
 		line, truncated, err := util.ReadBoundedLine(r, maxSessionHeadLineBytes)
 		if err != nil && !errors.Is(err, io.EOF) {
 			break

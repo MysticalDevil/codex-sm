@@ -328,14 +328,10 @@ func (m tuiModel) renderTreeLinesForMode(leftW int, statusColor string, compact 
 	leftLines = append(leftLines, leftTitle)
 
 	start := m.offset
-	if start < 0 {
-		start = 0
-	}
+	start = max(start, 0)
 
 	end := start + m.visibleRows()
-	if end > len(m.tree) {
-		end = len(m.tree)
-	}
+	end = min(end, len(m.tree))
 
 	for i := start; i < end; i++ {
 		item := m.tree[i]
