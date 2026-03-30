@@ -19,7 +19,7 @@ func BenchmarkScanSessions(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		sessions, err := scanner.ScanSessions(root)
 		if err != nil {
 			b.Fatalf("ScanSessions: %v", err)
@@ -71,7 +71,6 @@ func BenchmarkFilterSessions(b *testing.B) {
 	}
 
 	for _, tc := range cases {
-		tc := tc
 		b.Run(tc.name, func(b *testing.B) {
 			b.ReportAllocs()
 			b.ResetTimer()
@@ -99,7 +98,7 @@ func BenchmarkScanSessionsLimited_3k(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		sessions, err := scanner.ScanSessionsLimited(root, 100, less)
 		if err != nil {
 			b.Fatalf("ScanSessionsLimited: %v", err)
@@ -125,7 +124,7 @@ func BenchmarkScanSessions_AllVsLimited_3k(b *testing.B) {
 		b.ReportAllocs()
 		b.ResetTimer()
 
-		for i := 0; i < b.N; i++ {
+		for b.Loop() {
 			sessions, err := scanner.ScanSessions(root)
 			if err != nil {
 				b.Fatalf("ScanSessions: %v", err)
@@ -160,7 +159,7 @@ func BenchmarkScanSessions_ExtremeMix(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		sessions, err := scanner.ScanSessions(root)
 		if err != nil {
 			b.Fatalf("ScanSessions: %v", err)
@@ -177,7 +176,7 @@ func prepareBenchSessionsRoot(b *testing.B, count int, includeExtreme bool) stri
 	root := b.TempDir()
 
 	base := time.Date(2026, 3, 9, 0, 0, 0, 0, time.UTC)
-	for i := 0; i < count; i++ {
+	for i := range count {
 		created := base.Add(time.Duration(i) * time.Minute)
 
 		dayDir := filepath.Join(root, created.Format("2006"), created.Format("01"), created.Format("02"))

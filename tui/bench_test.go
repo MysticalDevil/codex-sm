@@ -17,7 +17,7 @@ func makeBenchSessions(n int) []session.Session {
 	base := time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)
 
 	out := make([]session.Session, 0, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		health := session.HealthOK
 		if i%97 == 0 {
 			health = session.HealthCorrupted
@@ -44,7 +44,7 @@ func BenchmarkSortTUISessions_3k(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		items := append([]session.Session(nil), source...)
 		core.SortSessionsByRisk(items, nil, nil)
 	}
@@ -56,7 +56,7 @@ func BenchmarkSortTUISessions_10k(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		items := append([]session.Session(nil), source...)
 		core.SortSessionsByRisk(items, nil, nil)
 	}
@@ -73,7 +73,7 @@ func BenchmarkBuildPreviewLines_LargeSession(b *testing.B) {
 
 	_, _ = fmt.Fprintln(f, `{"type":"session_meta","payload":{"id":"bench","timestamp":"2026-03-01T00:00:00Z","cwd":"/workspace/bench"}}`)
 
-	for i := 0; i < 2500; i++ {
+	for i := range 2500 {
 		role := "user"
 		if i%2 == 1 {
 			role = "assistant"
@@ -93,7 +93,7 @@ func BenchmarkBuildPreviewLines_LargeSession(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		lines := preview.BuildLines(p, 60, 24, previewPalette(theme))
 		if len(lines) == 0 {
 			b.Fatal("expected non-empty lines")
@@ -108,7 +108,7 @@ func BenchmarkBuildPreviewLines_OversizeUser(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		lines := preview.BuildLines(path, 72, 18, previewPalette(theme))
 		if len(lines) == 0 {
 			b.Fatal("expected preview lines")
@@ -123,7 +123,7 @@ func BenchmarkBuildPreviewLines_OversizeAssistant(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		lines := preview.BuildLines(path, 72, 18, previewPalette(theme))
 		if len(lines) == 0 {
 			b.Fatal("expected preview lines")
@@ -138,7 +138,7 @@ func BenchmarkBuildPreviewLines_UnicodeWide(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		lines := preview.BuildLines(path, 72, 18, previewPalette(theme))
 		if len(lines) == 0 {
 			b.Fatal("expected preview lines")
@@ -153,7 +153,7 @@ func BenchmarkPreviewIndexLoad_1k(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		lines, ok, err := preview.LoadIndexEntry(indexPath, key)
 		if err != nil {
 			b.Fatalf("loadPreviewIndexEntry: %v", err)
@@ -177,7 +177,7 @@ func BenchmarkPreviewIndexUpsert_1k(b *testing.B) {
 
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for i := 0; b.Loop(); i++ {
 		b.StopTimer()
 
 		if err := os.WriteFile(indexPath, seed, 0o644); err != nil {
@@ -214,7 +214,7 @@ func BenchmarkPreviewIndexUpsert_Trimmed(b *testing.B) {
 
 	b.ReportAllocs()
 
-	for i := 0; i < b.N; i++ {
+	for i := 0; b.Loop(); i++ {
 		b.StopTimer()
 
 		if err := os.WriteFile(indexPath, seed, 0o644); err != nil {
@@ -273,7 +273,7 @@ func writePreviewIndexBenchFile(b *testing.B, count int, includeLargeLines bool)
 	entries := make(map[string]preview.IndexRecord, count)
 	baseTouched := time.Now().UnixNano()
 
-	for i := 0; i < count; i++ {
+	for i := range count {
 		lines := []string{fmt.Sprintf("preview line %04d", i), "secondary line"}
 		if includeLargeLines {
 			lines = []string{strings.Repeat("large-line ", 2048)}

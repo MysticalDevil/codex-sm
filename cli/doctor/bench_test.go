@@ -20,7 +20,7 @@ func BenchmarkDoctorRiskJSON(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		cmd := cli.NewRootCmd()
 		stdout := &bytes.Buffer{}
 		cmd.SetOut(stdout)
@@ -32,8 +32,7 @@ func BenchmarkDoctorRiskJSON(b *testing.B) {
 			b.Fatal("expected exit code 1 when benchmark dataset contains risk")
 		}
 
-		var ex *cliutil.ExitError
-		if !errors.As(err, &ex) || ex.ExitCode() != 1 {
+		if ex, ok := errors.AsType[*cliutil.ExitError](err); !ok || ex.ExitCode() != 1 {
 			b.Fatalf("unexpected error: %v", err)
 		}
 
@@ -48,7 +47,7 @@ func prepareDoctorRiskBenchRoot(b *testing.B, count int) string {
 	root := b.TempDir()
 
 	base := time.Date(2026, 3, 9, 0, 0, 0, 0, time.UTC)
-	for i := 0; i < count; i++ {
+	for i := range count {
 		created := base.Add(time.Duration(i) * time.Minute)
 
 		dayDir := filepath.Join(root, created.Format("2006"), created.Format("01"), created.Format("02"))
