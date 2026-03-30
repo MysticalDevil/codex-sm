@@ -2,6 +2,7 @@ package util
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"os"
 )
@@ -13,17 +14,21 @@ func MoveFile(src, dst string) error {
 	}
 
 	if err := CopyFile(src, dst); err != nil {
-		return err
+		return fmt.Errorf("copy %q to %q: %w", src, dst, err)
 	}
 
-	return os.Remove(src)
+	if err := os.Remove(src); err != nil {
+		return fmt.Errorf("remove source file %q after copy: %w", src, err)
+	}
+
+	return nil
 }
 
 // CopyFile copies a file to destination and fsyncs output.
 func CopyFile(src, dst string) (retErr error) {
 	in, err := os.Open(src)
 	if err != nil {
-		return err
+		return fmt.Errorf("open source file %q: %w", src, err)
 	}
 
 	defer func() {
@@ -38,7 +43,7 @@ func CopyFile(src, dst string) (retErr error) {
 
 	out, err := os.Create(dst)
 	if err != nil {
-		return err
+		return fmt.Errorf("create destination file %q: %w", dst, err)
 	}
 
 	defer func() {
@@ -52,12 +57,12 @@ func CopyFile(src, dst string) (retErr error) {
 	}()
 
 	if _, err := io.Copy(out, in); err != nil {
-		retErr = err
+		retErr = fmt.Errorf("copy file data from %q to %q: %w", src, dst, err)
 		return
 	}
 
 	if err := out.Sync(); err != nil {
-		retErr = err
+		retErr = fmt.Errorf("sync destination file %q: %w", dst, err)
 		return
 	}
 

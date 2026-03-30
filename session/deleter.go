@@ -154,7 +154,7 @@ func moveToTrash(src, sessionsRoot, trashRoot string) (string, error) {
 
 	dst := filepath.Join(trashRoot, "sessions", rel)
 	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
-		return "", err
+		return "", fmt.Errorf("create trash dir for %q: %w", dst, err)
 	}
 
 	if _, err := os.Stat(dst); err == nil {
@@ -166,11 +166,11 @@ func moveToTrash(src, sessionsRoot, trashRoot string) (string, error) {
 	}
 
 	if err := copyFile(src, dst); err != nil {
-		return "", err
+		return "", fmt.Errorf("copy %q to trash %q: %w", src, dst, err)
 	}
 
 	if err := os.Remove(src); err != nil {
-		return "", err
+		return "", fmt.Errorf("remove original file %q after trash copy: %w", src, err)
 	}
 
 	return dst, nil
@@ -179,7 +179,7 @@ func moveToTrash(src, sessionsRoot, trashRoot string) (string, error) {
 func copyFile(src, dst string) (retErr error) {
 	in, err := os.Open(src)
 	if err != nil {
-		return err
+		return fmt.Errorf("open source file %q: %w", src, err)
 	}
 
 	defer func() {
@@ -195,7 +195,7 @@ func copyFile(src, dst string) (retErr error) {
 
 	out, err := os.Create(dst)
 	if err != nil {
-		return err
+		return fmt.Errorf("create destination file %q: %w", dst, err)
 	}
 
 	defer func() {
@@ -210,7 +210,7 @@ func copyFile(src, dst string) (retErr error) {
 	}()
 
 	if _, err := io.Copy(out, in); err != nil {
-		retErr = err
+		retErr = fmt.Errorf("copy file data from %q to %q: %w", src, dst, err)
 		return
 	}
 

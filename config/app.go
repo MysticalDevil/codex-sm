@@ -73,10 +73,14 @@ func ResolveConfigPath(v string) (string, error) {
 func EnsureConfigDir() error {
 	p, err := AppConfigPath()
 	if err != nil {
-		return err
+		return fmt.Errorf("resolve config path: %w", err)
 	}
 
 	dir := filepath.Dir(p)
 
-	return os.MkdirAll(dir, 0o755)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return fmt.Errorf("create config dir %q: %w", dir, err)
+	}
+
+	return nil
 }

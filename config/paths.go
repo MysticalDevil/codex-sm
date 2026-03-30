@@ -17,7 +17,7 @@ func ResolvePath(path string) (string, error) {
 	if path == "~" {
 		h, err := os.UserHomeDir()
 		if err != nil {
-			return "", err
+			return "", fmt.Errorf("resolve home directory: %w", err)
 		}
 
 		return h, nil
@@ -26,7 +26,7 @@ func ResolvePath(path string) (string, error) {
 	if strings.HasPrefix(path, "~/") {
 		h, err := os.UserHomeDir()
 		if err != nil {
-			return "", err
+			return "", fmt.Errorf("resolve home directory: %w", err)
 		}
 
 		return filepath.Join(h, path[2:]), nil

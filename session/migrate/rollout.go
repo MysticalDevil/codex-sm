@@ -51,7 +51,7 @@ func collectMigrationRollouts(root, fromCWD string) (map[string]migrateMeta, err
 			return out, nil
 		}
 
-		return nil, err
+		return nil, fmt.Errorf("walk migration rollouts under %q: %w", root, err)
 	}
 
 	return out, nil
@@ -60,7 +60,7 @@ func collectMigrationRollouts(root, fromCWD string) (map[string]migrateMeta, err
 func readMigrationMeta(path string) (meta migrateMeta, ok bool, err error) {
 	f, err := os.Open(path)
 	if err != nil {
-		return migrateMeta{}, false, err
+		return migrateMeta{}, false, fmt.Errorf("open rollout file %q: %w", path, err)
 	}
 
 	defer func() {
@@ -74,7 +74,7 @@ func readMigrationMeta(path string) (meta migrateMeta, ok bool, err error) {
 
 	line, truncated, err := util.ReadBoundedLine(r, maxSessionMetaLineBytes)
 	if err != nil && !errors.Is(err, io.EOF) {
-		return migrateMeta{}, false, err
+		return migrateMeta{}, false, fmt.Errorf("read session meta line from %q: %w", path, err)
 	}
 
 	if truncated || len(line) == 0 || !jsontext.Value(line).IsValid() {
@@ -96,7 +96,7 @@ func readMigrationMeta(path string) (meta migrateMeta, ok bool, err error) {
 func writeMigratedRollout(sourcePath, destPath, sourceID, destID, destCWD string) (err error) {
 	in, err := os.Open(sourcePath)
 	if err != nil {
-		return err
+		return fmt.Errorf("open source rollout %q: %w", sourcePath, err)
 	}
 
 	defer func() {
@@ -112,7 +112,7 @@ func writeMigratedRollout(sourcePath, destPath, sourceID, destID, destCWD string
 
 	out, err := os.OpenFile(destPath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o644)
 	if err != nil {
-		return err
+		return fmt.Errorf("create destination rollout %q: %w", destPath, err)
 	}
 
 	defer func() {
@@ -128,7 +128,7 @@ func writeMigratedRollout(sourcePath, destPath, sourceID, destID, destCWD string
 	for {
 		line, err := r.ReadBytes('\n')
 		if err != nil && !errors.Is(err, io.EOF) {
-			return err
+			return fmt.Errorf("read rollout line from %q: %w", sourcePath, err)
 		}
 
 		if len(line) == 0 && errors.Is(err, io.EOF) {
@@ -139,15 +139,15 @@ func writeMigratedRollout(sourcePath, destPath, sourceID, destID, destCWD string
 
 		rewritten, err := rewriteMigrationLine(line, sourceID, destID, destCWD)
 		if err != nil {
-			return err
+			return fmt.Errorf("rewrite rollout line for %q: %w", sourcePath, err)
 		}
 
 		if _, err := w.Write(rewritten); err != nil {
-			return err
+			return fmt.Errorf("write rewritten rollout data to %q: %w", destPath, err)
 		}
 
 		if err := w.WriteByte('\n'); err != nil {
-			return err
+			return fmt.Errorf("write rewritten rollout newline to %q: %w", destPath, err)
 		}
 
 		if errors.Is(err, io.EOF) {
@@ -155,7 +155,11 @@ func writeMigratedRollout(sourcePath, destPath, sourceID, destID, destCWD string
 		}
 	}
 
-	return w.Flush()
+	if err := w.Flush(); err != nil {
+		return fmt.Errorf("flush rewritten rollout %q: %w", destPath, err)
+	}
+
+	return nil
 }
 
 func rewriteMigrationLine(line []byte, sourceID, destID, destCWD string) ([]byte, error) {
@@ -219,7 +223,7 @@ func rewriteMigrationLine(line []byte, sourceID, destID, destCWD string) ([]byte
 
 	out, err := json.Marshal(payload)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("marshal rewritten migration line: %w", err)
 	}
 
 	return out, nil
@@ -228,7 +232,7 @@ func rewriteMigrationLine(line []byte, sourceID, destID, destCWD string) ([]byte
 func decodeJSONObject(v jsontext.Value) (map[string]jsontext.Value, error) {
 	var out map[string]jsontext.Value
 	if err := json.Unmarshal(v, &out); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("decode json object: %w", err)
 	}
 
 	return out, nil
@@ -237,7 +241,7 @@ func decodeJSONObject(v jsontext.Value) (map[string]jsontext.Value, error) {
 func decodeJSONString(v jsontext.Value) (string, error) {
 	var out string
 	if err := json.Unmarshal(v, &out); err != nil {
-		return "", err
+		return "", fmt.Errorf("decode json string: %w", err)
 	}
 
 	return out, nil
@@ -246,7 +250,7 @@ func decodeJSONString(v jsontext.Value) (string, error) {
 func encodeJSONString(v string) (jsontext.Value, error) {
 	b, err := json.Marshal(v)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("encode json string: %w", err)
 	}
 
 	return jsontext.Value(b), nil
@@ -255,7 +259,7 @@ func encodeJSONString(v string) (jsontext.Value, error) {
 func marshalJSONObject(v map[string]jsontext.Value) (jsontext.Value, error) {
 	b, err := json.Marshal(v)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("encode json object: %w", err)
 	}
 
 	return jsontext.Value(b), nil

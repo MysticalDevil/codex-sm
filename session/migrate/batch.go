@@ -1,6 +1,7 @@
 package migrate
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -60,19 +61,19 @@ func MigrateSessionsBatch(opts MigrateBatchOptions) (MigrateBatchResult, error) 
 
 	opts.StateDBPath = strings.TrimSpace(opts.StateDBPath)
 	if opts.FilePath == "" {
-		return MigrateBatchResult{}, fmt.Errorf("migration file path is required")
+		return MigrateBatchResult{}, errors.New("migration file path is required")
 	}
 
 	if opts.SessionsRoot == "" {
-		return MigrateBatchResult{}, fmt.Errorf("sessions root is required")
+		return MigrateBatchResult{}, errors.New("sessions root is required")
 	}
 
 	if opts.StateDBPath == "" {
-		return MigrateBatchResult{}, fmt.Errorf("codex state db path is required")
+		return MigrateBatchResult{}, errors.New("codex state db path is required")
 	}
 
 	if !opts.DryRun && !opts.Confirm {
-		return MigrateBatchResult{}, fmt.Errorf("real migration requires --confirm")
+		return MigrateBatchResult{}, errors.New("real migration requires --confirm")
 	}
 
 	mappings, err := loadMigrateBatchMappings(opts.FilePath)
@@ -140,7 +141,7 @@ func MigrateSessionsBatch(opts MigrateBatchOptions) (MigrateBatchResult, error) 
 func loadMigrateBatchMappings(path string) ([]MigrateBatchMapping, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("read migrate file %q: %w", path, err)
 	}
 
 	var cfg migrateBatchFile
@@ -149,7 +150,7 @@ func loadMigrateBatchMappings(path string) ([]MigrateBatchMapping, error) {
 	}
 
 	if len(cfg.Mappings) == 0 {
-		return nil, fmt.Errorf("migration file must contain at least one [[mapping]] entry")
+		return nil, errors.New("migration file must contain at least one [[mapping]] entry")
 	}
 
 	mappings := make([]MigrateBatchMapping, 0, len(cfg.Mappings))

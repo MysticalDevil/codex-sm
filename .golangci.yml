@@ -16,9 +16,17 @@ linters:
     - gocritic  # auto-fix
     - errorlint  # auto-fix
     - exhaustive
+    - copyloopvar
+    - intrange
+    - modernize
     - prealloc
+    - perfsprint
+    - rowserrcheck
+    - sqlclosecheck
     - unconvert
     - whitespace  # auto-fix
+    - usestdlibvars
+    - wrapcheck
     - wsl_v5  # auto-fix
     - dupword  # auto-fix
     - mirror  # auto-fix
@@ -36,6 +44,27 @@ linters:
           - errcheck
         path: '.*_test\.go'
         text: 'Error return value of `.*\.Close` is not checked'
+      - linters:
+          - wrapcheck
+        path: '.*_test\.go'
+      - linters:
+          - wrapcheck
+        path: '^cli/.*\.go'
+      - linters:
+          - wrapcheck
+        path: '^internal/testsupport/.*\.go'
+      - linters:
+          - wrapcheck
+        path: '^internal/ops/.*\.go'
+      - linters:
+          - wrapcheck
+        path: '^tui/runtime/.*\.go'
+      - linters:
+          - wrapcheck
+        path: '^tui/.*\.go'
+      - linters:
+          - wrapcheck
+        path: '^usecase/.*\.go'
 
 issues:
   max-issues-per-linter: 0

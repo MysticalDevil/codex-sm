@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
 )
 
@@ -43,7 +44,7 @@ func ReadBoundedLine(r *bufio.Reader, maxBytes int) (line []byte, truncated bool
 			line = bytes.TrimSpace(out.Bytes())
 			return line, truncated, io.EOF
 		default:
-			return nil, truncated, readErr
+			return nil, truncated, fmt.Errorf("read bounded line chunk: %w", readErr)
 		}
 	}
 }

@@ -44,7 +44,7 @@ type executedMigration struct {
 func openMigrationDB(path string) (*sql.DB, error) {
 	db, err := sql.Open("sqlite", path)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("open migration db %q: %w", path, err)
 	}
 
 	if err := db.Ping(); err != nil {
@@ -52,7 +52,7 @@ func openMigrationDB(path string) (*sql.DB, error) {
 			return nil, fmt.Errorf("ping db: %w (close db: %w)", err, closeErr)
 		}
 
-		return nil, err
+		return nil, fmt.Errorf("ping migration db %q: %w", path, err)
 	}
 
 	if err := verifyThreadsSchema(db); err != nil {
@@ -60,7 +60,7 @@ func openMigrationDB(path string) (*sql.DB, error) {
 			return nil, fmt.Errorf("verify schema: %w (close db: %w)", err, closeErr)
 		}
 
-		return nil, err
+		return nil, fmt.Errorf("verify threads schema in %q: %w", path, err)
 	}
 
 	return db, nil
@@ -96,6 +96,10 @@ func verifyThreadsSchema(db *sql.DB) (err error) {
 		cols[name] = true
 	}
 
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("iterate threads schema rows: %w", err)
+	}
+
 	required := []string{
 		"id", "rollout_path", "created_at", "updated_at", "source", "model_provider", "cwd", "title",
 		"sandbox_policy", "approval_mode", "tokens_used", "has_user_event", "archived", "archived_at",
@@ -126,7 +130,7 @@ func listThreadRowsByCWD(dbPath, cwd string) (out []threadRow, err error) {
 
 	rows, err := db.Query(sqlListThreadsByCWD, cwd)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("query thread rows for cwd %q: %w", cwd, err)
 	}
 
 	defer func() {
@@ -148,7 +152,7 @@ func listThreadRowsByCWD(dbPath, cwd string) (out []threadRow, err error) {
 			&row.GitSHA, &row.GitBranch, &row.GitOriginURL, &row.CLIVersion, &row.FirstUserMessage,
 			&row.AgentNickname, &row.AgentRole, &row.MemoryMode,
 		); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("scan thread row for cwd %q: %w", cwd, err)
 		}
 
 		row.CreatedAt = time.Unix(createdAt, 0).UTC()
@@ -157,7 +161,7 @@ func listThreadRowsByCWD(dbPath, cwd string) (out []threadRow, err error) {
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("iterate thread rows for cwd %q: %w", cwd, err)
 	}
 
 	return out, nil
@@ -178,7 +182,7 @@ func insertMigratedThreads(dbPath string, migrations []executedMigration) (err e
 
 	tx, err := db.Begin()
 	if err != nil {
-		return err
+		return fmt.Errorf("begin migration transaction: %w", err)
 	}
 
 	defer func() {
@@ -190,7 +194,7 @@ func insertMigratedThreads(dbPath string, migrations []executedMigration) (err e
 
 	stmt, err := tx.Prepare(sqlInsertThread)
 	if err != nil {
-		return err
+		return fmt.Errorf("prepare insert thread statement: %w", err)
 	}
 
 	defer func() {
@@ -212,7 +216,11 @@ func insertMigratedThreads(dbPath string, migrations []executedMigration) (err e
 		}
 	}
 
-	return tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit migration transaction: %w", err)
+	}
+
+	return nil
 }
 
 func nullableString(v sql.NullString) driver.Value {

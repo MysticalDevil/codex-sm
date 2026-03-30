@@ -83,7 +83,7 @@ func newSelectorRecord(sel session.Selector) selectorRecord {
 // WriteActionLog appends a single JSON line action record to the log file.
 func WriteActionLog(logFile string, rec ActionRecord) error {
 	if err := config.EnsureDirForFile(logFile); err != nil {
-		return err
+		return fmt.Errorf("ensure log dir: %w", err)
 	}
 
 	f, err := os.OpenFile(logFile, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)

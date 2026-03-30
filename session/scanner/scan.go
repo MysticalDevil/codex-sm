@@ -21,7 +21,7 @@ import (
 func ScanSessions(root string) ([]session.Session, error) {
 	root = strings.TrimSpace(root)
 	if root == "" {
-		return nil, fmt.Errorf("sessions root is empty")
+		return nil, errors.New("sessions root is empty")
 	}
 
 	var out []session.Session
@@ -53,7 +53,7 @@ func ScanSessions(root string) ([]session.Session, error) {
 			return []session.Session{}, nil
 		}
 
-		return nil, err
+		return nil, fmt.Errorf("walk sessions under %q: %w", root, err)
 	}
 
 	return out, nil
@@ -64,7 +64,7 @@ func ScanSessions(root string) ([]session.Session, error) {
 func ScanSessionsLimited(root string, limit int, less func(a, b session.Session) bool) ([]session.Session, error) {
 	root = strings.TrimSpace(root)
 	if root == "" {
-		return nil, fmt.Errorf("sessions root is empty")
+		return nil, errors.New("sessions root is empty")
 	}
 
 	if limit <= 0 {
@@ -72,7 +72,7 @@ func ScanSessionsLimited(root string, limit int, less func(a, b session.Session)
 	}
 
 	if less == nil {
-		return nil, fmt.Errorf("limited scan comparator is nil")
+		return nil, errors.New("limited scan comparator is nil")
 	}
 
 	out := make([]session.Session, 0, limit)
@@ -114,7 +114,7 @@ func ScanSessionsLimited(root string, limit int, less func(a, b session.Session)
 			return []session.Session{}, nil
 		}
 
-		return nil, err
+		return nil, fmt.Errorf("walk limited sessions under %q: %w", root, err)
 	}
 
 	slices.SortStableFunc(out, func(a, b session.Session) int {
@@ -134,7 +134,7 @@ func ScanSessionsLimited(root string, limit int, less func(a, b session.Session)
 func scanOne(path string) (session.Session, error) {
 	info, err := os.Stat(path)
 	if err != nil {
-		return session.Session{}, err
+		return session.Session{}, fmt.Errorf("stat session file %q: %w", path, err)
 	}
 
 	s := session.Session{

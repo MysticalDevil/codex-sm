@@ -67,7 +67,7 @@ func parseSHA256Sidecar(raw, baseName string) (string, error) {
 		if len(parts) != sha256.Size*2 {
 			// allow lines like "<sum>  filename"
 			if len(parts[0]) != sha256.Size*2 {
-				return "", fmt.Errorf("invalid sha256 sidecar format")
+				return "", errors.New("invalid sha256 sidecar format")
 			}
 		}
 
@@ -88,23 +88,23 @@ func parseSHA256Sidecar(raw, baseName string) (string, error) {
 	}
 
 	if err := sc.Err(); err != nil {
-		return "", err
+		return "", fmt.Errorf("scan sha256 sidecar: %w", err)
 	}
 
-	return "", fmt.Errorf("no valid sha256 entry in sidecar")
+	return "", errors.New("no valid sha256 entry in sidecar")
 }
 
 func fileSHA256Hex(path string) (string, error) {
 	f, err := os.Open(path)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("open file for checksum %q: %w", path, err)
 	}
 
 	defer func() { _ = f.Close() }()
 
 	h := sha256.New()
 	if _, err := io.Copy(h, f); err != nil {
-		return "", err
+		return "", fmt.Errorf("hash file %q: %w", path, err)
 	}
 
 	return hex.EncodeToString(h.Sum(nil)), nil
