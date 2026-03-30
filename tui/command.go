@@ -140,7 +140,7 @@ func NewCommand(deps CommandDeps) *cobra.Command {
 			"  y/n: confirm/cancel pending action (group real delete requires 3 confirms)\n" +
 			"  q: quit",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runCommand(deps, cmd, commandInput{
+			return runCommand(deps, commandInput{
 				SessionsRoot:    sessionsRoot,
 				TrashRoot:       trashRoot,
 				LogFile:         logFile,

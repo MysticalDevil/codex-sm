@@ -39,9 +39,6 @@ func isTerminalWriter(out io.Writer) bool {
 
 const (
 	ansiReset    = "\x1b[0m"
-	ansiGreen    = "\x1b[32m"
-	ansiYellow   = "\x1b[33m"
-	ansiRed      = "\x1b[31m"
 	ansiDim      = "\x1b[2m"
 	ansiCyanBold = "\x1b[1;36m"
 )

@@ -6,8 +6,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/spf13/cobra"
-
 	"github.com/MysticalDevil/codexsm/config"
 	"github.com/MysticalDevil/codexsm/tui/runtime"
 	"github.com/MysticalDevil/codexsm/usecase"
@@ -31,7 +29,7 @@ type commandInput struct {
 	MaxBatchChanged bool
 }
 
-func runCommand(deps CommandDeps, cmd *cobra.Command, in commandInput) error {
+func runCommand(deps CommandDeps, in commandInput) error {
 	sessionsRoot, err := resolvePathOrDefault(in.SessionsRoot, deps.ResolveSessionsRoot)
 	if err != nil {
 		return err
