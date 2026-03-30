@@ -71,7 +71,7 @@ func ResolveOrDefault(v string, fallback func() (string, error)) (string, error)
 }
 
 // MarshalPrettyJSON marshals v with multiline indentation.
-func MarshalPrettyJSON[T interface{}](v T) ([]byte, error) {
+func MarshalPrettyJSON[T any](v T) ([]byte, error) {
 	var buf bytes.Buffer
 	if err := json.MarshalWrite(&buf, v, jsontext.Multiline(true), jsontext.WithIndent("  ")); err != nil {
 		return nil, err
