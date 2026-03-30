@@ -102,7 +102,8 @@ func TestAgentsExplainJSON(t *testing.T) {
 	}
 
 	var decoded struct {
-		CWD     string `json:"cwd"`
+		CWD     string         `json:"cwd"`
+		Filters map[string]any `json:"filters"`
 		Summary struct {
 			Sources   int `json:"sources"`
 			Rules     int `json:"rules"`
@@ -119,6 +120,10 @@ func TestAgentsExplainJSON(t *testing.T) {
 
 	if decoded.Summary.Rules == 0 || decoded.Summary.Effective == 0 {
 		t.Fatalf("unexpected summary: %+v", decoded.Summary)
+	}
+
+	if decoded.Filters != nil {
+		t.Fatalf("expected filters to be omitted when unset, got: %+v", decoded.Filters)
 	}
 }
 

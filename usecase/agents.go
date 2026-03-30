@@ -57,7 +57,7 @@ type AgentsExplainResult struct {
 	CWD     string                `json:"cwd"`
 	Sources []AgentsExplainSource `json:"sources"`
 	Rules   []AgentsExplainRule   `json:"rules"`
-	Filters AgentsExplainFilters  `json:"filters,omitempty"`
+	Filters AgentsExplainFilters  `json:"filters,omitzero"`
 	Summary AgentsExplainSummary  `json:"summary"`
 }
 
